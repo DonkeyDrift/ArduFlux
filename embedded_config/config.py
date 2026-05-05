@@ -354,7 +354,7 @@ class ConfigStore:
             self._data = self._default_data()
             return self._data
 
-        text = self.config_path.read_text(encoding="utf-8", errors="replace")
+        text = self.config_path.read_text(encoding="utf-8-sig", errors="replace")
         data = json.loads(text or "{}")
         if not isinstance(data, dict):
             raise ValidationError("配置文件格式不正确", "请删除损坏的配置文件后重新生成")
@@ -511,7 +511,7 @@ class ConfigStore:
         p = normalize_path(str(path), base_dir=self.base_dir)
         if not p.exists():
             raise ValidationError("导入文件不存在", "请选择一个有效的 JSON 文件")
-        data = json.loads(p.read_text(encoding="utf-8", errors="replace") or "{}")
+        data = json.loads(p.read_text(encoding="utf-8-sig", errors="replace") or "{}")
         if not isinstance(data, dict) or "profiles" not in data:
             raise ValidationError("导入文件格式不正确", "应包含 profiles 字段")
         incoming = data.get("profiles") or {}

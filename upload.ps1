@@ -67,6 +67,8 @@ if (Test-Path $embeddedConfigFile) {
 }
 
 function Save-Config {
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+
     if ($configSource -eq "embedded") {
         $saveObj = @{
             schemaVersion = $embeddedSchemaVersion
@@ -89,7 +91,8 @@ function Save-Config {
             }
             profiles = $embeddedProfiles
         }
-        $saveObj | ConvertTo-Json -Depth 20 | Out-File $embeddedConfigFile -Encoding UTF8
+        $jsonText = $saveObj | ConvertTo-Json -Depth 20
+        [System.IO.File]::WriteAllText($embeddedConfigFile, $jsonText, $utf8NoBom)
         Write-Host "Config saved (embedded_board_config.json)"
         return
     }
@@ -99,7 +102,8 @@ function Save-Config {
         Port = $config.Port
         BaudRate = [int]$config.BaudRate
     }
-    $legacyObj | ConvertTo-Json | Out-File $legacyConfigFile -Encoding UTF8
+    $legacyJsonText = $legacyObj | ConvertTo-Json
+    [System.IO.File]::WriteAllText($legacyConfigFile, $legacyJsonText, $utf8NoBom)
     Write-Host "Config saved (upload_config.json)"
 }
 
