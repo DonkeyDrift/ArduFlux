@@ -315,10 +315,24 @@ function migrateConfig(data) {
 }
 class ConfigStore {
     constructor(baseDir, arduinoCliPath = "arduino-cli") {
+        this.serialPortsCache = null;
+        this.SERIAL_PORTS_CACHE_TTL = 5000;
         this.baseDir = baseDir;
         this.configPath = path.join(baseDir, types_1.CONFIG_FILE_NAME);
         this.arduinoCliPath = arduinoCliPath;
         this.data = (0, types_1.createDefaultConfig)();
+    }
+    async getSerialPorts() {
+        const now = Date.now();
+        if (this.serialPortsCache && now - this.serialPortsCache.timestamp < this.SERIAL_PORTS_CACHE_TTL) {
+            return this.serialPortsCache.ports;
+        }
+        const ports = await listSerialPorts(this.arduinoCliPath);
+        this.serialPortsCache = { ports, timestamp: now };
+        return ports;
+    }
+    clearSerialPortsCache() {
+        this.serialPortsCache = null;
     }
     async load() {
         try {

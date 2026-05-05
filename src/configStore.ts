@@ -335,12 +335,28 @@ export class ConfigStore {
   readonly configPath: string;
   readonly arduinoCliPath: string;
   private data: EmbeddedBoardConfig;
+  private serialPortsCache: { ports: SerialPortInfo[]; timestamp: number } | null = null;
+  private readonly SERIAL_PORTS_CACHE_TTL = 5000;
 
   constructor(baseDir: string, arduinoCliPath = "arduino-cli") {
     this.baseDir = baseDir;
     this.configPath = path.join(baseDir, CONFIG_FILE_NAME);
     this.arduinoCliPath = arduinoCliPath;
     this.data = createDefaultConfig();
+  }
+
+  async getSerialPorts(): Promise<SerialPortInfo[]> {
+    const now = Date.now();
+    if (this.serialPortsCache && now - this.serialPortsCache.timestamp < this.SERIAL_PORTS_CACHE_TTL) {
+      return this.serialPortsCache.ports;
+    }
+    const ports = await listSerialPorts(this.arduinoCliPath);
+    this.serialPortsCache = { ports, timestamp: now };
+    return ports;
+  }
+
+  clearSerialPortsCache(): void {
+    this.serialPortsCache = null;
   }
 
   async load(): Promise<EmbeddedBoardConfig> {

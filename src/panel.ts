@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { spawn } from "child_process";
-import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, buildUploadArgs, listSerialPorts, recommendSerialPort } from "./configStore";
+import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, buildUploadArgs, recommendSerialPort } from "./configStore";
 import { BoardCatalogItem, DEFAULT_BOARD_CATALOG, EmbeddedBoardConfig, EmbeddedCurrentConfig, SerialPortInfo } from "./types";
 
 interface PanelStatePayload {
@@ -132,7 +132,7 @@ export class EmbeddedBoardConfigPanel {
 
   private async collectState(): Promise<PanelStatePayload> {
     const config = await this.store.load();
-    const ports = await listSerialPorts(this.store.arduinoCliPath);
+    const ports = await this.store.getSerialPorts();
     const recommendedPort = recommendSerialPort(
       ports,
       config.current.port.address,
@@ -172,6 +172,7 @@ export class EmbeddedBoardConfigPanel {
           await this.uploadSketch();
           return;
         case "refresh-ports":
+          this.store.clearSerialPortsCache();
           await this.syncView("串口列表已刷新");
           return;
         case "save-profile":
@@ -220,7 +221,6 @@ export class EmbeddedBoardConfigPanel {
       if (nextCurrent.build.outputDir) {
         this.store.setOutputDir(nextCurrent.build.outputDir);
       }
-      await this.store.validateAll();
       await this.store.save();
       await this.syncView("配置已保存");
     } catch (error) {

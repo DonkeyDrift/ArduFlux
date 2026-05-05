@@ -127,7 +127,7 @@ class EmbeddedBoardConfigPanel {
     }
     async collectState() {
         const config = await this.store.load();
-        const ports = await (0, configStore_1.listSerialPorts)(this.store.arduinoCliPath);
+        const ports = await this.store.getSerialPorts();
         const recommendedPort = (0, configStore_1.recommendSerialPort)(ports, config.current.port.address, config.current.port.auto);
         return {
             config,
@@ -160,6 +160,7 @@ class EmbeddedBoardConfigPanel {
                     await this.uploadSketch();
                     return;
                 case "refresh-ports":
+                    this.store.clearSerialPortsCache();
                     await this.syncView("串口列表已刷新");
                     return;
                 case "save-profile":
@@ -208,7 +209,6 @@ class EmbeddedBoardConfigPanel {
             if (nextCurrent.build.outputDir) {
                 this.store.setOutputDir(nextCurrent.build.outputDir);
             }
-            await this.store.validateAll();
             await this.store.save();
             await this.syncView("配置已保存");
         }
