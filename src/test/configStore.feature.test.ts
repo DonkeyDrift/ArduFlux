@@ -25,7 +25,7 @@ describe("configStore.ts - 串口监视器功能", () => {
 
     it("应包含停止位配置", () => {
       const args = buildMonitorArgs({ port: "COM36", stopBits: 1 });
-      expect(args).to.include.members(["--config", "stopbits=1"]);
+      expect(args).to.include.members(["--config", "stop_bits=1"]);
     });
 
     it("parity=none 时不应生成 parity 配置", () => {

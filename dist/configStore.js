@@ -154,7 +154,7 @@ function buildMonitorArgs(opts) {
         configs.push(`bits=${opts.dataBits}`);
     }
     if (opts.stopBits && [1, 1.5, 2].includes(opts.stopBits)) {
-        configs.push(`stopbits=${opts.stopBits}`);
+        configs.push(`stop_bits=${opts.stopBits}`);
     }
     if (opts.parity && opts.parity.toLowerCase() !== "none") {
         configs.push(`parity=${opts.parity.toLowerCase()}`);
@@ -311,7 +311,7 @@ class ConfigStore {
     }
     async load() {
         try {
-            const text = await fs_1.promises.readFile(this.configPath, "utf8");
+            const text = (await fs_1.promises.readFile(this.configPath, "utf8")).replace(/^\uFEFF/, "");
             this.data = migrateConfig(JSON.parse(text));
         }
         catch (error) {

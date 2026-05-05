@@ -50,8 +50,10 @@
 │   └── ui.py                     # tkinter GUI `python -m embedded_config.ui`
 ├── tests/                        # Python 单元测试
 │   └── test_config.py
-├── docs/                         # 文档
-│   └── embedded_config.md
+├── docs/                         # 项目级技术文档
+│   ├── embedded_config.md        # Python 配置模块使用说明
+│   ├── roadmap-phase6-8.md       # 扩展功能开发路线图
+│   └── tdd-dev-plan.md           # TDD 开发方案与实施记录
 ├── embedded_board_config.json    # 扩展直接读写的配置文件（运行时生成/更新）
 ├── embedded_board_config.template.json  # 配置文件模板
 ├── upload.ps1                    # PowerShell 上传脚本（读取上述 JSON）
@@ -148,6 +150,13 @@ python -m unittest discover -s tests -v
 - `ConfigStore` 支持依赖注入 `runner`，方便单元测试 mock `subprocess.run`。
 - 串口地址规范化：`COM` 前缀统一大写（`COM36`）。
 - JSON 读写使用 `utf-8`（读取兼容 `utf-8-sig`）。
+
+### 文档约定
+
+- `docs/` 仅存放与项目直接相关的技术文档（配置说明、开发计划、路线图等）。
+- 不存放通用规范、外部标准或用户操作手册——此类内容应通过链接引用，避免冗余。
+- 文档命名优先使用 **kebab-case**（如 `tdd-dev-plan.md`）；与代码包/模块强对应的文档可保持同名（如 `embedded_config.md`）。
+- 文档采用 Markdown 格式，保持轻量，聚焦本项目的实现细节与决策记录。
 
 ### 配置文件格式约定
 - 文件名固定为 `embedded_board_config.json`。

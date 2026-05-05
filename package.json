@@ -75,7 +75,8 @@
     "vscode:prepublish": "npm run compile",
     "package": "vsce package --allow-missing-repository",
     "test": "npm run compile && mocha \"dist/test/**/*.test.js\"",
-    "test:watch": "tsc -w -p ./ & mocha --watch \"dist/test/**/*.test.js\""
+    "test:watch": "tsc -w -p ./ & mocha --watch \"dist/test/**/*.test.js\"",
+    "install:vsix": "powershell -ExecutionPolicy Bypass -File .\install-vsix.ps1"
   },
   "devDependencies": {
     "@types/chai": "^5.2.3",

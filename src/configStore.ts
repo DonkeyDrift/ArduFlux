@@ -149,7 +149,7 @@ export function buildMonitorArgs(opts: {
     configs.push(`bits=${opts.dataBits}`);
   }
   if (opts.stopBits && [1, 1.5, 2].includes(opts.stopBits)) {
-    configs.push(`stopbits=${opts.stopBits}`);
+    configs.push(`stop_bits=${opts.stopBits}`);
   }
   if (opts.parity && opts.parity.toLowerCase() !== "none") {
     configs.push(`parity=${opts.parity.toLowerCase()}`);
@@ -331,7 +331,7 @@ export class ConfigStore {
 
   async load(): Promise<EmbeddedBoardConfig> {
     try {
-      const text = await fs.readFile(this.configPath, "utf8");
+      const text = (await fs.readFile(this.configPath, "utf8")).replace(/^\uFEFF/, "");
       this.data = migrateConfig(JSON.parse(text));
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
