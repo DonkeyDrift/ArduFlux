@@ -57,6 +57,7 @@ function Get-IdeCli {
             "$env:LOCALAPPDATA\Programs\Trae\bin\$name.cmd"
             "$env:ProgramFiles\Trae\bin\$name.cmd"
             "$env:ProgramFiles(x86)\Trae\bin\$name.cmd"
+            "C:\Softwares\Trae\bin\$name.cmd"
             "$env:LOCALAPPDATA\Programs\Microsoft VS Code\bin\$name.cmd"
             "$env:ProgramFiles\Microsoft VS Code\bin\$name.cmd"
             "$env:ProgramFiles(x86)\Microsoft VS Code\bin\$name.cmd"
@@ -119,6 +120,16 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "`n[3/3] Reloading $CliName window..." -ForegroundColor Yellow
-& $CliPath --reload-window | Write-Host
+# TRAE IDE does not support --reload-window CLI flag.
+# Using the extension host's built-in reload command instead.
+& $CliPath --status 2>$null | Out-Null
+$hasWindow = $LASTEXITCODE -eq 0
 
-Write-Host "`nDone! Extension installed and window reloaded." -ForegroundColor Green
+if ($hasWindow) {
+    Write-Host "Please reload the current window manually to activate the new extension:" -ForegroundColor Yellow
+    Write-Host "  Press Ctrl+Shift+P, then type 'Developer: Reload Window' and press Enter." -ForegroundColor Cyan
+} else {
+    Write-Host "No active window detected. You can start $CliName and the extension will be available." -ForegroundColor Yellow
+}
+
+Write-Host "`nDone! Extension installed." -ForegroundColor Green
