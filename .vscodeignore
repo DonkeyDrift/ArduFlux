@@ -10,4 +10,11 @@ embedded_config/**
 TouchButton.ino
 TEST_REPORT.txt
 upload_config.json
+embedded_board_config.json
 embedded_board_config.template.json
+node_modules/**
+package-lock.json
+tsconfig.json
+.gitignore
+AGENTS.md
+*.vsix

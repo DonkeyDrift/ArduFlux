@@ -11,13 +11,13 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:embeddedBoardConfig.openPanel",
-    "onCommand:embeddedBoardConfig.validateConfig",
-    "onCommand:embeddedBoardConfig.openConfigFile"
-  ],
   "main": "./dist/extension.js",
   "contributes": {
+    "activationEvents": [
+      "onCommand:embeddedBoardConfig.openPanel",
+      "onCommand:embeddedBoardConfig.validateConfig",
+      "onCommand:embeddedBoardConfig.openConfigFile"
+    ],
     "commands": [
       {
         "command": "embeddedBoardConfig.openPanel",
