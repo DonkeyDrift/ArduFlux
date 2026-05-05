@@ -318,35 +318,52 @@ class EmbeddedBoardConfigPanel {
         terminal.show();
         await this.syncView(`已打开串口监视器: ${port}`);
     }
-    runWithOutputChannel(title, args) {
+    runInTerminal(name, args) {
         return new Promise((resolve, reject) => {
-            const outputChannel = vscode.window.createOutputChannel(title);
-            outputChannel.clear();
-            outputChannel.show();
-            outputChannel.appendLine(`> ${this.store.arduinoCliPath} ${args.join(" ")}`);
-            outputChannel.appendLine("");
-            const proc = (0, child_process_1.spawn)(this.store.arduinoCliPath, args, {
-                cwd: this.store.baseDir,
-                windowsHide: true,
-                shell: false
-            });
-            proc.stdout.on("data", (data) => {
-                outputChannel.append(data.toString());
-            });
-            proc.stderr.on("data", (data) => {
-                outputChannel.append(data.toString());
-            });
-            proc.on("close", (code) => {
-                outputChannel.appendLine(`\n[Exit code: ${code ?? "null"}]`);
+            const writeEmitter = new vscode.EventEmitter();
+            const closeEmitter = new vscode.EventEmitter();
+            let proc = null;
+            const pty = {
+                onDidWrite: writeEmitter.event,
+                onDidClose: closeEmitter.event,
+                open: () => {
+                    writeEmitter.fire(`> ${this.store.arduinoCliPath} ${args.join(" ")}\r\n\r\n`);
+                    proc = (0, child_process_1.spawn)(this.store.arduinoCliPath, args, {
+                        cwd: this.store.baseDir,
+                        windowsHide: true,
+                        shell: false
+                    });
+                    proc.stdout?.on("data", (data) => {
+                        writeEmitter.fire(data.toString().replace(/\n/g, "\r\n"));
+                    });
+                    proc.stderr?.on("data", (data) => {
+                        writeEmitter.fire(data.toString().replace(/\n/g, "\r\n"));
+                    });
+                    proc.on("close", (code) => {
+                        writeEmitter.fire(`\r\n[Exit code: ${code ?? "null"}]\r\n`);
+                        closeEmitter.fire(code ?? 0);
+                    });
+                    proc.on("error", (err) => {
+                        writeEmitter.fire(`\r\n[Error: ${err.message}]\r\n`);
+                        closeEmitter.fire(1);
+                    });
+                },
+                close: () => {
+                    if (proc && !proc.killed) {
+                        proc.kill();
+                    }
+                }
+            };
+            const terminal = vscode.window.createTerminal({ name, pty });
+            terminal.show();
+            const disposable = closeEmitter.event((code) => {
+                disposable.dispose();
                 if (code === 0) {
                     resolve();
                 }
                 else {
-                    reject(new configStore_1.ValidationError(`${title} 失败，退出码: ${code}`));
+                    reject(new configStore_1.ValidationError(`${name} 失败，退出码: ${code}`));
                 }
-            });
-            proc.on("error", (err) => {
-                reject(new configStore_1.ValidationError(`${title} 启动失败: ${err.message}`));
             });
         });
     }
@@ -361,7 +378,7 @@ class EmbeddedBoardConfigPanel {
         });
         await this.panel.webview.postMessage({ type: "compiling", active: true });
         try {
-            await this.runWithOutputChannel("Arduino Compile", args);
+            await this.runInTerminal("Arduino Compile", args);
             await this.syncView("编译完成");
         }
         catch (error) {
@@ -383,7 +400,7 @@ class EmbeddedBoardConfigPanel {
         });
         await this.panel.webview.postMessage({ type: "uploading", active: true });
         try {
-            await this.runWithOutputChannel("Arduino Upload", args);
+            await this.runInTerminal("Arduino Upload", args);
             await this.syncView("上传完成");
         }
         catch (error) {

@@ -348,36 +348,54 @@ export class EmbeddedBoardConfigPanel {
     await this.syncView(`已打开串口监视器: ${port}`);
   }
 
-  private runWithOutputChannel(title: string, args: string[]): Promise<void> {
+  private runInTerminal(name: string, args: string[]): Promise<void> {
     return new Promise((resolve, reject) => {
-      const outputChannel = vscode.window.createOutputChannel(title);
-      outputChannel.clear();
-      outputChannel.show();
-      outputChannel.appendLine(`> ${this.store.arduinoCliPath} ${args.join(" ")}`);
-      outputChannel.appendLine("");
+      const writeEmitter = new vscode.EventEmitter<string>();
+      const closeEmitter = new vscode.EventEmitter<number>();
+      let proc: ReturnType<typeof spawn> | null = null;
 
-      const proc = spawn(this.store.arduinoCliPath, args, {
-        cwd: this.store.baseDir,
-        windowsHide: true,
-        shell: false
-      });
+      const pty: vscode.Pseudoterminal = {
+        onDidWrite: writeEmitter.event,
+        onDidClose: closeEmitter.event,
+        open: () => {
+          writeEmitter.fire(`> ${this.store.arduinoCliPath} ${args.join(" ")}\r\n\r\n`);
+          proc = spawn(this.store.arduinoCliPath, args, {
+            cwd: this.store.baseDir,
+            windowsHide: true,
+            shell: false
+          });
+          proc.stdout?.on("data", (data: Buffer) => {
+            writeEmitter.fire(data.toString().replace(/\n/g, "\r\n"));
+          });
+          proc.stderr?.on("data", (data: Buffer) => {
+            writeEmitter.fire(data.toString().replace(/\n/g, "\r\n"));
+          });
+          proc.on("close", (code) => {
+            writeEmitter.fire(`\r\n[Exit code: ${code ?? "null"}]\r\n`);
+            closeEmitter.fire(code ?? 0);
+          });
+          proc.on("error", (err) => {
+            writeEmitter.fire(`\r\n[Error: ${err.message}]\r\n`);
+            closeEmitter.fire(1);
+          });
+        },
+        close: () => {
+          if (proc && !proc.killed) {
+            proc.kill();
+          }
+        }
+      };
 
-      proc.stdout.on("data", (data: Buffer) => {
-        outputChannel.append(data.toString());
-      });
-      proc.stderr.on("data", (data: Buffer) => {
-        outputChannel.append(data.toString());
-      });
-      proc.on("close", (code) => {
-        outputChannel.appendLine(`\n[Exit code: ${code ?? "null"}]`);
+      const terminal = vscode.window.createTerminal({ name, pty });
+      terminal.show();
+
+      const disposable = closeEmitter.event((code) => {
+        disposable.dispose();
         if (code === 0) {
           resolve();
         } else {
-          reject(new ValidationError(`${title} 失败，退出码: ${code}`));
+          reject(new ValidationError(`${name} 失败，退出码: ${code}`));
         }
-      });
-      proc.on("error", (err) => {
-        reject(new ValidationError(`${title} 启动失败: ${err.message}`));
       });
     });
   }
@@ -393,7 +411,7 @@ export class EmbeddedBoardConfigPanel {
     });
     await this.panel.webview.postMessage({ type: "compiling", active: true });
     try {
-      await this.runWithOutputChannel("Arduino Compile", args);
+      await this.runInTerminal("Arduino Compile", args);
       await this.syncView("编译完成");
     } catch (error) {
       await this.panel.webview.postMessage({ type: "compiling", active: false, error: formatError(error) });
@@ -414,7 +432,7 @@ export class EmbeddedBoardConfigPanel {
     });
     await this.panel.webview.postMessage({ type: "uploading", active: true });
     try {
-      await this.runWithOutputChannel("Arduino Upload", args);
+      await this.runInTerminal("Arduino Upload", args);
       await this.syncView("上传完成");
     } catch (error) {
       await this.panel.webview.postMessage({ type: "uploading", active: false, error: formatError(error) });
