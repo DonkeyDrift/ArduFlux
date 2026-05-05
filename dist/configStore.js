@@ -164,9 +164,9 @@ function buildMonitorArgs(opts) {
     }
     return args;
 }
-async function execFileText(command, args) {
+async function execFileText(command, args, timeoutMs = 10000) {
     return new Promise((resolve) => {
-        (0, child_process_1.execFile)(command, args, { encoding: "utf8", windowsHide: true }, (error, stdout, stderr) => {
+        const child = (0, child_process_1.execFile)(command, args, { encoding: "utf8", windowsHide: true }, (error, stdout, stderr) => {
             if (!error) {
                 resolve({ stdout, stderr, exitCode: 0 });
                 return;
@@ -174,6 +174,15 @@ async function execFileText(command, args) {
             const exitCode = typeof error.code === "number" ? error.code : 1;
             resolve({ stdout: stdout ?? "", stderr: stderr ?? error.message, exitCode });
         });
+        if (timeoutMs > 0) {
+            const timer = setTimeout(() => {
+                child.kill();
+                resolve({ stdout: "", stderr: `Command timed out after ${timeoutMs}ms`, exitCode: 1 });
+            }, timeoutMs);
+            child.on("exit", () => {
+                clearTimeout(timer);
+            });
+        }
     });
 }
 function normalizeSerialAddress(address) {

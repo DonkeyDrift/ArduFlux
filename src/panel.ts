@@ -208,34 +208,46 @@ export class EmbeddedBoardConfigPanel {
   }
 
   private async saveConfig(form: FormPayload): Promise<void> {
-    const current = this.store.getData();
-    const nextCurrent = buildCurrentConfig(form, current);
-    const nextConfig: EmbeddedBoardConfig = {
-      ...current,
-      current: nextCurrent
-    };
-    this.store.setData(nextConfig);
-    if (nextCurrent.build.outputDir) {
-      this.store.setOutputDir(nextCurrent.build.outputDir);
+    await this.panel.webview.postMessage({ type: "saving", active: true });
+    try {
+      const current = this.store.getData();
+      const nextCurrent = buildCurrentConfig(form, current);
+      const nextConfig: EmbeddedBoardConfig = {
+        ...current,
+        current: nextCurrent
+      };
+      this.store.setData(nextConfig);
+      if (nextCurrent.build.outputDir) {
+        this.store.setOutputDir(nextCurrent.build.outputDir);
+      }
+      await this.store.validateAll();
+      await this.store.save();
+      await this.syncView("配置已保存");
+    } catch (error) {
+      await this.panel.webview.postMessage({ type: "saving", active: false, error: formatError(error) });
+      throw error;
     }
-    await this.store.validateAll();
-    await this.store.save();
-    await this.syncView("配置已保存");
   }
 
   private async validateConfig(form: FormPayload): Promise<void> {
-    const current = this.store.getData();
-    const nextCurrent = buildCurrentConfig(form, current);
-    const nextConfig: EmbeddedBoardConfig = {
-      ...current,
-      current: nextCurrent
-    };
-    this.store.setData(nextConfig);
-    if (nextCurrent.build.outputDir) {
-      this.store.setOutputDir(nextCurrent.build.outputDir);
+    await this.panel.webview.postMessage({ type: "validating", active: true });
+    try {
+      const current = this.store.getData();
+      const nextCurrent = buildCurrentConfig(form, current);
+      const nextConfig: EmbeddedBoardConfig = {
+        ...current,
+        current: nextCurrent
+      };
+      this.store.setData(nextConfig);
+      if (nextCurrent.build.outputDir) {
+        this.store.setOutputDir(nextCurrent.build.outputDir);
+      }
+      await this.store.validateAll();
+      await this.syncView("校验通过");
+    } catch (error) {
+      await this.panel.webview.postMessage({ type: "validating", active: false, error: formatError(error) });
+      throw error;
     }
-    await this.store.validateAll();
-    await this.syncView("校验通过");
   }
 
   private async saveProfile(payload: { name?: string; form?: FormPayload }): Promise<void> {
@@ -776,10 +788,20 @@ export class EmbeddedBoardConfigPanel {
     });
 
     document.getElementById("saveButton").addEventListener("click", () => {
-      vscode.postMessage({ type: "save-config", payload: collectForm() });
+      try {
+        setStatus("正在保存...");
+        vscode.postMessage({ type: "save-config", payload: collectForm() });
+      } catch (err) {
+        setStatus("保存失败: " + (err.message || String(err)));
+      }
     });
     document.getElementById("validateButton").addEventListener("click", () => {
-      vscode.postMessage({ type: "validate-config", payload: collectForm() });
+      try {
+        setStatus("正在校验...");
+        vscode.postMessage({ type: "validate-config", payload: collectForm() });
+      } catch (err) {
+        setStatus("校验失败: " + (err.message || String(err)));
+      }
     });
     document.getElementById("compileButton").addEventListener("click", () => {
       vscode.postMessage({ type: "compile-sketch" });
@@ -841,6 +863,22 @@ export class EmbeddedBoardConfigPanel {
         } else {
           stopSpinner();
           setStatus(event.data.error || "上传完成");
+        }
+      }
+      if (event.data?.type === "saving") {
+        if (event.data.active) {
+          startSpinner("保存中");
+        } else {
+          stopSpinner();
+          setStatus(event.data.error || "配置已保存");
+        }
+      }
+      if (event.data?.type === "validating") {
+        if (event.data.active) {
+          startSpinner("校验中");
+        } else {
+          stopSpinner();
+          setStatus(event.data.error || "校验通过");
         }
       }
     });

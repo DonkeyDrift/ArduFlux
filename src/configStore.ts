@@ -160,9 +160,9 @@ export function buildMonitorArgs(opts: {
   return args;
 }
 
-export async function execFileText(command: string, args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+export async function execFileText(command: string, args: string[], timeoutMs = 10000): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve) => {
-    execFile(command, args, { encoding: "utf8", windowsHide: true }, (error, stdout, stderr) => {
+    const child = execFile(command, args, { encoding: "utf8", windowsHide: true }, (error, stdout, stderr) => {
       if (!error) {
         resolve({ stdout, stderr, exitCode: 0 });
         return;
@@ -171,6 +171,17 @@ export async function execFileText(command: string, args: string[]): Promise<{ s
       const exitCode = typeof error.code === "number" ? error.code : 1;
       resolve({ stdout: stdout ?? "", stderr: stderr ?? error.message, exitCode });
     });
+
+    if (timeoutMs > 0) {
+      const timer = setTimeout(() => {
+        child.kill();
+        resolve({ stdout: "", stderr: `Command timed out after ${timeoutMs}ms`, exitCode: 1 });
+      }, timeoutMs);
+
+      child.on("exit", () => {
+        clearTimeout(timer);
+      });
+    }
   });
 }
 
