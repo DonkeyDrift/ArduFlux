@@ -5,7 +5,15 @@
       "name": "ESP32-S3 (Generic)",
       "fqbn": "esp32:esp32:esp32s3",
       "compileArgs": [],
-      "pinDefines": {}
+      "pinDefines": {
+        "ws2812_pin": 48,
+        "touch_pins": {
+          "T0": 4,
+          "T2": 2,
+          "T5": 12,
+          "BOOT(GPIO0)": 0
+        }
+      }
     },
     "port": {
       "address": "COM36",
