@@ -335,11 +335,10 @@ class EmbeddedBoardConfigPanel {
     runInTerminal(name, args) {
         return new Promise((resolve, reject) => {
             const writeEmitter = new vscode.EventEmitter();
-            const closeEmitter = new vscode.EventEmitter();
             let proc = null;
+            let resolved = false;
             const pty = {
                 onDidWrite: writeEmitter.event,
-                onDidClose: closeEmitter.event,
                 open: () => {
                     writeEmitter.fire(`> ${this.store.arduinoCliPath} ${args.join(" ")}\r\n\r\n`);
                     proc = (0, child_process_1.spawn)(this.store.arduinoCliPath, args, {
@@ -355,11 +354,22 @@ class EmbeddedBoardConfigPanel {
                     });
                     proc.on("close", (code) => {
                         writeEmitter.fire(`\r\n[Exit code: ${code ?? "null"}]\r\n`);
-                        closeEmitter.fire(code ?? 0);
+                        if (!resolved) {
+                            resolved = true;
+                            if (code === 0) {
+                                resolve();
+                            }
+                            else {
+                                reject(new configStore_1.ValidationError(`${name} 失败，退出码: ${code}`));
+                            }
+                        }
                     });
                     proc.on("error", (err) => {
                         writeEmitter.fire(`\r\n[Error: ${err.message}]\r\n`);
-                        closeEmitter.fire(1);
+                        if (!resolved) {
+                            resolved = true;
+                            reject(new configStore_1.ValidationError(`${name} 启动失败: ${err.message}`));
+                        }
                     });
                 },
                 close: () => {
@@ -370,15 +380,6 @@ class EmbeddedBoardConfigPanel {
             };
             const terminal = vscode.window.createTerminal({ name, pty });
             terminal.show();
-            const disposable = closeEmitter.event((code) => {
-                disposable.dispose();
-                if (code === 0) {
-                    resolve();
-                }
-                else {
-                    reject(new configStore_1.ValidationError(`${name} 失败，退出码: ${code}`));
-                }
-            });
         });
     }
     async compileSketch() {

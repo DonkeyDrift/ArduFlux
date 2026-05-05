@@ -363,12 +363,11 @@ export class EmbeddedBoardConfigPanel {
   private runInTerminal(name: string, args: string[]): Promise<void> {
     return new Promise((resolve, reject) => {
       const writeEmitter = new vscode.EventEmitter<string>();
-      const closeEmitter = new vscode.EventEmitter<number>();
       let proc: ReturnType<typeof spawn> | null = null;
+      let resolved = false;
 
       const pty: vscode.Pseudoterminal = {
         onDidWrite: writeEmitter.event,
-        onDidClose: closeEmitter.event,
         open: () => {
           writeEmitter.fire(`> ${this.store.arduinoCliPath} ${args.join(" ")}\r\n\r\n`);
           proc = spawn(this.store.arduinoCliPath, args, {
@@ -384,11 +383,21 @@ export class EmbeddedBoardConfigPanel {
           });
           proc.on("close", (code) => {
             writeEmitter.fire(`\r\n[Exit code: ${code ?? "null"}]\r\n`);
-            closeEmitter.fire(code ?? 0);
+            if (!resolved) {
+              resolved = true;
+              if (code === 0) {
+                resolve();
+              } else {
+                reject(new ValidationError(`${name} 失败，退出码: ${code}`));
+              }
+            }
           });
           proc.on("error", (err) => {
             writeEmitter.fire(`\r\n[Error: ${err.message}]\r\n`);
-            closeEmitter.fire(1);
+            if (!resolved) {
+              resolved = true;
+              reject(new ValidationError(`${name} 启动失败: ${err.message}`));
+            }
           });
         },
         close: () => {
@@ -400,15 +409,6 @@ export class EmbeddedBoardConfigPanel {
 
       const terminal = vscode.window.createTerminal({ name, pty });
       terminal.show();
-
-      const disposable = closeEmitter.event((code) => {
-        disposable.dispose();
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new ValidationError(`${name} 失败，退出码: ${code}`));
-        }
-      });
     });
   }
 
