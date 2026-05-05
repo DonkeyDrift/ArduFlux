@@ -41,6 +41,32 @@
         "command": "embeddedBoardConfig.uploadSketch",
         "title": "Embedded Board Config: Upload Sketch"
       }
+    ],
+    "keybindings": [
+      {
+        "command": "embeddedBoardConfig.openPanel",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "embeddedBoardConfig.validateConfig",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "embeddedBoardConfig.compileSketch",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "embeddedBoardConfig.uploadSketch",
+        "key": "ctrl+shift+u",
+        "mac": "cmd+shift+u",
+        "when": "editorTextFocus"
+      }
     ]
   },
   "scripts": {

@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { ConfigStore, ValidationError } from "./configStore";
 import { EmbeddedBoardConfigPanel } from "./panel";
+import { formatStatusBarText } from "./statusBar";
 
 function getWorkspaceRoot(): string {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -95,6 +96,34 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     })
   );
+
+  // 状态栏
+  const statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    100
+  );
+  statusBarItem.command = "embeddedBoardConfig.openPanel";
+  context.subscriptions.push(statusBarItem);
+
+  async function updateStatusBar(): Promise<void> {
+    try {
+      const root = getWorkspaceRoot();
+      const store = new ConfigStore(root);
+      await store.load();
+      const config = store.getData().current;
+      statusBarItem.text = `$(circuit-board) ${formatStatusBarText(config.board.name, config.port.address)}`;
+      statusBarItem.tooltip = `板型: ${config.board.name}\n端口: ${config.port.address || "未选择"}\nFQBN: ${config.board.fqbn}`;
+      statusBarItem.show();
+    } catch {
+      statusBarItem.text = "$(circuit-board) 嵌入式配置";
+      statusBarItem.tooltip = "点击打开 Embedded Board Config 面板";
+      statusBarItem.show();
+    }
+  }
+
+  void updateStatusBar();
+  const interval = setInterval(() => void updateStatusBar(), 5000);
+  context.subscriptions.push({ dispose: () => clearInterval(interval) });
 }
 
 export function deactivate(): void {
