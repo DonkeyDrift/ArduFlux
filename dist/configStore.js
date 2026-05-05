@@ -276,13 +276,15 @@ function migrateConfig(data) {
     }
     const current = source.current && typeof source.current === "object" ? source.current : {};
     const profiles = source.profiles && typeof source.profiles === "object" ? source.profiles : { default: {} };
+    const board = { ...defaults.current.board, ...(current.board ?? {}) };
+    const pinDefines = current.board?.pinDefines;
+    if (!pinDefines || (typeof pinDefines === "object" && !Array.isArray(pinDefines) && Object.keys(pinDefines).length === 0)) {
+        board.pinDefines = defaults.current.board.pinDefines;
+    }
     return {
         schemaVersion: 1,
         current: {
-            board: {
-                ...defaults.current.board,
-                ...(current.board ?? {})
-            },
+            board,
             port: {
                 ...defaults.current.port,
                 ...(current.port ?? {})

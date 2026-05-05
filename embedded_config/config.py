@@ -381,6 +381,12 @@ class ConfigStore:
                 out["profiles"] = {}
             if "default" not in out["profiles"]:
                 out["profiles"]["default"] = {}
+            # 修复：如果配置文件中的 pinDefines 为空对象，保留默认值
+            current_board = out.get("current", {}).get("board", {})
+            if isinstance(current_board, dict):
+                pin_defines = current_board.get("pinDefines")
+                if not pin_defines or (isinstance(pin_defines, dict) and len(pin_defines) == 0):
+                    current_board["pinDefines"] = self._default_data()["current"]["board"]["pinDefines"]
             return out
         raise ValidationError("不支持的配置版本", f"schemaVersion={version}，请升级配置模块或重新生成配置文件")
 
