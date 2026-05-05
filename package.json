@@ -1,0 +1,48 @@
+{
+  "name": "embedded-board-config",
+  "displayName": "Embedded Board Config",
+  "description": "Manage embedded board, serial port, build output, monitor and profiles from VS Code.",
+  "version": "0.2.0",
+  "publisher": "baoshan",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:embeddedBoardConfig.openPanel",
+    "onCommand:embeddedBoardConfig.validateConfig",
+    "onCommand:embeddedBoardConfig.openConfigFile"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "embeddedBoardConfig.openPanel",
+        "title": "Embedded Board Config: Open Panel"
+      },
+      {
+        "command": "embeddedBoardConfig.validateConfig",
+        "title": "Embedded Board Config: Validate Current Config"
+      },
+      {
+        "command": "embeddedBoardConfig.openConfigFile",
+        "title": "Embedded Board Config: Open Config File"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.2",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.6.2",
+    "typescript": "^5.9.3"
+  }
+}

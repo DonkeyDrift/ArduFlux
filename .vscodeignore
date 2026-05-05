@@ -1,0 +1,13 @@
+**/.git/**
+**/.trae/**
+**/__pycache__/**
+**/*.pyc
+.vscode/**
+src/**
+tests/**
+docs/**
+embedded_config/**
+TouchButton.ino
+TEST_REPORT.txt
+upload_config.json
+embedded_board_config.template.json
