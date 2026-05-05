@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmbeddedBoardConfigPanel = void 0;
 const vscode = __importStar(require("vscode"));
+const child_process_1 = require("child_process");
 const configStore_1 = require("./configStore");
 const types_1 = require("./types");
 function createNonce() {
@@ -317,6 +318,38 @@ class EmbeddedBoardConfigPanel {
         terminal.show();
         await this.syncView(`已打开串口监视器: ${port}`);
     }
+    runWithOutputChannel(title, args) {
+        return new Promise((resolve, reject) => {
+            const outputChannel = vscode.window.createOutputChannel(title);
+            outputChannel.clear();
+            outputChannel.show();
+            outputChannel.appendLine(`> ${this.store.arduinoCliPath} ${args.join(" ")}`);
+            outputChannel.appendLine("");
+            const proc = (0, child_process_1.spawn)(this.store.arduinoCliPath, args, {
+                cwd: this.store.baseDir,
+                windowsHide: true,
+                shell: false
+            });
+            proc.stdout.on("data", (data) => {
+                outputChannel.append(data.toString());
+            });
+            proc.stderr.on("data", (data) => {
+                outputChannel.append(data.toString());
+            });
+            proc.on("close", (code) => {
+                outputChannel.appendLine(`\n[Exit code: ${code ?? "null"}]`);
+                if (code === 0) {
+                    resolve();
+                }
+                else {
+                    reject(new configStore_1.ValidationError(`${title} 失败，退出码: ${code}`));
+                }
+            });
+            proc.on("error", (err) => {
+                reject(new configStore_1.ValidationError(`${title} 启动失败: ${err.message}`));
+            });
+        });
+    }
     async compileSketch() {
         const config = this.store.getData().current;
         this.store.validateBoard(config.board);
@@ -326,13 +359,18 @@ class EmbeddedBoardConfigPanel {
             outputDir: config.build.outputDir || undefined,
             extraArgs: config.board.compileArgs.length > 0 ? config.board.compileArgs : undefined
         });
-        const terminal = vscode.window.createTerminal({
-            name: "Arduino Compile",
-            cwd: this.store.baseDir
-        });
-        terminal.sendText([this.store.arduinoCliPath, ...args].join(" "));
-        terminal.show();
-        await this.syncView("编译任务已启动");
+        await this.panel.webview.postMessage({ type: "compiling", active: true });
+        try {
+            await this.runWithOutputChannel("Arduino Compile", args);
+            await this.syncView("编译完成");
+        }
+        catch (error) {
+            await this.panel.webview.postMessage({ type: "compiling", active: false, error: formatError(error) });
+            throw error;
+        }
+        finally {
+            await this.panel.webview.postMessage({ type: "compiling", active: false });
+        }
     }
     async uploadSketch() {
         const config = this.store.getData().current;
@@ -343,13 +381,18 @@ class EmbeddedBoardConfigPanel {
             fqbn: config.board.fqbn,
             sketchPath: this.store.baseDir
         });
-        const terminal = vscode.window.createTerminal({
-            name: "Arduino Upload",
-            cwd: this.store.baseDir
-        });
-        terminal.sendText([this.store.arduinoCliPath, ...args].join(" "));
-        terminal.show();
-        await this.syncView("上传任务已启动");
+        await this.panel.webview.postMessage({ type: "uploading", active: true });
+        try {
+            await this.runWithOutputChannel("Arduino Upload", args);
+            await this.syncView("上传完成");
+        }
+        catch (error) {
+            await this.panel.webview.postMessage({ type: "uploading", active: false, error: formatError(error) });
+            throw error;
+        }
+        finally {
+            await this.panel.webview.postMessage({ type: "uploading", active: false });
+        }
     }
     getHtml(webview, state) {
         const nonce = createNonce();
@@ -530,8 +573,28 @@ class EmbeddedBoardConfigPanel {
     ];
     const el = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
 
+    const spinnerChars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+    let spinnerInterval = null;
+
     function setStatus(text) {
+      stopSpinner();
       el.status.textContent = text || "就绪";
+    }
+
+    function startSpinner(text) {
+      stopSpinner();
+      let i = 0;
+      spinnerInterval = setInterval(() => {
+        el.status.textContent = text + " " + spinnerChars[i % spinnerChars.length];
+        i++;
+      }, 100);
+    }
+
+    function stopSpinner() {
+      if (spinnerInterval) {
+        clearInterval(spinnerInterval);
+        spinnerInterval = null;
+      }
     }
 
     function optionTextForPort(port) {
@@ -714,6 +777,22 @@ class EmbeddedBoardConfigPanel {
       }
       if (event.data?.type === "error") {
         setStatus(event.data.message || "发生错误");
+      }
+      if (event.data?.type === "compiling") {
+        if (event.data.active) {
+          startSpinner("编译中");
+        } else {
+          stopSpinner();
+          setStatus(event.data.error || "编译完成");
+        }
+      }
+      if (event.data?.type === "uploading") {
+        if (event.data.active) {
+          startSpinner("上传中");
+        } else {
+          stopSpinner();
+          setStatus(event.data.error || "上传完成");
+        }
       }
     });
 
