@@ -98,44 +98,31 @@ npm run package
 
 ---
 
-## 后续新功能 TDD 示例模板
+## ✅ Phase 5 — 新功能 TDD 实战：串口监视器一键打开
 
-以"新增串口监视器一键打开功能"为例，演示完整迭代：
+以"新增串口监视器一键打开"功能为例，完整演示了红→绿→重构→集成的 TDD 迭代。
 
-### 1. 红 — 编写测试
+### 实施记录
 
-在 `src/test/configStore.feature.test.ts` 中：
+**测试文件**：`src/test/configStore.feature.test.ts`（11 例，全绿）
 
-```ts
-it("buildMonitorArgs 应生成合法 arduino-cli monitor 参数", () => {
-  const args = buildMonitorArgs({ port: "COM36", baudRate: 115200 });
-  expect(args).to.include.members(["monitor", "-p", "COM36", "--config", "baudrate=115200"]);
-});
-```
+- `buildMonitorArgs`：端口、FQBN、波特率、数据位、停止位、校验位参数构造
+- `execFileText`：命令执行 stdout 捕获、异常命令返回非零 exitCode
 
-运行 `npm test` → **测试失败**（函数不存在）。
+**实现变更**：
 
-### 2. 绿 — 最小实现
+1. `src/configStore.ts`
+   - 导出 `execFileText`（便于独立测试）
+   - 新增并导出 `buildMonitorArgs(opts)`：纯函数，按 arduino-cli monitor 规范构造参数数组，跳过 `parity=none`，仅保留合法数据位/停止位
 
-在 `src/configStore.ts` 中新增并导出：
-
-```ts
-export function buildMonitorArgs(opts: { port: string; baudRate: number }): string[] {
-  return ["monitor", "-p", opts.port, "--config", `baudrate=${opts.baudRate}`];
-}
-```
-
-运行 `npm test` → **测试通过**。
-
-### 3. 重构 — 优化结构
-
-如需支持更多参数，可扩展为对象转键值对，但保持原有测试继续通过。
-
-### 4. 集成到 UI
-
-- `panel.ts`：在 Webview HTML 中新增"打开监视器"按钮，发送 `open-monitor` 消息
-- `panel.ts handleMessage`：处理 `open-monitor`，调用 `buildMonitorArgs` 并通过 `execFileText` 执行
-- `extension.ts`：如需要独立命令，注册 `embeddedBoardConfig.openMonitor`
+2. `src/panel.ts`
+   - HTML toolbar 新增「打开串口监视器」按钮
+   - Webview script 新增 `open-monitor` 消息发送
+   - `handleMessage` 新增 `open-monitor` 分支
+   - 新增 `openMonitor()` 方法：
+     - 校验 `monitor.enabled` 与 `port.address`
+     - 调用 `buildMonitorArgs` 构造参数
+     - 使用 `vscode.window.createTerminal` 在集成终端中启动 `arduino-cli monitor`，用户可实时查看输出并 Ctrl+C 停止
 
 ---
 

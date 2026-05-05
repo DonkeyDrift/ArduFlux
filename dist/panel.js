@@ -173,6 +173,9 @@ class EmbeddedBoardConfigPanel {
                 case "open-config-file":
                     await vscode.commands.executeCommand("embeddedBoardConfig.openConfigFile");
                     return;
+                case "open-monitor":
+                    await this.openMonitor();
+                    return;
                 default:
                     return;
             }
@@ -281,6 +284,33 @@ class EmbeddedBoardConfigPanel {
         await this.store.save();
         await this.syncView("Profiles 已导入");
     }
+    async openMonitor() {
+        const config = this.store.getData();
+        const current = config.current;
+        if (!current.monitor.enabled) {
+            throw new configStore_1.ValidationError("监视器未启用", "请在面板中勾选「启用监视器」后再试");
+        }
+        const port = current.port.address.trim();
+        if (!port) {
+            throw new configStore_1.ValidationError("串口未选择", "请先选择串口端口");
+        }
+        const args = (0, configStore_1.buildMonitorArgs)({
+            port,
+            fqbn: current.board.fqbn.trim() || undefined,
+            baudRate: current.monitor.baudRate || undefined,
+            dataBits: current.monitor.dataBits || undefined,
+            stopBits: current.monitor.stopBits || undefined,
+            parity: current.monitor.parity || undefined
+        });
+        const cmd = [this.store.arduinoCliPath, ...args].join(" ");
+        const terminal = vscode.window.createTerminal({
+            name: `Serial Monitor (${port})`,
+            cwd: this.store.baseDir
+        });
+        terminal.sendText(cmd);
+        terminal.show();
+        await this.syncView(`已打开串口监视器: ${port}`);
+    }
     getHtml(webview, state) {
         const nonce = createNonce();
         const initialState = JSON.stringify(state)
@@ -363,6 +393,7 @@ class EmbeddedBoardConfigPanel {
     <button id="validateButton" class="secondary">校验全部</button>
     <button id="refreshPortsButton" class="secondary">刷新串口列表</button>
     <button id="openConfigButton" class="secondary">打开配置文件</button>
+    <button id="openMonitorButton" class="secondary">打开串口监视器</button>
     <span id="status">就绪</span>
   </div>
 
@@ -601,6 +632,9 @@ class EmbeddedBoardConfigPanel {
     });
     document.getElementById("openConfigButton").addEventListener("click", () => {
       vscode.postMessage({ type: "open-config-file" });
+    });
+    document.getElementById("openMonitorButton").addEventListener("click", () => {
+      vscode.postMessage({ type: "open-monitor" });
     });
     document.getElementById("saveProfileButton").addEventListener("click", () => {
       vscode.postMessage({

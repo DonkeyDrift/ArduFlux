@@ -92,7 +92,38 @@ export function recommendSerialPort(
   return savedEntry?.address ?? usbPorts[0]?.address ?? ports[0]?.address ?? "";
 }
 
-async function execFileText(command: string, args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+export function buildMonitorArgs(opts: {
+  port: string;
+  fqbn?: string;
+  baudRate?: number;
+  dataBits?: number;
+  stopBits?: number;
+  parity?: string;
+}): string[] {
+  const args = ["monitor", "-p", opts.port];
+  if (opts.fqbn) {
+    args.push("--fqbn", opts.fqbn);
+  }
+  const configs: string[] = [];
+  if (opts.baudRate && opts.baudRate > 0) {
+    configs.push(`baudrate=${opts.baudRate}`);
+  }
+  if (opts.dataBits && [5, 6, 7, 8].includes(opts.dataBits)) {
+    configs.push(`bits=${opts.dataBits}`);
+  }
+  if (opts.stopBits && [1, 1.5, 2].includes(opts.stopBits)) {
+    configs.push(`stopbits=${opts.stopBits}`);
+  }
+  if (opts.parity && opts.parity.toLowerCase() !== "none") {
+    configs.push(`parity=${opts.parity.toLowerCase()}`);
+  }
+  for (const cfg of configs) {
+    args.push("--config", cfg);
+  }
+  return args;
+}
+
+export async function execFileText(command: string, args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   return new Promise((resolve) => {
     execFile(command, args, { encoding: "utf8", windowsHide: true }, (error, stdout, stderr) => {
       if (!error) {

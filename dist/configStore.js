@@ -40,6 +40,8 @@ exports.normalizePath = normalizePath;
 exports.validateFqbn = validateFqbn;
 exports.isUsbPort = isUsbPort;
 exports.recommendSerialPort = recommendSerialPort;
+exports.buildMonitorArgs = buildMonitorArgs;
+exports.execFileText = execFileText;
 exports.normalizeSerialAddress = normalizeSerialAddress;
 exports.mapJsonPortEntry = mapJsonPortEntry;
 exports.listSerialPorts = listSerialPorts;
@@ -110,6 +112,29 @@ function recommendSerialPort(ports, savedPort, autoSelect) {
             "");
     }
     return savedEntry?.address ?? usbPorts[0]?.address ?? ports[0]?.address ?? "";
+}
+function buildMonitorArgs(opts) {
+    const args = ["monitor", "-p", opts.port];
+    if (opts.fqbn) {
+        args.push("--fqbn", opts.fqbn);
+    }
+    const configs = [];
+    if (opts.baudRate && opts.baudRate > 0) {
+        configs.push(`baudrate=${opts.baudRate}`);
+    }
+    if (opts.dataBits && [5, 6, 7, 8].includes(opts.dataBits)) {
+        configs.push(`bits=${opts.dataBits}`);
+    }
+    if (opts.stopBits && [1, 1.5, 2].includes(opts.stopBits)) {
+        configs.push(`stopbits=${opts.stopBits}`);
+    }
+    if (opts.parity && opts.parity.toLowerCase() !== "none") {
+        configs.push(`parity=${opts.parity.toLowerCase()}`);
+    }
+    for (const cfg of configs) {
+        args.push("--config", cfg);
+    }
+    return args;
 }
 async function execFileText(command, args) {
     return new Promise((resolve) => {
