@@ -40,6 +40,8 @@ exports.normalizePath = normalizePath;
 exports.validateFqbn = validateFqbn;
 exports.isUsbPort = isUsbPort;
 exports.recommendSerialPort = recommendSerialPort;
+exports.buildCompileArgs = buildCompileArgs;
+exports.buildUploadArgs = buildUploadArgs;
 exports.buildMonitorArgs = buildMonitorArgs;
 exports.execFileText = execFileText;
 exports.normalizeSerialAddress = normalizeSerialAddress;
@@ -112,6 +114,32 @@ function recommendSerialPort(ports, savedPort, autoSelect) {
             "");
     }
     return savedEntry?.address ?? usbPorts[0]?.address ?? ports[0]?.address ?? "";
+}
+function buildCompileArgs(opts) {
+    validateFqbn(opts.fqbn);
+    if (!opts.sketchPath.trim()) {
+        throw new ValidationError("草图路径为空", "请确保工作区根目录包含 Arduino 草图");
+    }
+    const args = ["compile", "--fqbn", opts.fqbn.trim()];
+    if (opts.outputDir?.trim()) {
+        args.push("--output-dir", opts.outputDir.trim());
+    }
+    if (opts.extraArgs && opts.extraArgs.length > 0) {
+        args.push(...opts.extraArgs);
+    }
+    args.push(opts.sketchPath.trim());
+    return args;
+}
+function buildUploadArgs(opts) {
+    const port = normalizeSerialAddress(opts.port);
+    if (!port) {
+        throw new ValidationError("串口未选择", "请先选择串口端口");
+    }
+    validateFqbn(opts.fqbn);
+    if (!opts.sketchPath.trim()) {
+        throw new ValidationError("草图路径为空", "请确保工作区根目录包含 Arduino 草图");
+    }
+    return ["upload", "-p", port, "--fqbn", opts.fqbn.trim(), opts.sketchPath.trim()];
 }
 function buildMonitorArgs(opts) {
     const args = ["monitor", "-p", opts.port];

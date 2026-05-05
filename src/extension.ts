@@ -63,6 +63,38 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     })
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("embeddedBoardConfig.compileSketch", async () => {
+      try {
+        await withStore(async (store) => {
+          await EmbeddedBoardConfigPanel.createOrShow(context, store);
+          const panel = EmbeddedBoardConfigPanel.currentPanel;
+          if (panel) {
+            await panel.compileSketch();
+          }
+        });
+      } catch (error) {
+        void vscode.window.showErrorMessage(formatError(error));
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("embeddedBoardConfig.uploadSketch", async () => {
+      try {
+        await withStore(async (store) => {
+          await EmbeddedBoardConfigPanel.createOrShow(context, store);
+          const panel = EmbeddedBoardConfigPanel.currentPanel;
+          if (panel) {
+            await panel.uploadSketch();
+          }
+        });
+      } catch (error) {
+        void vscode.window.showErrorMessage(formatError(error));
+      }
+    })
+  );
 }
 
 export function deactivate(): void {

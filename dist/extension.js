@@ -91,6 +91,34 @@ function activate(context) {
             void vscode.window.showErrorMessage(formatError(error));
         }
     }));
+    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.compileSketch", async () => {
+        try {
+            await withStore(async (store) => {
+                await panel_1.EmbeddedBoardConfigPanel.createOrShow(context, store);
+                const panel = panel_1.EmbeddedBoardConfigPanel.currentPanel;
+                if (panel) {
+                    await panel.compileSketch();
+                }
+            });
+        }
+        catch (error) {
+            void vscode.window.showErrorMessage(formatError(error));
+        }
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.uploadSketch", async () => {
+        try {
+            await withStore(async (store) => {
+                await panel_1.EmbeddedBoardConfigPanel.createOrShow(context, store);
+                const panel = panel_1.EmbeddedBoardConfigPanel.currentPanel;
+                if (panel) {
+                    await panel.uploadSketch();
+                }
+            });
+        }
+        catch (error) {
+            void vscode.window.showErrorMessage(formatError(error));
+        }
+    }));
 }
 function deactivate() {
     // Nothing to dispose explicitly.

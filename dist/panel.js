@@ -152,6 +152,12 @@ class EmbeddedBoardConfigPanel {
                 case "validate-config":
                     await this.validateConfig(message.payload);
                     return;
+                case "compile-sketch":
+                    await this.compileSketch();
+                    return;
+                case "upload-sketch":
+                    await this.uploadSketch();
+                    return;
                 case "refresh-ports":
                     await this.syncView("串口列表已刷新");
                     return;
@@ -311,6 +317,40 @@ class EmbeddedBoardConfigPanel {
         terminal.show();
         await this.syncView(`已打开串口监视器: ${port}`);
     }
+    async compileSketch() {
+        const config = this.store.getData().current;
+        this.store.validateBoard(config.board);
+        const args = (0, configStore_1.buildCompileArgs)({
+            fqbn: config.board.fqbn,
+            sketchPath: this.store.baseDir,
+            outputDir: config.build.outputDir || undefined,
+            extraArgs: config.board.compileArgs.length > 0 ? config.board.compileArgs : undefined
+        });
+        const terminal = vscode.window.createTerminal({
+            name: "Arduino Compile",
+            cwd: this.store.baseDir
+        });
+        terminal.sendText([this.store.arduinoCliPath, ...args].join(" "));
+        terminal.show();
+        await this.syncView("编译任务已启动");
+    }
+    async uploadSketch() {
+        const config = this.store.getData().current;
+        await this.store.validatePort(config.port);
+        this.store.validateBoard(config.board);
+        const args = (0, configStore_1.buildUploadArgs)({
+            port: config.port.address,
+            fqbn: config.board.fqbn,
+            sketchPath: this.store.baseDir
+        });
+        const terminal = vscode.window.createTerminal({
+            name: "Arduino Upload",
+            cwd: this.store.baseDir
+        });
+        terminal.sendText([this.store.arduinoCliPath, ...args].join(" "));
+        terminal.show();
+        await this.syncView("上传任务已启动");
+    }
     getHtml(webview, state) {
         const nonce = createNonce();
         const initialState = JSON.stringify(state)
@@ -391,6 +431,8 @@ class EmbeddedBoardConfigPanel {
   <div class="toolbar">
     <button id="saveButton">保存全部</button>
     <button id="validateButton" class="secondary">校验全部</button>
+    <button id="compileButton" class="secondary">编译</button>
+    <button id="uploadButton">上传</button>
     <button id="refreshPortsButton" class="secondary">刷新串口列表</button>
     <button id="openConfigButton" class="secondary">打开配置文件</button>
     <button id="openMonitorButton" class="secondary">打开串口监视器</button>
@@ -626,6 +668,12 @@ class EmbeddedBoardConfigPanel {
     });
     document.getElementById("validateButton").addEventListener("click", () => {
       vscode.postMessage({ type: "validate-config", payload: collectForm() });
+    });
+    document.getElementById("compileButton").addEventListener("click", () => {
+      vscode.postMessage({ type: "compile-sketch" });
+    });
+    document.getElementById("uploadButton").addEventListener("click", () => {
+      vscode.postMessage({ type: "upload-sketch" });
     });
     document.getElementById("refreshPortsButton").addEventListener("click", () => {
       vscode.postMessage({ type: "refresh-ports" });
