@@ -76,7 +76,9 @@
     "package": "vsce package --allow-missing-repository",
     "test": "npm run compile && mocha \"dist/test/**/*.test.js\"",
     "test:watch": "tsc -w -p ./ & mocha --watch \"dist/test/**/*.test.js\"",
-    "install:vsix": "powershell -ExecutionPolicy Bypass -File .\install-vsix.ps1"
+    "install:vsix": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1",
+    "install:vsix:trae": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1 -Ide trae",
+    "install:vsix:code": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1 -Ide code"
   },
   "devDependencies": {
     "@types/chai": "^5.2.3",
