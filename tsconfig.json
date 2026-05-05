@@ -13,7 +13,9 @@
     "moduleResolution": "node",
     "types": [
       "node",
-      "vscode"
+      "vscode",
+      "mocha",
+      "chai"
     ],
     "skipLibCheck": true
   },

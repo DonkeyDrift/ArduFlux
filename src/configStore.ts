@@ -20,11 +20,11 @@ export class ValidationError extends Error implements ValidationErrorLike {
   }
 }
 
-function deepClone<T>(value: T): T {
+export function deepClone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function dedupeKeepLatest(items: string[], limit: number): string[] {
+export function dedupeKeepLatest(items: string[], limit: number): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (let index = items.length - 1; index >= 0; index -= 1) {
@@ -41,7 +41,7 @@ function dedupeKeepLatest(items: string[], limit: number): string[] {
   return out.reverse();
 }
 
-function normalizePath(pathText: string, baseDir: string): string {
+export function normalizePath(pathText: string, baseDir: string): string {
   const raw = pathText.trim();
   if (!raw) {
     throw new ValidationError("路径为空", "请选择或输入一个有效目录");
@@ -51,7 +51,7 @@ function normalizePath(pathText: string, baseDir: string): string {
   return path.isAbsolute(expanded) ? path.normalize(expanded) : path.resolve(baseDir, expanded);
 }
 
-function validateFqbn(fqbn: string): void {
+export function validateFqbn(fqbn: string): void {
   const value = fqbn.trim();
   if (!value) {
     throw new ValidationError("FQBN 不能为空", "例如：esp32:esp32:esp32s3 或 arduino:avr:uno");
@@ -61,7 +61,7 @@ function validateFqbn(fqbn: string): void {
   }
 }
 
-function isUsbPort(portInfo: SerialPortInfo): boolean {
+export function isUsbPort(portInfo: SerialPortInfo): boolean {
   return [portInfo.label, portInfo.protocol, portInfo.type].join(" ").toUpperCase().includes("USB");
 }
 
@@ -106,12 +106,12 @@ async function execFileText(command: string, args: string[]): Promise<{ stdout: 
   });
 }
 
-function normalizeSerialAddress(address: string): string {
+export function normalizeSerialAddress(address: string): string {
   const text = address.trim();
   return /^com\d+$/i.test(text) ? text.toUpperCase() : text;
 }
 
-function mapJsonPortEntry(entry: unknown): SerialPortInfo | undefined {
+export function mapJsonPortEntry(entry: unknown): SerialPortInfo | undefined {
   if (typeof entry === "string") {
     const address = normalizeSerialAddress(entry);
     return address ? { address, label: "", protocol: "", type: "" } : undefined;

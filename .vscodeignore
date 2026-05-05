@@ -18,3 +18,4 @@ tsconfig.json
 .gitignore
 AGENTS.md
 *.vsix
+dist/test/**

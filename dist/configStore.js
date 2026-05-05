@@ -34,7 +34,14 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConfigStore = exports.ValidationError = void 0;
+exports.deepClone = deepClone;
+exports.dedupeKeepLatest = dedupeKeepLatest;
+exports.normalizePath = normalizePath;
+exports.validateFqbn = validateFqbn;
+exports.isUsbPort = isUsbPort;
 exports.recommendSerialPort = recommendSerialPort;
+exports.normalizeSerialAddress = normalizeSerialAddress;
+exports.mapJsonPortEntry = mapJsonPortEntry;
 exports.listSerialPorts = listSerialPorts;
 const path = __importStar(require("path"));
 const child_process_1 = require("child_process");

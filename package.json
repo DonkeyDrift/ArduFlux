@@ -37,12 +37,21 @@
     "compile": "tsc -p ./",
     "watch": "tsc -w -p ./",
     "vscode:prepublish": "npm run compile",
-    "package": "vsce package --allow-missing-repository"
+    "package": "vsce package --allow-missing-repository",
+    "test": "npm run compile && mocha \"dist/test/**/*.test.js\"",
+    "test:watch": "tsc -w -p ./ & mocha --watch \"dist/test/**/*.test.js\""
   },
   "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^24.9.2",
+    "@types/sinon": "^21.0.1",
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.6.2",
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "sinon": "^21.1.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }
