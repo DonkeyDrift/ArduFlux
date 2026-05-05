@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "current": {
+    "port": {
+      "auto": true,
+      "address": "COM36",
+      "lastSuccessfulAddress": "COM36"
+    },
+    "build": {
+      "recentOutputDirs": [],
+      "outputDir": ""
+    },
+    "monitor": {
+      "dataBits": 8,
+      "stopBits": 1.0,
+      "parity": "none",
+      "baudRate": 115200,
+      "newline": "CRLF",
+      "enabled": true
+    },
+    "board": {
+      "fqbn": "esp32:esp32:esp32s3",
+      "name": "ESP32-S3 (Generic)",
+      "compileArgs": [],
+      "pinDefines": {}
+    }
+  },
+  "profiles": {
+    "default": {}
+  }
+}
