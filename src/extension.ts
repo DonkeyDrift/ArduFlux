@@ -3,7 +3,7 @@ import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, build
 import { ArduFluxEditorProvider } from "./editorView";
 import { ArduFluxPanel } from "./panel";
 import { onDidChangeArduFluxConfig } from "./events";
-import { runInTerminal } from "./terminal";
+import { runInTerminal, runUploadScript } from "./terminal";
 import { formatStatusBarText } from "./statusBar";
 import { ARDUFLUX_EDITOR_VIEW_ID } from "./viewIds";
 
@@ -203,6 +203,57 @@ export function activate(context: vscode.ExtensionContext): void {
             stopStatusSpinner();
           }
         });
+      } catch (error) {
+        void vscode.window.showErrorMessage(formatError(error));
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("arduflux.runUploadScript", async () => {
+      try {
+        const root = getWorkspaceRoot();
+        startStatusSpinner("执行上传脚本");
+        try {
+          await runUploadScript(context.extensionPath, root, { compile: true, upload: true, monitor: true });
+          void vscode.window.showInformationMessage("上传脚本执行完成");
+        } finally {
+          stopStatusSpinner();
+        }
+      } catch (error) {
+        void vscode.window.showErrorMessage(formatError(error));
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("arduflux.compileOnly", async () => {
+      try {
+        const root = getWorkspaceRoot();
+        startStatusSpinner("编译中");
+        try {
+          await runUploadScript(context.extensionPath, root, { compile: true });
+          void vscode.window.showInformationMessage("编译完成");
+        } finally {
+          stopStatusSpinner();
+        }
+      } catch (error) {
+        void vscode.window.showErrorMessage(formatError(error));
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("arduflux.uploadOnly", async () => {
+      try {
+        const root = getWorkspaceRoot();
+        startStatusSpinner("上传中");
+        try {
+          await runUploadScript(context.extensionPath, root, { upload: true, monitor: true });
+          void vscode.window.showInformationMessage("上传完成");
+        } finally {
+          stopStatusSpinner();
+        }
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));
       }

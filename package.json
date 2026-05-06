@@ -46,6 +46,18 @@
         "command": "arduflux.refreshSidebar",
         "title": "开发板配置: 刷新侧边栏",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "arduflux.runUploadScript",
+        "title": "开发板配置: 完整编译+上传+监视（脚本）"
+      },
+      {
+        "command": "arduflux.compileOnly",
+        "title": "开发板配置: 仅编译（脚本）"
+      },
+      {
+        "command": "arduflux.uploadOnly",
+        "title": "开发板配置: 仅上传+监视（脚本）"
       }
     ],
     "viewsContainers": {

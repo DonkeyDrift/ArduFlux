@@ -219,6 +219,54 @@ function activate(context) {
             void vscode.window.showErrorMessage(formatError(error));
         }
     }));
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.runUploadScript", async () => {
+        try {
+            const root = getWorkspaceRoot();
+            startStatusSpinner("执行上传脚本");
+            try {
+                await (0, terminal_1.runUploadScript)(context.extensionPath, root, { compile: true, upload: true, monitor: true });
+                void vscode.window.showInformationMessage("上传脚本执行完成");
+            }
+            finally {
+                stopStatusSpinner();
+            }
+        }
+        catch (error) {
+            void vscode.window.showErrorMessage(formatError(error));
+        }
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.compileOnly", async () => {
+        try {
+            const root = getWorkspaceRoot();
+            startStatusSpinner("编译中");
+            try {
+                await (0, terminal_1.runUploadScript)(context.extensionPath, root, { compile: true });
+                void vscode.window.showInformationMessage("编译完成");
+            }
+            finally {
+                stopStatusSpinner();
+            }
+        }
+        catch (error) {
+            void vscode.window.showErrorMessage(formatError(error));
+        }
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.uploadOnly", async () => {
+        try {
+            const root = getWorkspaceRoot();
+            startStatusSpinner("上传中");
+            try {
+                await (0, terminal_1.runUploadScript)(context.extensionPath, root, { upload: true, monitor: true });
+                void vscode.window.showInformationMessage("上传完成");
+            }
+            finally {
+                stopStatusSpinner();
+            }
+        }
+        catch (error) {
+            void vscode.window.showErrorMessage(formatError(error));
+        }
+    }));
     // 状态栏
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     statusBarItem.command = "arduflux.openPanel";

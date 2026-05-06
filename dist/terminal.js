@@ -34,7 +34,9 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.runInTerminal = runInTerminal;
+exports.runUploadScript = runUploadScript;
 const child_process_1 = require("child_process");
+const path = __importStar(require("path"));
 const vscode = __importStar(require("vscode"));
 const configStore_1 = require("./configStore");
 function runInTerminal(arduinoCliPath, baseDir, name, args) {
@@ -84,6 +86,64 @@ function runInTerminal(arduinoCliPath, baseDir, name, args) {
             }
         };
         const terminal = vscode.window.createTerminal({ name, pty });
+        terminal.show();
+    });
+}
+function runUploadScript(extensionPath, workspaceRoot, flags = {}) {
+    return new Promise((resolve, reject) => {
+        const scriptPath = path.join(extensionPath, "src", "scripts", "upload.ps1");
+        const writeEmitter = new vscode.EventEmitter();
+        let proc = null;
+        let resolved = false;
+        const args = ["-ExecutionPolicy", "Bypass", "-NoProfile", "-File", scriptPath];
+        if (flags.compile)
+            args.push("-c");
+        if (flags.upload)
+            args.push("-u");
+        if (flags.monitor)
+            args.push("-s");
+        const pty = {
+            onDidWrite: writeEmitter.event,
+            open: () => {
+                writeEmitter.fire(`> powershell ${args.join(" ")}\r\n\r\n`);
+                proc = (0, child_process_1.spawn)("powershell.exe", args, {
+                    cwd: workspaceRoot,
+                    windowsHide: true,
+                    shell: false
+                });
+                proc.stdout?.on("data", (data) => {
+                    writeEmitter.fire(data.toString().replace(/\n/g, "\r\n"));
+                });
+                proc.stderr?.on("data", (data) => {
+                    writeEmitter.fire(data.toString().replace(/\n/g, "\r\n"));
+                });
+                proc.on("close", (code) => {
+                    writeEmitter.fire(`\r\n[Exit code: ${code ?? "null"}]\r\n`);
+                    if (!resolved) {
+                        resolved = true;
+                        if (code === 0) {
+                            resolve();
+                        }
+                        else {
+                            reject(new configStore_1.ValidationError(`上传脚本执行失败，退出码: ${code}`));
+                        }
+                    }
+                });
+                proc.on("error", (err) => {
+                    writeEmitter.fire(`\r\n[Error: ${err.message}]\r\n`);
+                    if (!resolved) {
+                        resolved = true;
+                        reject(new configStore_1.ValidationError(`上传脚本启动失败: ${err.message}`));
+                    }
+                });
+            },
+            close: () => {
+                if (proc && !proc.killed) {
+                    proc.kill();
+                }
+            }
+        };
+        const terminal = vscode.window.createTerminal({ name: "ArduFlux Upload", pty });
         terminal.show();
     });
 }
