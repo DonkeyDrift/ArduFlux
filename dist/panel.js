@@ -35,9 +35,9 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmbeddedBoardConfigPanel = void 0;
 const vscode = __importStar(require("vscode"));
-const child_process_1 = require("child_process");
 const configStore_1 = require("./configStore");
 const events_1 = require("./events");
+const terminal_1 = require("./terminal");
 const types_1 = require("./types");
 function createNonce() {
     return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
@@ -339,56 +339,6 @@ class EmbeddedBoardConfigPanel {
         terminal.show();
         await this.syncView(`已打开串口监视器: ${port}`);
     }
-    runInTerminal(name, args) {
-        return new Promise((resolve, reject) => {
-            const writeEmitter = new vscode.EventEmitter();
-            let proc = null;
-            let resolved = false;
-            const pty = {
-                onDidWrite: writeEmitter.event,
-                open: () => {
-                    writeEmitter.fire(`> ${this.store.arduinoCliPath} ${args.join(" ")}\r\n\r\n`);
-                    proc = (0, child_process_1.spawn)(this.store.arduinoCliPath, args, {
-                        cwd: this.store.baseDir,
-                        windowsHide: true,
-                        shell: false
-                    });
-                    proc.stdout?.on("data", (data) => {
-                        writeEmitter.fire(data.toString().replace(/\n/g, "\r\n"));
-                    });
-                    proc.stderr?.on("data", (data) => {
-                        writeEmitter.fire(data.toString().replace(/\n/g, "\r\n"));
-                    });
-                    proc.on("close", (code) => {
-                        writeEmitter.fire(`\r\n[Exit code: ${code ?? "null"}]\r\n`);
-                        if (!resolved) {
-                            resolved = true;
-                            if (code === 0) {
-                                resolve();
-                            }
-                            else {
-                                reject(new configStore_1.ValidationError(`${name} 失败，退出码: ${code}`));
-                            }
-                        }
-                    });
-                    proc.on("error", (err) => {
-                        writeEmitter.fire(`\r\n[Error: ${err.message}]\r\n`);
-                        if (!resolved) {
-                            resolved = true;
-                            reject(new configStore_1.ValidationError(`${name} 启动失败: ${err.message}`));
-                        }
-                    });
-                },
-                close: () => {
-                    if (proc && !proc.killed) {
-                        proc.kill();
-                    }
-                }
-            };
-            const terminal = vscode.window.createTerminal({ name, pty });
-            terminal.show();
-        });
-    }
     async compileSketch() {
         const config = this.store.getData().current;
         this.store.validateBoard(config.board);
@@ -400,7 +350,7 @@ class EmbeddedBoardConfigPanel {
         });
         await this.panel.webview.postMessage({ type: "compiling", active: true });
         try {
-            await this.runInTerminal("Arduino Compile", args);
+            await (0, terminal_1.runInTerminal)(this.store.arduinoCliPath, this.store.baseDir, "Arduino Compile", args);
             await this.syncView("编译完成");
         }
         catch (error) {
@@ -422,7 +372,7 @@ class EmbeddedBoardConfigPanel {
         });
         await this.panel.webview.postMessage({ type: "uploading", active: true });
         try {
-            await this.runInTerminal("Arduino Upload", args);
+            await (0, terminal_1.runInTerminal)(this.store.arduinoCliPath, this.store.baseDir, "Arduino Upload", args);
             await this.syncView("上传完成");
         }
         catch (error) {

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
-import { spawn } from "child_process";
 import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, buildUploadArgs, recommendSerialPort } from "./configStore";
 import { onDidChangeEmbeddedConfig } from "./events";
+import { runInTerminal } from "./terminal";
 import { BoardCatalogItem, DEFAULT_BOARD_CATALOG, EmbeddedBoardConfig, EmbeddedCurrentConfig, SerialPortInfo } from "./types";
 
 interface PanelStatePayload {
@@ -367,58 +367,6 @@ export class EmbeddedBoardConfigPanel {
     await this.syncView(`已打开串口监视器: ${port}`);
   }
 
-  private runInTerminal(name: string, args: string[]): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const writeEmitter = new vscode.EventEmitter<string>();
-      let proc: ReturnType<typeof spawn> | null = null;
-      let resolved = false;
-
-      const pty: vscode.Pseudoterminal = {
-        onDidWrite: writeEmitter.event,
-        open: () => {
-          writeEmitter.fire(`> ${this.store.arduinoCliPath} ${args.join(" ")}\r\n\r\n`);
-          proc = spawn(this.store.arduinoCliPath, args, {
-            cwd: this.store.baseDir,
-            windowsHide: true,
-            shell: false
-          });
-          proc.stdout?.on("data", (data: Buffer) => {
-            writeEmitter.fire(data.toString().replace(/\n/g, "\r\n"));
-          });
-          proc.stderr?.on("data", (data: Buffer) => {
-            writeEmitter.fire(data.toString().replace(/\n/g, "\r\n"));
-          });
-          proc.on("close", (code) => {
-            writeEmitter.fire(`\r\n[Exit code: ${code ?? "null"}]\r\n`);
-            if (!resolved) {
-              resolved = true;
-              if (code === 0) {
-                resolve();
-              } else {
-                reject(new ValidationError(`${name} 失败，退出码: ${code}`));
-              }
-            }
-          });
-          proc.on("error", (err) => {
-            writeEmitter.fire(`\r\n[Error: ${err.message}]\r\n`);
-            if (!resolved) {
-              resolved = true;
-              reject(new ValidationError(`${name} 启动失败: ${err.message}`));
-            }
-          });
-        },
-        close: () => {
-          if (proc && !proc.killed) {
-            proc.kill();
-          }
-        }
-      };
-
-      const terminal = vscode.window.createTerminal({ name, pty });
-      terminal.show();
-    });
-  }
-
   async compileSketch(): Promise<void> {
     const config = this.store.getData().current;
     this.store.validateBoard(config.board);
@@ -430,7 +378,7 @@ export class EmbeddedBoardConfigPanel {
     });
     await this.panel.webview.postMessage({ type: "compiling", active: true });
     try {
-      await this.runInTerminal("Arduino Compile", args);
+      await runInTerminal(this.store.arduinoCliPath, this.store.baseDir, "Arduino Compile", args);
       await this.syncView("编译完成");
     } catch (error) {
       await this.panel.webview.postMessage({ type: "compiling", active: false, error: formatError(error) });
@@ -451,7 +399,7 @@ export class EmbeddedBoardConfigPanel {
     });
     await this.panel.webview.postMessage({ type: "uploading", active: true });
     try {
-      await this.runInTerminal("Arduino Upload", args);
+      await runInTerminal(this.store.arduinoCliPath, this.store.baseDir, "Arduino Upload", args);
       await this.syncView("上传完成");
     } catch (error) {
       await this.panel.webview.postMessage({ type: "uploading", active: false, error: formatError(error) });

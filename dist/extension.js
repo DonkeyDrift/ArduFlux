@@ -40,6 +40,7 @@ const configStore_1 = require("./configStore");
 const configSidebar_1 = require("./configSidebar");
 const panel_1 = require("./panel");
 const events_1 = require("./events");
+const terminal_1 = require("./terminal");
 const statusBar_1 = require("./statusBar");
 function getWorkspaceRoot() {
     const folder = vscode.workspace.workspaceFolders?.[0];
@@ -133,6 +134,45 @@ function activate(context) {
                 if (panel) {
                     await panel.uploadSketch();
                 }
+            });
+        }
+        catch (error) {
+            void vscode.window.showErrorMessage(formatError(error));
+        }
+    }));
+    // 静默编译/上传（不弹出面板，供状态栏按钮使用）
+    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.compileSketchSilent", async () => {
+        try {
+            await withStore(async (store) => {
+                const config = store.getData().current;
+                store.validateBoard(config.board);
+                const args = (0, configStore_1.buildCompileArgs)({
+                    fqbn: config.board.fqbn,
+                    sketchPath: store.baseDir,
+                    outputDir: config.build.outputDir || undefined,
+                    extraArgs: config.board.compileArgs.length > 0 ? config.board.compileArgs : undefined
+                });
+                await (0, terminal_1.runInTerminal)(store.arduinoCliPath, store.baseDir, "Arduino Compile", args);
+                void vscode.window.showInformationMessage("编译完成");
+            });
+        }
+        catch (error) {
+            void vscode.window.showErrorMessage(formatError(error));
+        }
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.uploadSketchSilent", async () => {
+        try {
+            await withStore(async (store) => {
+                const config = store.getData().current;
+                await store.validatePort(config.port);
+                store.validateBoard(config.board);
+                const args = (0, configStore_1.buildUploadArgs)({
+                    port: config.port.address,
+                    fqbn: config.board.fqbn,
+                    sketchPath: store.baseDir
+                });
+                await (0, terminal_1.runInTerminal)(store.arduinoCliPath, store.baseDir, "Arduino Upload", args);
+                void vscode.window.showInformationMessage("上传完成");
             });
         }
         catch (error) {
