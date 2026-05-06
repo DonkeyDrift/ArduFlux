@@ -20,3 +20,4 @@ tsconfig.json
 AGENTS.md
 *.vsix
 dist/test/**
+upload.ps1

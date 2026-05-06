@@ -9,8 +9,24 @@ $doUpload = $u -or (-not $c -and -not $u -and -not $s)
 $doMonitorBlock = (-not $c -and -not $u -and -not $s)
 $forceMonitor = $s
 
-$legacyConfigFile = Join-Path $PSScriptRoot "upload_config.json"
-$embeddedConfigFile = Join-Path $PSScriptRoot "ArduFlux.json"
+function Get-ProjectRoot {
+    param([string]$StartDir)
+    $current = $StartDir
+    while ($current) {
+        if (Test-Path (Join-Path $current "ArduFlux.json")) { return $current }
+        if (Test-Path (Join-Path $current "*.ino")) { return $current }
+        $parent = Split-Path $current -Parent
+        if ($parent -eq $current) { break }
+        $current = $parent
+    }
+    return $StartDir
+}
+
+$projectRoot = Get-ProjectRoot -StartDir ($PSScriptRoot)
+Write-Host "Project root: $projectRoot"
+
+$legacyConfigFile = Join-Path $projectRoot "upload_config.json"
+$embeddedConfigFile = Join-Path $projectRoot "ArduFlux.json"
 
 $defaultConfig = @{
     BoardName = "ESP32-S3 (Generic)"
@@ -285,7 +301,7 @@ if ($doUpload -or $doMonitorBlock -or $forceMonitor) {
     }
 }
 
-$sketchPath = $PSScriptRoot
+$sketchPath = $projectRoot
 
 function Get-RequiredLibraries {
     param([string]$inoPath)
@@ -327,7 +343,7 @@ function Get-RequiredLibraries {
         if ([string]::IsNullOrWhiteSpace($baseName)) { continue }
 
         # 如果项目本地已存在同名库文件夹，则视为本地库，跳过
-        $localLibDir = Join-Path $PSScriptRoot $baseName
+        $localLibDir = Join-Path $projectRoot $baseName
         if (Test-Path $localLibDir -PathType Container) {
             continue
         }
