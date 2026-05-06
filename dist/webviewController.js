@@ -227,6 +227,7 @@ class ConfigEditorController {
             if (nextCurrent.build.outputDir) {
                 this.store.setOutputDir(nextCurrent.build.outputDir);
             }
+            await this.store.validateAll();
             await this.store.save();
             await this.syncView("配置已保存");
             events_1.onDidChangeEmbeddedConfig.fire();
@@ -479,7 +480,6 @@ class ConfigEditorController {
 <body>
   <div class="toolbar">
     <button id="saveButton">保存全部</button>
-    <button id="validateButton" class="secondary">校验全部</button>
     <button id="compileButton" class="secondary">编译</button>
     <button id="uploadButton">上传</button>
     <button id="refreshPortsButton" class="secondary">刷新串口列表</button>
@@ -734,18 +734,10 @@ class ConfigEditorController {
 
     document.getElementById("saveButton").addEventListener("click", () => {
       try {
-        setStatus("正在保存...");
+        setStatus("正在校验并保存...");
         vscode.postMessage({ type: "save-config", payload: collectForm() });
       } catch (err) {
         setStatus("保存失败: " + (err.message || String(err)));
-      }
-    });
-    document.getElementById("validateButton").addEventListener("click", () => {
-      try {
-        setStatus("正在校验...");
-        vscode.postMessage({ type: "validate-config", payload: collectForm() });
-      } catch (err) {
-        setStatus("校验失败: " + (err.message || String(err)));
       }
     });
     document.getElementById("compileButton").addEventListener("click", () => {
