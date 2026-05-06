@@ -187,12 +187,12 @@ function activate(context) {
     const btnCompile = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
     btnCompile.text = "$(play)";
     btnCompile.tooltip = "编译 Sketch";
-    btnCompile.command = "embeddedBoardConfig.compileSketch";
+    btnCompile.command = "embeddedBoardConfig.compileSketchSilent";
     context.subscriptions.push(btnCompile);
     const btnUpload = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 98);
     btnUpload.text = "$(cloud-upload)";
     btnUpload.tooltip = "上传 Sketch";
-    btnUpload.command = "embeddedBoardConfig.uploadSketch";
+    btnUpload.command = "embeddedBoardConfig.uploadSketchSilent";
     context.subscriptions.push(btnUpload);
     const btnRefresh = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 97);
     btnRefresh.text = "$(refresh)";
