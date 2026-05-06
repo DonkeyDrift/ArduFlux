@@ -19,7 +19,7 @@
       "onCommand:embeddedBoardConfig.openConfigFile",
       "onCommand:embeddedBoardConfig.compileSketch",
       "onCommand:embeddedBoardConfig.uploadSketch",
-      "onView:embeddedBoardConfig.sidebar"
+      "onView:embeddedBoardConfig.editor"
     ],
     "commands": [
       {
@@ -60,8 +60,9 @@
     "views": {
       "embeddedBoardConfig": [
         {
-          "id": "embeddedBoardConfig.sidebar",
-          "name": "配置概览"
+          "id": "embeddedBoardConfig.editor",
+          "type": "webview",
+          "name": "配置编辑器"
         }
       ]
     },
@@ -69,7 +70,7 @@
       "view/title": [
         {
           "command": "embeddedBoardConfig.refreshSidebar",
-          "when": "view == embeddedBoardConfig.sidebar",
+          "when": "view == embeddedBoardConfig.editor",
           "group": "navigation@1"
         }
       ]

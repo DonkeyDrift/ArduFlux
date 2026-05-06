@@ -37,35 +37,46 @@ exports.EmbeddedBoardConfigEditorProvider = void 0;
 const vscode = __importStar(require("vscode"));
 const configStore_1 = require("./configStore");
 const webviewController_1 = require("./webviewController");
+const viewIds_1 = require("./viewIds");
 class EmbeddedBoardConfigEditorProvider {
-    constructor(context) {
+    constructor(context, log = () => { }) {
         this.context = context;
+        this.log = log;
     }
     async resolveWebviewView(webviewView, _context, _token) {
         this.webviewView = webviewView;
+        this.log(`[view] resolveWebviewView called (viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}, visible=${webviewView.visible})`);
         const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (!root) {
             webviewView.webview.html = this.simpleHtml("请先打开一个工作区文件夹");
+            this.log(`[view] No workspace root found for viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`);
             return;
         }
         webviewView.webview.options = {
             enableScripts: true
         };
+        this.log(`[view] Webview options applied (viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}, enableScripts=${webviewView.webview.options.enableScripts === true})`);
         // 先显示加载中，避免空白
         webviewView.webview.html = this.simpleHtml("加载配置中...");
+        this.log(`[view] Placeholder HTML rendered for viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`);
         const store = new configStore_1.ConfigStore(root);
-        this.controller = new webviewController_1.ConfigEditorController(this.context, store);
+        this.controller = new webviewController_1.ConfigEditorController(this.context, store, this.log);
         this.controller.attach(webviewView.webview);
         await this.controller.initialize().catch((err) => {
             const msg = err instanceof Error ? err.message : String(err);
+            this.log(`[view] Failed to initialize controller (viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}): ${msg}`);
             webviewView.webview.html = this.simpleHtml(`加载失败: ${msg}`);
         });
+        await this.controller.syncView("配置编辑器已加载");
+        this.log(`[view] Initial state posted for viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`);
         webviewView.onDidDispose(() => {
+            this.log(`[view] Disposed viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`);
             this.controller?.dispose();
             this.controller = undefined;
             this.webviewView = undefined;
         });
         webviewView.onDidChangeVisibility(() => {
+            this.log(`[view] Visibility changed (viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}, visible=${webviewView.visible})`);
             if (webviewView.visible) {
                 void this.controller?.syncView();
             }

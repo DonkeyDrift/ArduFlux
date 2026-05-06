@@ -5,6 +5,7 @@ import { EmbeddedBoardConfigPanel } from "./panel";
 import { onDidChangeEmbeddedConfig } from "./events";
 import { runInTerminal } from "./terminal";
 import { formatStatusBarText } from "./statusBar";
+import { EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID } from "./viewIds";
 
 function getWorkspaceRoot(): string {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -34,16 +35,22 @@ export function activate(context: vscode.ExtensionContext): void {
   outputChannel.appendLine("[activate] Extension activating...");
 
   // 注册侧边栏 WebviewViewProvider
-  const editorProvider = new EmbeddedBoardConfigEditorProvider(context);
+  const editorProvider = new EmbeddedBoardConfigEditorProvider(context, (message) => {
+    outputChannel.appendLine(message);
+  });
   try {
-    context.subscriptions.push(
-      vscode.window.registerWebviewViewProvider("embeddedBoardConfig.sidebar", editorProvider, {
+    outputChannel.appendLine(`[activate] Registering WebviewViewProvider for viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`);
+    const registration = vscode.window.registerWebviewViewProvider(EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID, editorProvider, {
         webviewOptions: { retainContextWhenHidden: true }
-      })
+      });
+    context.subscriptions.push(registration);
+    outputChannel.appendLine(
+      `[activate] WebviewViewProvider registered successfully (viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}, disposable=${typeof registration.dispose === "function"})`
     );
-    outputChannel.appendLine("[activate] WebviewViewProvider registered successfully");
   } catch (err) {
-    outputChannel.appendLine(`[activate] FAILED to register WebviewViewProvider: ${err}`);
+    outputChannel.appendLine(
+      `[activate] FAILED to register WebviewViewProvider (viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}): ${err}`
+    );
     void vscode.window.showErrorMessage(`Embedded Board Config: WebviewView 注册失败: ${err}`);
   }
 
@@ -90,7 +97,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("embeddedBoardConfig.openPanel", async () => {
       try {
-        await vscode.commands.executeCommand("embeddedBoardConfig.sidebar.focus");
+        await vscode.commands.executeCommand(`${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}.focus`);
       } catch {
         // fallback: open floating panel
         await withStore(async (store) => {
@@ -130,7 +137,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("embeddedBoardConfig.compileSketch", async () => {
       try {
-        await vscode.commands.executeCommand("embeddedBoardConfig.sidebar.focus");
+        await vscode.commands.executeCommand(`${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}.focus`);
         await vscode.commands.executeCommand("embeddedBoardConfig.compileSketchSilent");
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));
@@ -141,7 +148,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("embeddedBoardConfig.uploadSketch", async () => {
       try {
-        await vscode.commands.executeCommand("embeddedBoardConfig.sidebar.focus");
+        await vscode.commands.executeCommand(`${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}.focus`);
         await vscode.commands.executeCommand("embeddedBoardConfig.uploadSketchSilent");
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));

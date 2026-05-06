@@ -96,20 +96,24 @@ function buildCurrentConfig(form, baseConfig) {
     };
 }
 class ConfigEditorController {
-    constructor(context, store) {
+    constructor(context, store, log = () => { }) {
         this.context = context;
         this.store = store;
+        this.log = log;
         this.webview = null;
         this.disposables = [];
     }
     attach(webview) {
         this.webview = webview;
+        this.log("[webview] Attached webview instance");
         const d = webview.onDidReceiveMessage(async (message) => {
+            this.log(`[webview] Received message type=${message.type ?? "unknown"}`);
             await this.handleMessage(message);
         });
         this.disposables.push(d);
     }
     detach() {
+        this.log("[webview] Detached webview instance");
         this.webview = null;
     }
     dispose() {
@@ -123,6 +127,7 @@ class ConfigEditorController {
         const state = await this.collectState();
         if (this.webview) {
             this.webview.html = this.getHtml(this.webview, state);
+            this.log("[webview] Initial HTML rendered");
         }
     }
     async collectState() {
@@ -138,9 +143,11 @@ class ConfigEditorController {
     }
     async syncView(statusMessage) {
         if (!this.webview) {
+            this.log("[webview] syncView skipped because no webview is attached");
             return;
         }
         const payload = await this.collectState();
+        this.log(`[webview] Posting state message (ports=${payload.ports.length}, profiles=${Object.keys(payload.config.profiles || {}).length}, status=${statusMessage ?? ""})`);
         await this.webview.postMessage({
             type: "state",
             payload,
@@ -155,6 +162,9 @@ class ConfigEditorController {
     async handleMessage(message) {
         try {
             switch (message.type) {
+                case "webview-ready":
+                    await this.syncView("配置编辑器已就绪");
+                    return;
                 case "save-config":
                     await this.saveConfig(message.payload);
                     return;
@@ -819,6 +829,7 @@ class ConfigEditorController {
     });
 
     render();
+    vscode.postMessage({ type: "webview-ready" });
   </script>
 </body>
 </html>`;
