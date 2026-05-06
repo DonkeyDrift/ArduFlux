@@ -86,31 +86,8 @@ function activate(context) {
     }));
     context.subscriptions.push(vscode.commands.registerCommand("arduflux.openMonitor", async () => {
         try {
-            await withStore(async (store) => {
-                const config = store.getData().current;
-                if (!config.monitor.enabled) {
-                    throw new configStore_1.ValidationError("监视器未启用", "请在面板中勾选「启用监视器」后再试");
-                }
-                const port = config.port.address.trim();
-                if (!port) {
-                    throw new configStore_1.ValidationError("串口未选择", "请先选择串口端口");
-                }
-                const args = (0, configStore_1.buildMonitorArgs)({
-                    port,
-                    fqbn: config.board.fqbn.trim() || undefined,
-                    baudRate: config.monitor.baudRate || undefined,
-                    dataBits: config.monitor.dataBits || undefined,
-                    stopBits: config.monitor.stopBits || undefined,
-                    parity: config.monitor.parity || undefined
-                });
-                const cmd = [store.arduinoCliPath, ...args].join(" ");
-                const terminal = vscode.window.createTerminal({
-                    name: `Serial Monitor (${port})`,
-                    cwd: store.baseDir
-                });
-                terminal.sendText(cmd);
-                terminal.show();
-            });
+            const root = getWorkspaceRoot();
+            await (0, terminal_1.runUploadScript)(context.extensionPath, root, { monitor: true });
         }
         catch (error) {
             void vscode.window.showErrorMessage(formatError(error));
@@ -190,7 +167,7 @@ function activate(context) {
             const root = getWorkspaceRoot();
             startStatusSpinner("正在上传");
             try {
-                await (0, terminal_1.runUploadScript)(context.extensionPath, root, { upload: true, monitor: true });
+                await (0, terminal_1.runUploadScript)(context.extensionPath, root, { upload: true });
                 void vscode.window.showInformationMessage("上传完成");
             }
             finally {
