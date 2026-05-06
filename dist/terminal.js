@@ -102,6 +102,7 @@ function runUploadScript(extensionPath, workspaceRoot, flags = {}) {
             args.push("-u");
         if (flags.monitor)
             args.push("-s");
+        args.push(`-workspace:${workspaceRoot}`);
         const pty = {
             onDidWrite: writeEmitter.event,
             open: () => {

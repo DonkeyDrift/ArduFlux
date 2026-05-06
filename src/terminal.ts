@@ -81,6 +81,7 @@ export function runUploadScript(
     if (flags.compile) args.push("-c");
     if (flags.upload) args.push("-u");
     if (flags.monitor) args.push("-s");
+    args.push(`-workspace:${workspaceRoot}`);
 
     const pty: vscode.Pseudoterminal = {
       onDidWrite: writeEmitter.event,

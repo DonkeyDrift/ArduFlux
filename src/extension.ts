@@ -160,23 +160,14 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("arduflux.compileSketchSilent", async () => {
       try {
-        await withStore(async (store) => {
-          const config = store.getData().current;
-          store.validateBoard(config.board);
-          const args = buildCompileArgs({
-            fqbn: config.board.fqbn,
-            sketchPath: store.baseDir,
-            outputDir: config.build.outputDir || undefined,
-            extraArgs: config.board.compileArgs.length > 0 ? config.board.compileArgs : undefined
-          });
-          startStatusSpinner("正在编译");
-          try {
-            await runInTerminal(store.arduinoCliPath, store.baseDir, "Arduino Compile", args);
-            void vscode.window.showInformationMessage("编译完成");
-          } finally {
-            stopStatusSpinner();
-          }
-        });
+        const root = getWorkspaceRoot();
+        startStatusSpinner("正在编译");
+        try {
+          await runUploadScript(context.extensionPath, root, { compile: true });
+          void vscode.window.showInformationMessage("编译完成");
+        } finally {
+          stopStatusSpinner();
+        }
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));
       }
@@ -186,23 +177,14 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("arduflux.uploadSketchSilent", async () => {
       try {
-        await withStore(async (store) => {
-          const config = store.getData().current;
-          await store.validatePort(config.port);
-          store.validateBoard(config.board);
-          const args = buildUploadArgs({
-            port: config.port.address,
-            fqbn: config.board.fqbn,
-            sketchPath: store.baseDir
-          });
-          startStatusSpinner("正在上传");
-          try {
-            await runInTerminal(store.arduinoCliPath, store.baseDir, "Arduino Upload", args);
-            void vscode.window.showInformationMessage("上传完成");
-          } finally {
-            stopStatusSpinner();
-          }
-        });
+        const root = getWorkspaceRoot();
+        startStatusSpinner("正在上传");
+        try {
+          await runUploadScript(context.extensionPath, root, { upload: true, monitor: true });
+          void vscode.window.showInformationMessage("上传完成");
+        } finally {
+          stopStatusSpinner();
+        }
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));
       }

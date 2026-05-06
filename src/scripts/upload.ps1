@@ -1,7 +1,8 @@
 param(
     [switch]$c,
     [switch]$u,
-    [switch]$s
+    [switch]$s,
+    [string]$workspace
 )
 
 $doCompile = $c -or (-not $c -and -not $u -and -not $s)
@@ -22,8 +23,13 @@ function Get-ProjectRoot {
     return $StartDir
 }
 
-$projectRoot = Get-ProjectRoot -StartDir ($PSScriptRoot)
-Write-Host "Project root: $projectRoot"
+if ($workspace) {
+    $projectRoot = $workspace
+    Write-Host "Using workspace: $projectRoot"
+} else {
+    $projectRoot = Get-ProjectRoot -StartDir ($PSScriptRoot)
+    Write-Host "Project root: $projectRoot"
+}
 
 $legacyConfigFile = Join-Path $projectRoot "upload_config.json"
 $embeddedConfigFile = Join-Path $projectRoot "ArduFlux.json"
