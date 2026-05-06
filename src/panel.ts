@@ -16,7 +16,7 @@ export class EmbeddedBoardConfigPanel {
 
     const panel = vscode.window.createWebviewPanel(
       "embeddedBoardConfig",
-      "Embedded Board Config",
+      "开发板配置",
       column,
       {
         enableScripts: true,

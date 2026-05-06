@@ -10,7 +10,7 @@ import { EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID } from "./viewIds";
 function getWorkspaceRoot(): string {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
-    throw new ValidationError("请先打开一个工作区文件夹，再使用 Embedded Board Config");
+    throw new ValidationError("请先打开一个工作区文件夹，再使用 开发板配置");
   }
   return folder.uri.fsPath;
 }
@@ -30,7 +30,7 @@ async function withStore<T>(run: (store: ConfigStore) => Promise<T>): Promise<T>
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  const outputChannel = vscode.window.createOutputChannel("Embedded Board Config");
+  const outputChannel = vscode.window.createOutputChannel("开发板配置");
   context.subscriptions.push(outputChannel);
   outputChannel.appendLine("[activate] Extension activating...");
 
@@ -51,7 +51,7 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel.appendLine(
       `[activate] FAILED to register WebviewViewProvider (viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}): ${err}`
     );
-    void vscode.window.showErrorMessage(`Embedded Board Config: WebviewView 注册失败: ${err}`);
+    void vscode.window.showErrorMessage(`开发板配置: WebviewView 注册失败: ${err}`);
   }
 
   context.subscriptions.push(
@@ -277,7 +277,7 @@ export function activate(context: vscode.ExtensionContext): void {
       btnMonitor.show();
     } catch {
       statusBarItem.text = "$(circuit-board) 嵌入式配置";
-      statusBarItem.tooltip = "点击打开 Embedded Board Config 面板";
+      statusBarItem.tooltip = "点击打开 开发板配置 面板";
       statusBarItem.show();
       btnCompile.hide();
       btnUpload.hide();

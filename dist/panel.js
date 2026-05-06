@@ -44,7 +44,7 @@ class EmbeddedBoardConfigPanel {
             await EmbeddedBoardConfigPanel.currentPanel.controller.syncView();
             return;
         }
-        const panel = vscode.window.createWebviewPanel("embeddedBoardConfig", "Embedded Board Config", column, {
+        const panel = vscode.window.createWebviewPanel("embeddedBoardConfig", "开发板配置", column, {
             enableScripts: true,
             retainContextWhenHidden: true
         });

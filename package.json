@@ -1,6 +1,6 @@
 {
   "name": "embedded-board-config",
-  "displayName": "Embedded Board Config",
+  "displayName": "开发板配置",
   "description": "Manage embedded board, serial port, build output, monitor and profiles from VS Code.",
   "version": "0.2.0",
   "publisher": "baoshan",
@@ -24,27 +24,27 @@
     "commands": [
       {
         "command": "embeddedBoardConfig.openPanel",
-        "title": "Embedded Board Config: Open Panel"
+        "title": "开发板配置: 打开面板"
       },
       {
         "command": "embeddedBoardConfig.validateConfig",
-        "title": "Embedded Board Config: Validate Current Config"
+        "title": "开发板配置: 校验当前配置"
       },
       {
         "command": "embeddedBoardConfig.openConfigFile",
-        "title": "Embedded Board Config: Open Config File"
+        "title": "开发板配置: 打开配置文件"
       },
       {
         "command": "embeddedBoardConfig.compileSketch",
-        "title": "Embedded Board Config: Compile Sketch"
+        "title": "开发板配置: 编译 Sketch"
       },
       {
         "command": "embeddedBoardConfig.uploadSketch",
-        "title": "Embedded Board Config: Upload Sketch"
+        "title": "开发板配置: 上传 Sketch"
       },
       {
         "command": "embeddedBoardConfig.refreshSidebar",
-        "title": "Embedded Board Config: Refresh Sidebar",
+        "title": "开发板配置: 刷新侧边栏",
         "icon": "$(refresh)"
       }
     ],
@@ -52,7 +52,7 @@
       "activitybar": [
         {
           "id": "embeddedBoardConfig",
-          "title": "Embedded Board Config",
+          "title": "开发板配置",
           "icon": "$(circuit-board)"
         }
       ]

@@ -193,7 +193,7 @@ describe("webview view registration", () => {
             };
             await capturedProvider?.provider.resolveWebviewView(fakeWebviewView, {}, {});
             (0, chai_1.expect)(fakeWebview.options.enableScripts).to.equal(true);
-            (0, chai_1.expect)(fakeWebview.html).to.contain("Embedded Board Config");
+            (0, chai_1.expect)(fakeWebview.html).to.contain("开发板配置");
             (0, chai_1.expect)(postedMessages.some((message) => message.type === "state")).to.equal(true);
             const firstStateMessage = postedMessages.find((message) => message.type === "state");
             (0, chai_1.expect)(firstStateMessage?.statusMessage).to.equal("配置编辑器已加载");
