@@ -152,8 +152,14 @@ function activate(context) {
                     outputDir: config.build.outputDir || undefined,
                     extraArgs: config.board.compileArgs.length > 0 ? config.board.compileArgs : undefined
                 });
-                await (0, terminal_1.runInTerminal)(store.arduinoCliPath, store.baseDir, "Arduino Compile", args);
-                void vscode.window.showInformationMessage("编译完成");
+                startStatusSpinner("正在编译");
+                try {
+                    await (0, terminal_1.runInTerminal)(store.arduinoCliPath, store.baseDir, "Arduino Compile", args);
+                    void vscode.window.showInformationMessage("编译完成");
+                }
+                finally {
+                    stopStatusSpinner();
+                }
             });
         }
         catch (error) {
@@ -171,8 +177,14 @@ function activate(context) {
                     fqbn: config.board.fqbn,
                     sketchPath: store.baseDir
                 });
-                await (0, terminal_1.runInTerminal)(store.arduinoCliPath, store.baseDir, "Arduino Upload", args);
-                void vscode.window.showInformationMessage("上传完成");
+                startStatusSpinner("正在上传");
+                try {
+                    await (0, terminal_1.runInTerminal)(store.arduinoCliPath, store.baseDir, "Arduino Upload", args);
+                    void vscode.window.showInformationMessage("上传完成");
+                }
+                finally {
+                    stopStatusSpinner();
+                }
             });
         }
         catch (error) {
@@ -204,6 +216,29 @@ function activate(context) {
     btnOpenPanel.tooltip = "打开 Embedded Board Config 面板";
     btnOpenPanel.command = "embeddedBoardConfig.openPanel";
     context.subscriptions.push(btnOpenPanel);
+    // 动态状态栏（正在编译/上传等）
+    const statusAction = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 95);
+    context.subscriptions.push(statusAction);
+    const spinnerChars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+    let spinnerInterval = null;
+    let spinnerIndex = 0;
+    function startStatusSpinner(text) {
+        stopStatusSpinner();
+        spinnerIndex = 0;
+        statusAction.text = `${spinnerChars[0]} ${text}`;
+        statusAction.show();
+        spinnerInterval = setInterval(() => {
+            spinnerIndex = (spinnerIndex + 1) % spinnerChars.length;
+            statusAction.text = `${spinnerChars[spinnerIndex]} ${text}`;
+        }, 100);
+    }
+    function stopStatusSpinner() {
+        if (spinnerInterval) {
+            clearInterval(spinnerInterval);
+            spinnerInterval = null;
+        }
+        statusAction.hide();
+    }
     async function updateStatusBar() {
         try {
             const root = getWorkspaceRoot();
