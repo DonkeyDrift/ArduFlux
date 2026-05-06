@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { spawn } from "child_process";
 import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, buildUploadArgs, recommendSerialPort } from "./configStore";
+import { onDidChangeEmbeddedConfig } from "./events";
 import { BoardCatalogItem, DEFAULT_BOARD_CATALOG, EmbeddedBoardConfig, EmbeddedCurrentConfig, SerialPortInfo } from "./types";
 
 interface PanelStatePayload {
@@ -223,6 +224,7 @@ export class EmbeddedBoardConfigPanel {
       }
       await this.store.save();
       await this.syncView("配置已保存");
+      onDidChangeEmbeddedConfig.fire();
     } catch (error) {
       await this.panel.webview.postMessage({ type: "saving", active: false, error: formatError(error) });
       throw error;
@@ -244,6 +246,7 @@ export class EmbeddedBoardConfigPanel {
       }
       await this.store.validateAll();
       await this.syncView("校验通过");
+      onDidChangeEmbeddedConfig.fire();
     } catch (error) {
       await this.panel.webview.postMessage({ type: "validating", active: false, error: formatError(error) });
       throw error;
@@ -269,6 +272,7 @@ export class EmbeddedBoardConfigPanel {
     this.store.saveProfile(name);
     await this.store.save();
     await this.syncView(`Profile 已保存：${name}`);
+    onDidChangeEmbeddedConfig.fire();
   }
 
   private async applyProfile(payload: { name?: string }): Promise<void> {
@@ -276,6 +280,7 @@ export class EmbeddedBoardConfigPanel {
     this.store.applyProfile(name);
     await this.store.save();
     await this.syncView(`Profile 已应用：${name}`);
+    onDidChangeEmbeddedConfig.fire();
   }
 
   private async deleteProfile(payload: { name?: string }): Promise<void> {
@@ -286,6 +291,7 @@ export class EmbeddedBoardConfigPanel {
     this.store.deleteProfile(name);
     await this.store.save();
     await this.syncView(`Profile 已删除：${name}`);
+    onDidChangeEmbeddedConfig.fire();
   }
 
   private async exportProfiles(): Promise<void> {
@@ -326,6 +332,7 @@ export class EmbeddedBoardConfigPanel {
     await this.store.importProfiles(selected[0].fsPath, mergeChoice.merge);
     await this.store.save();
     await this.syncView("Profiles 已导入");
+    onDidChangeEmbeddedConfig.fire();
   }
 
   private async openMonitor(): Promise<void> {

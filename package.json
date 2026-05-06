@@ -18,7 +18,8 @@
       "onCommand:embeddedBoardConfig.validateConfig",
       "onCommand:embeddedBoardConfig.openConfigFile",
       "onCommand:embeddedBoardConfig.compileSketch",
-      "onCommand:embeddedBoardConfig.uploadSketch"
+      "onCommand:embeddedBoardConfig.uploadSketch",
+      "onView:embeddedBoardConfig.sidebar"
     ],
     "commands": [
       {
@@ -40,8 +41,39 @@
       {
         "command": "embeddedBoardConfig.uploadSketch",
         "title": "Embedded Board Config: Upload Sketch"
+      },
+      {
+        "command": "embeddedBoardConfig.refreshSidebar",
+        "title": "Embedded Board Config: Refresh Sidebar",
+        "icon": "$(refresh)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "embeddedBoardConfig",
+          "title": "Embedded Board Config",
+          "icon": "$(circuit-board)"
+        }
+      ]
+    },
+    "views": {
+      "embeddedBoardConfig": [
+        {
+          "id": "embeddedBoardConfig.sidebar",
+          "name": "配置概览"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "embeddedBoardConfig.refreshSidebar",
+          "when": "view == embeddedBoardConfig.sidebar",
+          "group": "navigation@1"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "embeddedBoardConfig.openPanel",

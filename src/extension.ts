@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import { ConfigStore, ValidationError } from "./configStore";
+import { ConfigSidebarProvider } from "./configSidebar";
 import { EmbeddedBoardConfigPanel } from "./panel";
+import { onDidChangeEmbeddedConfig } from "./events";
 import { formatStatusBarText } from "./statusBar";
 
 function getWorkspaceRoot(): string {
@@ -26,6 +28,30 @@ async function withStore<T>(run: (store: ConfigStore) => Promise<T>): Promise<T>
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  // 注册侧边栏 TreeDataProvider
+  let sidebarProvider: ConfigSidebarProvider | undefined;
+  try {
+    const root = getWorkspaceRoot();
+    const store = new ConfigStore(root);
+    sidebarProvider = new ConfigSidebarProvider(store);
+    context.subscriptions.push(
+      vscode.window.registerTreeDataProvider("embeddedBoardConfig.sidebar", sidebarProvider)
+    );
+    context.subscriptions.push(
+      onDidChangeEmbeddedConfig.event(() => {
+        sidebarProvider?.refresh();
+      })
+    );
+  } catch {
+    // 无工作区时不注册侧边栏
+  }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("embeddedBoardConfig.refreshSidebar", async () => {
+      sidebarProvider?.refresh();
+    })
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand("embeddedBoardConfig.openPanel", async () => {
       try {
@@ -105,6 +131,31 @@ export function activate(context: vscode.ExtensionContext): void {
   statusBarItem.command = "embeddedBoardConfig.openPanel";
   context.subscriptions.push(statusBarItem);
 
+  // 快捷图标按钮（只显示图标，悬浮提示）
+  const btnCompile = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+  btnCompile.text = "$(play)";
+  btnCompile.tooltip = "编译 Sketch";
+  btnCompile.command = "embeddedBoardConfig.compileSketch";
+  context.subscriptions.push(btnCompile);
+
+  const btnUpload = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 98);
+  btnUpload.text = "$(cloud-upload)";
+  btnUpload.tooltip = "上传 Sketch";
+  btnUpload.command = "embeddedBoardConfig.uploadSketch";
+  context.subscriptions.push(btnUpload);
+
+  const btnRefresh = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 97);
+  btnRefresh.text = "$(refresh)";
+  btnRefresh.tooltip = "刷新配置侧边栏";
+  btnRefresh.command = "embeddedBoardConfig.refreshSidebar";
+  context.subscriptions.push(btnRefresh);
+
+  const btnOpenPanel = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);
+  btnOpenPanel.text = "$(circuit-board)";
+  btnOpenPanel.tooltip = "打开 Embedded Board Config 面板";
+  btnOpenPanel.command = "embeddedBoardConfig.openPanel";
+  context.subscriptions.push(btnOpenPanel);
+
   async function updateStatusBar(): Promise<void> {
     try {
       const root = getWorkspaceRoot();
@@ -114,10 +165,18 @@ export function activate(context: vscode.ExtensionContext): void {
       statusBarItem.text = `$(circuit-board) ${formatStatusBarText(config.board.name, config.port.address)}`;
       statusBarItem.tooltip = `板型: ${config.board.name}\n端口: ${config.port.address || "未选择"}\nFQBN: ${config.board.fqbn}`;
       statusBarItem.show();
+      btnCompile.show();
+      btnUpload.show();
+      btnRefresh.show();
+      btnOpenPanel.show();
     } catch {
       statusBarItem.text = "$(circuit-board) 嵌入式配置";
       statusBarItem.tooltip = "点击打开 Embedded Board Config 面板";
       statusBarItem.show();
+      btnCompile.hide();
+      btnUpload.hide();
+      btnRefresh.hide();
+      btnOpenPanel.hide();
     }
   }
 

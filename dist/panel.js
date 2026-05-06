@@ -37,6 +37,7 @@ exports.EmbeddedBoardConfigPanel = void 0;
 const vscode = __importStar(require("vscode"));
 const child_process_1 = require("child_process");
 const configStore_1 = require("./configStore");
+const events_1 = require("./events");
 const types_1 = require("./types");
 function createNonce() {
     return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
@@ -211,6 +212,7 @@ class EmbeddedBoardConfigPanel {
             }
             await this.store.save();
             await this.syncView("配置已保存");
+            events_1.onDidChangeEmbeddedConfig.fire();
         }
         catch (error) {
             await this.panel.webview.postMessage({ type: "saving", active: false, error: formatError(error) });
@@ -232,6 +234,7 @@ class EmbeddedBoardConfigPanel {
             }
             await this.store.validateAll();
             await this.syncView("校验通过");
+            events_1.onDidChangeEmbeddedConfig.fire();
         }
         catch (error) {
             await this.panel.webview.postMessage({ type: "validating", active: false, error: formatError(error) });
@@ -256,12 +259,14 @@ class EmbeddedBoardConfigPanel {
         this.store.saveProfile(name);
         await this.store.save();
         await this.syncView(`Profile 已保存：${name}`);
+        events_1.onDidChangeEmbeddedConfig.fire();
     }
     async applyProfile(payload) {
         const name = payload.name?.trim() ?? "";
         this.store.applyProfile(name);
         await this.store.save();
         await this.syncView(`Profile 已应用：${name}`);
+        events_1.onDidChangeEmbeddedConfig.fire();
     }
     async deleteProfile(payload) {
         const name = payload.name?.trim() ?? "";
@@ -271,6 +276,7 @@ class EmbeddedBoardConfigPanel {
         this.store.deleteProfile(name);
         await this.store.save();
         await this.syncView(`Profile 已删除：${name}`);
+        events_1.onDidChangeEmbeddedConfig.fire();
     }
     async exportProfiles() {
         const target = await vscode.window.showSaveDialog({
@@ -304,6 +310,7 @@ class EmbeddedBoardConfigPanel {
         await this.store.importProfiles(selected[0].fsPath, mergeChoice.merge);
         await this.store.save();
         await this.syncView("Profiles 已导入");
+        events_1.onDidChangeEmbeddedConfig.fire();
     }
     async openMonitor() {
         const config = this.store.getData();
