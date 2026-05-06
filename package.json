@@ -1,8 +1,8 @@
 {
-  "name": "embedded-board-config",
+  "name": "arduflux",
   "displayName": "开发板配置",
   "description": "Manage embedded board, serial port, build output, monitor and profiles from VS Code.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "baoshan",
   "license": "MIT",
   "engines": {
@@ -14,36 +14,36 @@
   "main": "./dist/extension.js",
   "contributes": {
     "activationEvents": [
-      "onCommand:embeddedBoardConfig.openPanel",
-      "onCommand:embeddedBoardConfig.validateConfig",
-      "onCommand:embeddedBoardConfig.openConfigFile",
-      "onCommand:embeddedBoardConfig.compileSketch",
-      "onCommand:embeddedBoardConfig.uploadSketch",
-      "onView:embeddedBoardConfig.editor"
+      "onCommand:arduflux.openPanel",
+      "onCommand:arduflux.validateConfig",
+      "onCommand:arduflux.openConfigFile",
+      "onCommand:arduflux.compileSketch",
+      "onCommand:arduflux.uploadSketch",
+      "onView:arduflux.editor"
     ],
     "commands": [
       {
-        "command": "embeddedBoardConfig.openPanel",
+        "command": "arduflux.openPanel",
         "title": "开发板配置: 打开面板"
       },
       {
-        "command": "embeddedBoardConfig.validateConfig",
+        "command": "arduflux.validateConfig",
         "title": "开发板配置: 校验当前配置"
       },
       {
-        "command": "embeddedBoardConfig.openConfigFile",
+        "command": "arduflux.openConfigFile",
         "title": "开发板配置: 打开配置文件"
       },
       {
-        "command": "embeddedBoardConfig.compileSketch",
+        "command": "arduflux.compileSketch",
         "title": "开发板配置: 编译 Sketch"
       },
       {
-        "command": "embeddedBoardConfig.uploadSketch",
+        "command": "arduflux.uploadSketch",
         "title": "开发板配置: 上传 Sketch"
       },
       {
-        "command": "embeddedBoardConfig.refreshSidebar",
+        "command": "arduflux.refreshSidebar",
         "title": "开发板配置: 刷新侧边栏",
         "icon": "$(refresh)"
       }
@@ -51,16 +51,16 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "embeddedBoardConfig",
+          "id": "arduflux",
           "title": "开发板配置",
           "icon": "$(circuit-board)"
         }
       ]
     },
     "views": {
-      "embeddedBoardConfig": [
+      "arduflux": [
         {
-          "id": "embeddedBoardConfig.editor",
+          "id": "arduflux.editor",
           "type": "webview",
           "name": "配置编辑器"
         }
@@ -69,33 +69,33 @@
     "menus": {
       "view/title": [
         {
-          "command": "embeddedBoardConfig.refreshSidebar",
-          "when": "view == embeddedBoardConfig.editor",
+          "command": "arduflux.refreshSidebar",
+          "when": "view == arduflux.editor",
           "group": "navigation@1"
         }
       ]
     },
     "keybindings": [
       {
-        "command": "embeddedBoardConfig.openPanel",
+        "command": "arduflux.openPanel",
         "key": "ctrl+alt+e",
         "mac": "cmd+alt+e",
         "when": "editorTextFocus"
       },
       {
-        "command": "embeddedBoardConfig.validateConfig",
+        "command": "arduflux.validateConfig",
         "key": "ctrl+alt+v",
         "mac": "cmd+alt+v",
         "when": "editorTextFocus"
       },
       {
-        "command": "embeddedBoardConfig.compileSketch",
+        "command": "arduflux.compileSketch",
         "key": "ctrl+shift+b",
         "mac": "cmd+shift+b",
         "when": "editorTextFocus"
       },
       {
-        "command": "embeddedBoardConfig.uploadSketch",
+        "command": "arduflux.uploadSketch",
         "key": "ctrl+shift+u",
         "mac": "cmd+shift+u",
         "when": "editorTextFocus"

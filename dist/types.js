@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DEFAULT_BOARD_CATALOG = exports.CONFIG_FILE_NAME = void 0;
 exports.createDefaultConfig = createDefaultConfig;
-exports.CONFIG_FILE_NAME = "embedded_board_config.json";
+exports.CONFIG_FILE_NAME = "ArduFlux.json";
 exports.DEFAULT_BOARD_CATALOG = [
     {
         name: "ESP32-S3 (Generic)",

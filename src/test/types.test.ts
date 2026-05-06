@@ -7,8 +7,8 @@ import {
 
 describe("types.ts", () => {
   describe("CONFIG_FILE_NAME", () => {
-    it("应为 embedded_board_config.json", () => {
-      expect(CONFIG_FILE_NAME).to.equal("embedded_board_config.json");
+    it("应为 ArduFlux.json", () => {
+      expect(CONFIG_FILE_NAME).to.equal("ArduFlux.json");
     });
   });
 

@@ -33,23 +33,23 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EmbeddedBoardConfigPanel = void 0;
+exports.ArduFluxPanel = void 0;
 const vscode = __importStar(require("vscode"));
 const webviewController_1 = require("./webviewController");
-class EmbeddedBoardConfigPanel {
+class ArduFluxPanel {
     static async createOrShow(context, store) {
         const column = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
-        if (EmbeddedBoardConfigPanel.currentPanel) {
-            EmbeddedBoardConfigPanel.currentPanel.panel.reveal(column);
-            await EmbeddedBoardConfigPanel.currentPanel.controller.syncView();
+        if (ArduFluxPanel.currentPanel) {
+            ArduFluxPanel.currentPanel.panel.reveal(column);
+            await ArduFluxPanel.currentPanel.controller.syncView();
             return;
         }
-        const panel = vscode.window.createWebviewPanel("embeddedBoardConfig", "开发板配置", column, {
+        const panel = vscode.window.createWebviewPanel("arduflux", "开发板配置", column, {
             enableScripts: true,
             retainContextWhenHidden: true
         });
-        const instance = new EmbeddedBoardConfigPanel(panel, context, store);
-        EmbeddedBoardConfigPanel.currentPanel = instance;
+        const instance = new ArduFluxPanel(panel, context, store);
+        ArduFluxPanel.currentPanel = instance;
         await instance.controller.initialize();
     }
     constructor(panel, context, store) {
@@ -59,7 +59,7 @@ class EmbeddedBoardConfigPanel {
         this.controller = new webviewController_1.ConfigEditorController(context, store);
         this.controller.attach(panel.webview);
         this.panel.onDidDispose(() => {
-            EmbeddedBoardConfigPanel.currentPanel = undefined;
+            ArduFluxPanel.currentPanel = undefined;
             this.controller.dispose();
         }, null, this.context.subscriptions);
     }
@@ -70,5 +70,5 @@ class EmbeddedBoardConfigPanel {
         return this.controller.uploadSketch();
     }
 }
-exports.EmbeddedBoardConfigPanel = EmbeddedBoardConfigPanel;
+exports.ArduFluxPanel = ArduFluxPanel;
 //# sourceMappingURL=panel.js.map

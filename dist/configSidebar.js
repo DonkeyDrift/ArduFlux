@@ -58,7 +58,7 @@ class ConfigSidebarProvider {
         this.setupInterval();
     }
     setupFileWatcher() {
-        const pattern = new vscode.RelativePattern(this.store.baseDir, "embedded_board_config.json");
+        const pattern = new vscode.RelativePattern(this.store.baseDir, "ArduFlux.json");
         this.fileWatcher = vscode.workspace.createFileSystemWatcher(pattern);
         this.fileWatcher.onDidChange(() => this.refresh());
         this.fileWatcher.onDidCreate(() => this.refresh());

@@ -1,4 +1,4 @@
-# AGENTS.md — Embedded Board Config
+# AGENTS.md — ArduFlux
 
 > 本文件面向 AI 编码助手。阅读者应被假设为**完全不了解本项目**。
 
@@ -6,7 +6,7 @@
 
 ## 项目概述
 
-本项目是一个 **VS Code 扩展**，用于管理嵌入式开发板配置。扩展直接读写工作区根目录下的 `embedded_board_config.json`，管理内容包括：
+本项目是一个 **VS Code 扩展**，用于管理嵌入式开发板配置。扩展直接读写工作区根目录下的 `ArduFlux.json`，管理内容包括：
 
 - 板子型号（名称、FQBN、编译参数、引脚定义）
 - 串口（枚举、自动选择、USB 优先、占用检测）
@@ -73,8 +73,8 @@
 │   ├── embedded_config.md        # Python 配置模块使用说明
 │   ├── roadmap-phase6-8.md       # 扩展功能开发路线图
 │   └── tdd-dev-plan.md           # TDD 开发方案与实施记录
-├── embedded_board_config.json    # 扩展直接读写的配置文件（运行时生成/更新）
-├── embedded_board_config.template.json  # 配置文件模板
+├── ArduFlux.json    # 扩展直接读写的配置文件（运行时生成/更新）
+├── ArduFlux.template.json  # 配置文件模板
 ├── upload.ps1                    # PowerShell 上传脚本（读取上述 JSON）
 ├── upload_config.json            # 旧版上传配置（upload.ps1 兼容读取）
 ├── install-vsix.ps1              # 自动卸载旧扩展并安装最新 VSIX（支持 TRAE / VS Code）
@@ -119,7 +119,7 @@ npm run test:watch
 ```bash
 npm run package
 ```
-生成 `embedded-board-config-<version>.vsix`。
+生成 `arduflux-<version>.vsix`。
 
 **自动安装 VSIX（PowerShell）：**
 ```bash
@@ -190,7 +190,7 @@ python -m unittest discover -s tests -v
 - 文档采用 Markdown 格式，保持轻量，聚焦本项目的实现细节与决策记录。
 
 ### 配置文件格式约定
-- 文件名固定为 `embedded_board_config.json`。
+- 文件名固定为 `ArduFlux.json`。
 - 顶层字段：`schemaVersion`（当前为 `1`）、`current`、`profiles`。
 - `profiles` 始终包含 `default: {}`。
 - `recentOutputDirs` 最多保留 5 条，去重且保留最新。
@@ -202,15 +202,15 @@ python -m unittest discover -s tests -v
 
 | 命令 ID | 标题/快捷键 | 说明 |
 |---------|-------------|------|
-| `embeddedBoardConfig.openPanel` | `Embedded Board Config: Open Panel`（`Ctrl+Alt+E`） | 打开侧边栏 Webview 配置面板 |
-| `embeddedBoardConfig.validateConfig` | `Embedded Board Config: Validate Current Config`（`Ctrl+Alt+V`） | 校验当前配置 |
-| `embeddedBoardConfig.openConfigFile` | `Embedded Board Config: Open Config File` | 在编辑器中打开 JSON 配置文件 |
-| `embeddedBoardConfig.compileSketch` | `Embedded Board Config: Compile Sketch`（`Ctrl+Shift+B`） | 编译 Sketch（聚焦面板后执行） |
-| `embeddedBoardConfig.uploadSketch` | `Embedded Board Config: Upload Sketch`（`Ctrl+Shift+U`） | 上传 Sketch（聚焦面板后执行） |
-| `embeddedBoardConfig.refreshSidebar` | `Embedded Board Config: Refresh Sidebar`（刷新图标） | 手动刷新侧边栏视图状态 |
-| `embeddedBoardConfig.openMonitor` | — | 打开串口监视器终端 |
-| `embeddedBoardConfig.compileSketchSilent` | — | 静默编译（状态栏按钮直接调用） |
-| `embeddedBoardConfig.uploadSketchSilent` | — | 静默上传（状态栏按钮直接调用） |
+| `arduflux.openPanel` | `ArduFlux: Open Panel`（`Ctrl+Alt+E`） | 打开侧边栏 Webview 配置面板 |
+| `arduflux.validateConfig` | `ArduFlux: Validate Current Config`（`Ctrl+Alt+V`） | 校验当前配置 |
+| `arduflux.openConfigFile` | `ArduFlux: Open Config File` | 在编辑器中打开 JSON 配置文件 |
+| `arduflux.compileSketch` | `ArduFlux: Compile Sketch`（`Ctrl+Shift+B`） | 编译 Sketch（聚焦面板后执行） |
+| `arduflux.uploadSketch` | `ArduFlux: Upload Sketch`（`Ctrl+Shift+U`） | 上传 Sketch（聚焦面板后执行） |
+| `arduflux.refreshSidebar` | `ArduFlux: Refresh Sidebar`（刷新图标） | 手动刷新侧边栏视图状态 |
+| `arduflux.openMonitor` | — | 打开串口监视器终端 |
+| `arduflux.compileSketchSilent` | — | 静默编译（状态栏按钮直接调用） |
+| `arduflux.uploadSketchSilent` | — | 静默上传（状态栏按钮直接调用） |
 
 > 注：`compileSketch` / `uploadSketch` 会先聚焦侧边栏视图，再调用对应的 `Silent` 版本。
 
@@ -218,7 +218,7 @@ python -m unittest discover -s tests -v
 
 ## 与 upload.ps1 的兼容性要求
 
-`upload.ps1` 和 VS Code 扩展共享同一个 `embedded_board_config.json`。任何对 JSON 结构或字段名的修改，必须同时更新以下文件：
+`upload.ps1` 和 VS Code 扩展共享同一个 `ArduFlux.json`。任何对 JSON 结构或字段名的修改，必须同时更新以下文件：
 
 1. `src/types.ts`（TypeScript 类型定义）
 2. `src/configStore.ts`（扩展读写逻辑）

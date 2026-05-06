@@ -15,7 +15,7 @@ python -m embedded_config.ui
 
 保存后会生成/更新配置文件：
 
-- `embedded_board_config.json`
+- `ArduFlux.json`
 
 ## 2. 命令行（可脚本化）
 
@@ -30,7 +30,7 @@ python -m embedded_config.cli profile import profiles.json
 
 ## 3. 与 upload.ps1 联动
 
-当项目根目录存在 `embedded_board_config.json` 时，[upload.ps1](file:///c:/Dev/FFE/Baoshan/Example/TouchButton/upload.ps1) 会优先读取其中的配置：
+当项目根目录存在 `ArduFlux.json` 时，[upload.ps1](file:///c:/Dev/FFE/Baoshan/Example/TouchButton/upload.ps1) 会优先读取其中的配置：
 
 - 板子型号：`current.board.fqbn`
 - 串口：`current.port.address`
@@ -39,7 +39,7 @@ python -m embedded_config.cli profile import profiles.json
 
 # 配置文件格式（JSON）
 
-配置文件模板见：`embedded_board_config.template.json`
+配置文件模板见：`ArduFlux.template.json`
 
 核心字段：
 

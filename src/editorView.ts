@@ -1,9 +1,9 @@
 import * as vscode from "vscode";
 import { ConfigStore } from "./configStore";
 import { ConfigEditorController } from "./webviewController";
-import { EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID } from "./viewIds";
+import { ARDUFLUX_EDITOR_VIEW_ID } from "./viewIds";
 
-export class EmbeddedBoardConfigEditorProvider implements vscode.WebviewViewProvider {
+export class ArduFluxEditorProvider implements vscode.WebviewViewProvider {
   controller: ConfigEditorController | undefined;
   private webviewView: vscode.WebviewView | undefined;
 
@@ -19,13 +19,13 @@ export class EmbeddedBoardConfigEditorProvider implements vscode.WebviewViewProv
   ): Promise<void> {
     this.webviewView = webviewView;
     this.log(
-      `[view] resolveWebviewView called (viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}, visible=${webviewView.visible})`
+      `[view] resolveWebviewView called (viewId=${ARDUFLUX_EDITOR_VIEW_ID}, visible=${webviewView.visible})`
     );
 
     const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!root) {
       webviewView.webview.html = this.simpleHtml("请先打开一个工作区文件夹");
-      this.log(`[view] No workspace root found for viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`);
+      this.log(`[view] No workspace root found for viewId=${ARDUFLUX_EDITOR_VIEW_ID}`);
       return;
     }
 
@@ -33,12 +33,12 @@ export class EmbeddedBoardConfigEditorProvider implements vscode.WebviewViewProv
       enableScripts: true
     };
     this.log(
-      `[view] Webview options applied (viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}, enableScripts=${webviewView.webview.options.enableScripts === true})`
+      `[view] Webview options applied (viewId=${ARDUFLUX_EDITOR_VIEW_ID}, enableScripts=${webviewView.webview.options.enableScripts === true})`
     );
 
     // 先显示加载中，避免空白
     webviewView.webview.html = this.simpleHtml("加载配置中...");
-    this.log(`[view] Placeholder HTML rendered for viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`);
+    this.log(`[view] Placeholder HTML rendered for viewId=${ARDUFLUX_EDITOR_VIEW_ID}`);
 
     const store = new ConfigStore(root);
     this.controller = new ConfigEditorController(this.context, store, this.log);
@@ -46,14 +46,14 @@ export class EmbeddedBoardConfigEditorProvider implements vscode.WebviewViewProv
 
     await this.controller.initialize().catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
-      this.log(`[view] Failed to initialize controller (viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}): ${msg}`);
+      this.log(`[view] Failed to initialize controller (viewId=${ARDUFLUX_EDITOR_VIEW_ID}): ${msg}`);
       webviewView.webview.html = this.simpleHtml(`加载失败: ${msg}`);
     });
     await this.controller.syncView("配置编辑器已加载");
-    this.log(`[view] Initial state posted for viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`);
+    this.log(`[view] Initial state posted for viewId=${ARDUFLUX_EDITOR_VIEW_ID}`);
 
     webviewView.onDidDispose(() => {
-      this.log(`[view] Disposed viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`);
+      this.log(`[view] Disposed viewId=${ARDUFLUX_EDITOR_VIEW_ID}`);
       this.controller?.dispose();
       this.controller = undefined;
       this.webviewView = undefined;
@@ -61,7 +61,7 @@ export class EmbeddedBoardConfigEditorProvider implements vscode.WebviewViewProv
 
     webviewView.onDidChangeVisibility(() => {
       this.log(
-        `[view] Visibility changed (viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}, visible=${webviewView.visible})`
+        `[view] Visibility changed (viewId=${ARDUFLUX_EDITOR_VIEW_ID}, visible=${webviewView.visible})`
       );
       if (webviewView.visible) {
         void this.controller?.syncView();

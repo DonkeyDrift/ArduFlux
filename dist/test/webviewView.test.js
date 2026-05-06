@@ -55,7 +55,7 @@ describe("webview view registration", () => {
         }
     }
     beforeEach(async () => {
-        tempDir = await fs_1.promises.mkdtemp(path.join(os.tmpdir(), "embedded-board-config-view-"));
+        tempDir = await fs_1.promises.mkdtemp(path.join(os.tmpdir(), "arduflux-view-"));
     });
     afterEach(async () => {
         moduleLoader._load = originalLoad;
@@ -69,8 +69,8 @@ describe("webview view registration", () => {
     it("package.json 应将侧边栏视图声明为 webview 且 ID 完全匹配", async () => {
         const manifestPath = path.resolve(__dirname, "../../package.json");
         const manifest = JSON.parse(await fs_1.promises.readFile(manifestPath, "utf8"));
-        (0, chai_1.expect)(manifest.contributes.viewsContainers.activitybar.some((item) => item.id === "embeddedBoardConfig")).to.equal(true);
-        const editorView = manifest.contributes.views.embeddedBoardConfig.find((item) => item.id === "embeddedBoardConfig.editor");
+        (0, chai_1.expect)(manifest.contributes.viewsContainers.activitybar.some((item) => item.id === "arduflux")).to.equal(true);
+        const editorView = manifest.contributes.views.arduflux.find((item) => item.id === "arduflux.editor");
         (0, chai_1.expect)(editorView).to.not.equal(undefined);
         (0, chai_1.expect)(editorView?.type).to.equal("webview");
     });
@@ -146,7 +146,7 @@ describe("webview view registration", () => {
         const { activate } = require("../extension");
         const { ConfigStore } = require("../configStore");
         const { createDefaultConfig } = require("../types");
-        const { EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID } = require("../viewIds");
+        const { ARDUFLUX_EDITOR_VIEW_ID } = require("../viewIds");
         const originalLoadConfig = ConfigStore.prototype.load;
         const originalGetSerialPorts = ConfigStore.prototype.getSerialPorts;
         ConfigStore.prototype.load = async function stubLoad() {
@@ -168,8 +168,8 @@ describe("webview view registration", () => {
             const context = { subscriptions: [] };
             activate(context);
             (0, chai_1.expect)(capturedProvider).to.not.equal(undefined);
-            (0, chai_1.expect)(capturedProvider?.viewId).to.equal(EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID);
-            (0, chai_1.expect)(registeredCommands).to.include("embeddedBoardConfig.refreshSidebar");
+            (0, chai_1.expect)(capturedProvider?.viewId).to.equal(ARDUFLUX_EDITOR_VIEW_ID);
+            (0, chai_1.expect)(registeredCommands).to.include("arduflux.refreshSidebar");
             const postedMessages = [];
             let onDidReceiveMessageHandler;
             const fakeWebview = {
@@ -204,7 +204,7 @@ describe("webview view registration", () => {
             const stateMessages = postedMessages.filter((message) => message.type === "state");
             (0, chai_1.expect)(stateMessages.length).to.equal(2);
             (0, chai_1.expect)(stateMessages[1]?.statusMessage).to.equal("配置编辑器已就绪");
-            (0, chai_1.expect)(outputLines.some((line) => line.includes(`viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`))).to.equal(true);
+            (0, chai_1.expect)(outputLines.some((line) => line.includes(`viewId=${ARDUFLUX_EDITOR_VIEW_ID}`))).to.equal(true);
             (0, chai_1.expect)(outputLines.some((line) => line.includes("Posting state message"))).to.equal(true);
             disposeAll(context.subscriptions);
         }

@@ -66,25 +66,25 @@ function activate(context) {
     context.subscriptions.push(outputChannel);
     outputChannel.appendLine("[activate] Extension activating...");
     // 注册侧边栏 WebviewViewProvider
-    const editorProvider = new editorView_1.EmbeddedBoardConfigEditorProvider(context, (message) => {
+    const editorProvider = new editorView_1.ArduFluxEditorProvider(context, (message) => {
         outputChannel.appendLine(message);
     });
     try {
-        outputChannel.appendLine(`[activate] Registering WebviewViewProvider for viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`);
-        const registration = vscode.window.registerWebviewViewProvider(viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID, editorProvider, {
+        outputChannel.appendLine(`[activate] Registering WebviewViewProvider for viewId=${viewIds_1.ARDUFLUX_EDITOR_VIEW_ID}`);
+        const registration = vscode.window.registerWebviewViewProvider(viewIds_1.ARDUFLUX_EDITOR_VIEW_ID, editorProvider, {
             webviewOptions: { retainContextWhenHidden: true }
         });
         context.subscriptions.push(registration);
-        outputChannel.appendLine(`[activate] WebviewViewProvider registered successfully (viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}, disposable=${typeof registration.dispose === "function"})`);
+        outputChannel.appendLine(`[activate] WebviewViewProvider registered successfully (viewId=${viewIds_1.ARDUFLUX_EDITOR_VIEW_ID}, disposable=${typeof registration.dispose === "function"})`);
     }
     catch (err) {
-        outputChannel.appendLine(`[activate] FAILED to register WebviewViewProvider (viewId=${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}): ${err}`);
+        outputChannel.appendLine(`[activate] FAILED to register WebviewViewProvider (viewId=${viewIds_1.ARDUFLUX_EDITOR_VIEW_ID}): ${err}`);
         void vscode.window.showErrorMessage(`开发板配置: WebviewView 注册失败: ${err}`);
     }
-    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.refreshSidebar", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.refreshSidebar", async () => {
         await editorProvider.controller?.syncView();
     }));
-    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.openMonitor", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.openMonitor", async () => {
         try {
             await withStore(async (store) => {
                 const config = store.getData().current;
@@ -116,29 +116,29 @@ function activate(context) {
             void vscode.window.showErrorMessage(formatError(error));
         }
     }));
-    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.openPanel", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.openPanel", async () => {
         try {
-            await vscode.commands.executeCommand(`${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}.focus`);
+            await vscode.commands.executeCommand(`${viewIds_1.ARDUFLUX_EDITOR_VIEW_ID}.focus`);
         }
         catch {
             // fallback: open floating panel
             await withStore(async (store) => {
-                await panel_1.EmbeddedBoardConfigPanel.createOrShow(context, store);
+                await panel_1.ArduFluxPanel.createOrShow(context, store);
             });
         }
     }));
-    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.validateConfig", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.validateConfig", async () => {
         try {
             await withStore(async (store) => {
                 await store.validateAll();
-                void vscode.window.showInformationMessage("当前 embedded_board_config.json 校验通过");
+                void vscode.window.showInformationMessage("当前 ArduFlux.json 校验通过");
             });
         }
         catch (error) {
             void vscode.window.showErrorMessage(formatError(error));
         }
     }));
-    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.openConfigFile", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.openConfigFile", async () => {
         try {
             await withStore(async (store) => {
                 await store.save();
@@ -150,26 +150,26 @@ function activate(context) {
             void vscode.window.showErrorMessage(formatError(error));
         }
     }));
-    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.compileSketch", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.compileSketch", async () => {
         try {
-            await vscode.commands.executeCommand(`${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}.focus`);
-            await vscode.commands.executeCommand("embeddedBoardConfig.compileSketchSilent");
+            await vscode.commands.executeCommand(`${viewIds_1.ARDUFLUX_EDITOR_VIEW_ID}.focus`);
+            await vscode.commands.executeCommand("arduflux.compileSketchSilent");
         }
         catch (error) {
             void vscode.window.showErrorMessage(formatError(error));
         }
     }));
-    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.uploadSketch", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.uploadSketch", async () => {
         try {
-            await vscode.commands.executeCommand(`${viewIds_1.EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}.focus`);
-            await vscode.commands.executeCommand("embeddedBoardConfig.uploadSketchSilent");
+            await vscode.commands.executeCommand(`${viewIds_1.ARDUFLUX_EDITOR_VIEW_ID}.focus`);
+            await vscode.commands.executeCommand("arduflux.uploadSketchSilent");
         }
         catch (error) {
             void vscode.window.showErrorMessage(formatError(error));
         }
     }));
     // 静默编译/上传（不弹出面板，供状态栏按钮使用）
-    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.compileSketchSilent", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.compileSketchSilent", async () => {
         try {
             await withStore(async (store) => {
                 const config = store.getData().current;
@@ -194,7 +194,7 @@ function activate(context) {
             void vscode.window.showErrorMessage(formatError(error));
         }
     }));
-    context.subscriptions.push(vscode.commands.registerCommand("embeddedBoardConfig.uploadSketchSilent", async () => {
+    context.subscriptions.push(vscode.commands.registerCommand("arduflux.uploadSketchSilent", async () => {
         try {
             await withStore(async (store) => {
                 const config = store.getData().current;
@@ -221,23 +221,23 @@ function activate(context) {
     }));
     // 状态栏
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-    statusBarItem.command = "embeddedBoardConfig.openPanel";
+    statusBarItem.command = "arduflux.openPanel";
     context.subscriptions.push(statusBarItem);
     // 快捷图标按钮（只显示图标，悬浮提示）
     const btnCompile = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
     btnCompile.text = "$(play)";
     btnCompile.tooltip = "编译 Sketch";
-    btnCompile.command = "embeddedBoardConfig.compileSketchSilent";
+    btnCompile.command = "arduflux.compileSketchSilent";
     context.subscriptions.push(btnCompile);
     const btnUpload = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 98);
     btnUpload.text = "$(cloud-upload)";
     btnUpload.tooltip = "上传 Sketch";
-    btnUpload.command = "embeddedBoardConfig.uploadSketchSilent";
+    btnUpload.command = "arduflux.uploadSketchSilent";
     context.subscriptions.push(btnUpload);
     const btnMonitor = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 97);
     btnMonitor.text = "$(terminal)";
     btnMonitor.tooltip = "打开串口监视器";
-    btnMonitor.command = "embeddedBoardConfig.openMonitor";
+    btnMonitor.command = "arduflux.openMonitor";
     context.subscriptions.push(btnMonitor);
     // 动态状态栏（正在编译/上传等）
     const statusAction = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);

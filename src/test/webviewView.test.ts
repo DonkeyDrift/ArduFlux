@@ -27,7 +27,7 @@ describe("webview view registration", () => {
   }
 
   beforeEach(async () => {
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "embedded-board-config-view-"));
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "arduflux-view-"));
   });
 
   afterEach(async () => {
@@ -49,9 +49,9 @@ describe("webview view registration", () => {
       };
     };
 
-    expect(manifest.contributes.viewsContainers.activitybar.some((item) => item.id === "embeddedBoardConfig")).to.equal(true);
+    expect(manifest.contributes.viewsContainers.activitybar.some((item) => item.id === "arduflux")).to.equal(true);
 
-    const editorView = manifest.contributes.views.embeddedBoardConfig.find((item) => item.id === "embeddedBoardConfig.editor");
+    const editorView = manifest.contributes.views.arduflux.find((item) => item.id === "arduflux.editor");
     expect(editorView).to.not.equal(undefined);
     expect(editorView?.type).to.equal("webview");
   });
@@ -142,7 +142,7 @@ describe("webview view registration", () => {
     const { activate } = require("../extension") as typeof import("../extension");
     const { ConfigStore } = require("../configStore") as typeof import("../configStore");
     const { createDefaultConfig } = require("../types") as typeof import("../types");
-    const { EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID } = require("../viewIds") as typeof import("../viewIds");
+    const { ARDUFLUX_EDITOR_VIEW_ID } = require("../viewIds") as typeof import("../viewIds");
 
     const originalLoadConfig = ConfigStore.prototype.load;
     const originalGetSerialPorts = ConfigStore.prototype.getSerialPorts;
@@ -167,8 +167,8 @@ describe("webview view registration", () => {
       activate(context as never);
 
       expect(capturedProvider).to.not.equal(undefined);
-      expect(capturedProvider?.viewId).to.equal(EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID);
-      expect(registeredCommands).to.include("embeddedBoardConfig.refreshSidebar");
+      expect(capturedProvider?.viewId).to.equal(ARDUFLUX_EDITOR_VIEW_ID);
+      expect(registeredCommands).to.include("arduflux.refreshSidebar");
 
       const postedMessages: Array<{ type?: string; payload?: unknown; statusMessage?: string }> = [];
       let onDidReceiveMessageHandler: ((message: { type?: string; payload?: unknown }) => Promise<void> | void) | undefined;
@@ -211,7 +211,7 @@ describe("webview view registration", () => {
       const stateMessages = postedMessages.filter((message) => message.type === "state");
       expect(stateMessages.length).to.equal(2);
       expect(stateMessages[1]?.statusMessage).to.equal("配置编辑器已就绪");
-      expect(outputLines.some((line) => line.includes(`viewId=${EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID}`))).to.equal(true);
+      expect(outputLines.some((line) => line.includes(`viewId=${ARDUFLUX_EDITOR_VIEW_ID}`))).to.equal(true);
       expect(outputLines.some((line) => line.includes("Posting state message"))).to.equal(true);
 
       disposeAll(context.subscriptions);

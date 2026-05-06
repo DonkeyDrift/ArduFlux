@@ -121,8 +121,8 @@ private async uploadSketch(): Promise<void> {
 如需支持命令面板/快捷键调用编译上传，在 `src/extension.ts` 注册：
 
 ```ts
-vscode.commands.registerCommand("embeddedBoardConfig.compileSketch", ...)
-vscode.commands.registerCommand("embeddedBoardConfig.uploadSketch", ...)
+vscode.commands.registerCommand("arduflux.compileSketch", ...)
+vscode.commands.registerCommand("arduflux.uploadSketch", ...)
 ```
 
 并在 `package.json` `contributes.commands` 中声明。
@@ -136,7 +136,7 @@ vscode.commands.registerCommand("embeddedBoardConfig.uploadSketch", ...)
 在 VS Code 底部状态栏显示嵌入式板卡的快速状态，点击可打开面板：
 - 显示格式：`$(circuit-board) <boardName> @ <port>` 或 `$(circuit-board) 未配置`
 - 当无工作区、无配置或端口为空时，显示引导性文本
-- 点击状态栏 → 打开 `embeddedBoardConfig.openPanel`
+- 点击状态栏 → 打开 `arduflux.openPanel`
 
 ### TDD 步骤
 
@@ -186,7 +186,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.StatusBarAlignment.Left,
     100
   );
-  statusBarItem.command = "embeddedBoardConfig.openPanel";
+  statusBarItem.command = "arduflux.openPanel";
   context.subscriptions.push(statusBarItem);
 
   async function updateStatusBar() {
@@ -200,7 +200,7 @@ export function activate(context: vscode.ExtensionContext): void {
       statusBarItem.show();
     } catch {
       statusBarItem.text = "$(circuit-board) 嵌入式配置";
-      statusBarItem.tooltip = "点击打开 Embedded Board Config 面板";
+      statusBarItem.tooltip = "点击打开 ArduFlux 面板";
       statusBarItem.show();
     }
   }
@@ -212,7 +212,7 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 ```
 
-> **注意**：更优雅的刷新方式是使用 `vscode.workspace.createFileSystemWatcher` 监听 `embedded_board_config.json` 变化，但为简化可先使用轮询。
+> **注意**：更优雅的刷新方式是使用 `vscode.workspace.createFileSystemWatcher` 监听 `ArduFlux.json` 变化，但为简化可先使用轮询。
 
 ---
 
@@ -231,25 +231,25 @@ export function activate(context: vscode.ExtensionContext): void {
   "commands": [ ... ],
   "keybindings": [
     {
-      "command": "embeddedBoardConfig.openPanel",
+      "command": "arduflux.openPanel",
       "key": "ctrl+shift+e",
       "mac": "cmd+shift+e",
       "when": "editorTextFocus || explorerViewletVisible"
     },
     {
-      "command": "embeddedBoardConfig.validateConfig",
+      "command": "arduflux.validateConfig",
       "key": "ctrl+shift+v",
       "mac": "cmd+shift+v",
       "when": "editorTextFocus"
     },
     {
-      "command": "embeddedBoardConfig.compileSketch",
+      "command": "arduflux.compileSketch",
       "key": "ctrl+shift+c",
       "mac": "cmd+shift+c",
       "when": "editorTextFocus"
     },
     {
-      "command": "embeddedBoardConfig.uploadSketch",
+      "command": "arduflux.uploadSketch",
       "key": "ctrl+shift+u",
       "mac": "cmd+shift+u",
       "when": "editorTextFocus"
@@ -266,7 +266,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 1. 打包安装 VSIX
 2. 打开「文件 > 首选项 > 键盘快捷方式」
-3. 搜索 "Embedded Board Config"，确认快捷键已绑定
+3. 搜索 "ArduFlux"，确认快捷键已绑定
 4. 在编辑器中按下快捷键，验证命令执行
 
 ---

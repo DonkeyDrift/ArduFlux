@@ -3,8 +3,8 @@ import { execFile } from "child_process";
 import { promises as fs } from "fs";
 import {
   CONFIG_FILE_NAME,
-  EmbeddedBoardConfig,
-  EmbeddedCurrentConfig,
+  ArduFluxConfig,
+  ArduFluxCurrentConfig,
   SerialPortInfo,
   ValidationErrorLike,
   createDefaultConfig
@@ -274,13 +274,13 @@ export async function listSerialPorts(arduinoCliPath = "arduino-cli"): Promise<S
   return ports;
 }
 
-function migrateConfig(data: unknown): EmbeddedBoardConfig {
+function migrateConfig(data: unknown): ArduFluxConfig {
   const defaults = createDefaultConfig();
   if (!data || typeof data !== "object") {
     return defaults;
   }
 
-  const source = data as Partial<EmbeddedBoardConfig> & Record<string, unknown>;
+  const source = data as Partial<ArduFluxConfig> & Record<string, unknown>;
   const version = Number(source.schemaVersion ?? 0);
 
   if (version <= 0) {
@@ -288,7 +288,7 @@ function migrateConfig(data: unknown): EmbeddedBoardConfig {
       ...defaults,
       current: {
         ...defaults.current,
-        ...(source as Partial<EmbeddedCurrentConfig>)
+        ...(source as Partial<ArduFluxCurrentConfig>)
       }
     };
   }
@@ -297,8 +297,8 @@ function migrateConfig(data: unknown): EmbeddedBoardConfig {
     throw new ValidationError("不支持的配置版本", `schemaVersion=${version}，请升级扩展或重新生成配置文件`);
   }
 
-  const current = source.current && typeof source.current === "object" ? source.current as Partial<EmbeddedCurrentConfig> : {};
-  const profiles = source.profiles && typeof source.profiles === "object" ? source.profiles as EmbeddedBoardConfig["profiles"] : { default: {} };
+  const current = source.current && typeof source.current === "object" ? source.current as Partial<ArduFluxCurrentConfig> : {};
+  const profiles = source.profiles && typeof source.profiles === "object" ? source.profiles as ArduFluxConfig["profiles"] : { default: {} };
 
   const board = { ...defaults.current.board, ...(current.board ?? {}) };
   const pinDefines = current.board?.pinDefines;
@@ -334,7 +334,7 @@ export class ConfigStore {
   readonly baseDir: string;
   readonly configPath: string;
   readonly arduinoCliPath: string;
-  private data: EmbeddedBoardConfig;
+  private data: ArduFluxConfig;
   private serialPortsCache: { ports: SerialPortInfo[]; timestamp: number } | null = null;
   private readonly SERIAL_PORTS_CACHE_TTL = 5000;
 
@@ -359,7 +359,7 @@ export class ConfigStore {
     this.serialPortsCache = null;
   }
 
-  async load(): Promise<EmbeddedBoardConfig> {
+  async load(): Promise<ArduFluxConfig> {
     try {
       const text = (await fs.readFile(this.configPath, "utf8")).replace(/^\uFEFF/, "");
       this.data = migrateConfig(JSON.parse(text));
@@ -378,11 +378,11 @@ export class ConfigStore {
     await fs.writeFile(this.configPath, JSON.stringify(this.data, null, 2), "utf8");
   }
 
-  getData(): EmbeddedBoardConfig {
+  getData(): ArduFluxConfig {
     return deepClone(this.data);
   }
 
-  setData(data: EmbeddedBoardConfig): void {
+  setData(data: ArduFluxConfig): void {
     this.data = migrateConfig(data);
   }
 
@@ -498,7 +498,7 @@ export class ConfigStore {
   async importProfiles(sourcePath: string, merge: boolean): Promise<void> {
     const resolved = normalizePath(sourcePath, this.baseDir);
     const text = await fs.readFile(resolved, "utf8");
-    const parsed = JSON.parse(text) as { profiles?: EmbeddedBoardConfig["profiles"] };
+    const parsed = JSON.parse(text) as { profiles?: ArduFluxConfig["profiles"] };
 
     if (!parsed.profiles || typeof parsed.profiles !== "object") {
       throw new ValidationError("导入文件格式不正确", "应包含 profiles 字段");

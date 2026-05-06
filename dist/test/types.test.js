@@ -4,8 +4,8 @@ const chai_1 = require("chai");
 const types_1 = require("../types");
 describe("types.ts", () => {
     describe("CONFIG_FILE_NAME", () => {
-        it("应为 embedded_board_config.json", () => {
-            (0, chai_1.expect)(types_1.CONFIG_FILE_NAME).to.equal("embedded_board_config.json");
+        it("应为 ArduFlux.json", () => {
+            (0, chai_1.expect)(types_1.CONFIG_FILE_NAME).to.equal("ArduFlux.json");
         });
     });
     describe("createDefaultConfig()", () => {

@@ -10,7 +10,7 @@ $doMonitorBlock = (-not $c -and -not $u -and -not $s)
 $forceMonitor = $s
 
 $legacyConfigFile = Join-Path $PSScriptRoot "upload_config.json"
-$embeddedConfigFile = Join-Path $PSScriptRoot "embedded_board_config.json"
+$embeddedConfigFile = Join-Path $PSScriptRoot "ArduFlux.json"
 
 $defaultConfig = @{
     BoardName = "ESP32-S3 (Generic)"
@@ -63,7 +63,7 @@ if (Test-Path $embeddedConfigFile) {
     }
 
     $configSource = "embedded"
-    Write-Host "Config loaded (embedded_board_config.json)"
+    Write-Host "Config loaded (ArduFlux.json)"
 } elseif (Test-Path $legacyConfigFile) {
     $legacy = Get-Content $legacyConfigFile | ConvertFrom-Json
     $config = $defaultConfig
@@ -104,7 +104,7 @@ function Save-Config {
         }
         $jsonText = $saveObj | ConvertTo-Json -Depth 20
         [System.IO.File]::WriteAllText($embeddedConfigFile, $jsonText, $utf8NoBom)
-        Write-Host "Config saved (embedded_board_config.json)"
+        Write-Host "Config saved (ArduFlux.json)"
         return
     }
 

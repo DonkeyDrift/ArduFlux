@@ -1,13 +1,13 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Auto-uninstall old Embedded Board Config extension, install latest VSIX, and reload IDE window.
+    Auto-uninstall old ArduFlux extension, install latest VSIX, and reload IDE window.
 
 .DESCRIPTION
     Supports both TRAE IDE (trae) and VS Code (code) CLI.
     Priority: trae > code
     Steps:
-    1. Locate embedded-board-config-*.vsix in current directory
+    1. Locate arduflux-*.vsix in current directory
     2. Check if extension is installed, uninstall if exists
     3. Install the latest VSIX
     4. Reload IDE window
@@ -20,7 +20,7 @@
 
 .EXAMPLE
     .\install-vsix.ps1
-    .\install-vsix.ps1 -VsixPath .\embedded-board-config-0.2.0.vsix
+    .\install-vsix.ps1 -VsixPath .\arduflux-0.3.0.vsix
     .\install-vsix.ps1 -Ide trae
 #>
 [CmdletBinding()]
@@ -32,8 +32,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ExtensionId = "baoshan.embedded-board-config"
-$VsixPattern = "embedded-board-config-*.vsix"
+$ExtensionId = "baoshan.arduflux"
+$VsixPattern = "arduflux-*.vsix"
 
 function Get-IdeCli {
     param([string]$ForceIde)

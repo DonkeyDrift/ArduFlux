@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { ConfigStore } from "./configStore";
-import { EmbeddedBoardConfig, EmbeddedCurrentConfig } from "./types";
+import { ArduFluxConfig, ArduFluxCurrentConfig } from "./types";
 
 export class ConfigTreeItem extends vscode.TreeItem {
   constructor(
@@ -37,7 +37,7 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
   }
 
   private setupFileWatcher(): void {
-    const pattern = new vscode.RelativePattern(this.store.baseDir, "embedded_board_config.json");
+    const pattern = new vscode.RelativePattern(this.store.baseDir, "ArduFlux.json");
     this.fileWatcher = vscode.workspace.createFileSystemWatcher(pattern);
     this.fileWatcher.onDidChange(() => this.refresh());
     this.fileWatcher.onDidCreate(() => this.refresh());
@@ -86,7 +86,7 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
     }
   }
 
-  private buildRootItems(config: EmbeddedBoardConfig, current: EmbeddedCurrentConfig): ConfigTreeItem[] {
+  private buildRootItems(config: ArduFluxConfig, current: ArduFluxCurrentConfig): ConfigTreeItem[] {
     const items: ConfigTreeItem[] = [];
 
     items.push(
@@ -139,7 +139,7 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
     return items;
   }
 
-  private buildBoardChildren(current: EmbeddedCurrentConfig): ConfigTreeItem[] {
+  private buildBoardChildren(current: ArduFluxCurrentConfig): ConfigTreeItem[] {
     const pinCount = Object.keys(current.board.pinDefines || {}).length;
     return [
       new ConfigTreeItem(
@@ -172,7 +172,7 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
     ];
   }
 
-  private buildPortChildren(current: EmbeddedCurrentConfig): ConfigTreeItem[] {
+  private buildPortChildren(current: ArduFluxCurrentConfig): ConfigTreeItem[] {
     return [
       new ConfigTreeItem(
         "地址",
@@ -189,7 +189,7 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
     ];
   }
 
-  private buildBuildChildren(current: EmbeddedCurrentConfig): ConfigTreeItem[] {
+  private buildBuildChildren(current: ArduFluxCurrentConfig): ConfigTreeItem[] {
     return [
       new ConfigTreeItem(
         "输出目录",
@@ -214,7 +214,7 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
     ];
   }
 
-  private buildMonitorChildren(current: EmbeddedCurrentConfig): ConfigTreeItem[] {
+  private buildMonitorChildren(current: ArduFluxCurrentConfig): ConfigTreeItem[] {
     return [
       new ConfigTreeItem(
         "启用",
@@ -255,7 +255,7 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
     ];
   }
 
-  private buildProfilesChildren(config: EmbeddedBoardConfig): ConfigTreeItem[] {
+  private buildProfilesChildren(config: ArduFluxConfig): ConfigTreeItem[] {
     const names = Object.keys(config.profiles || {}).sort();
     if (names.length === 0) {
       return [

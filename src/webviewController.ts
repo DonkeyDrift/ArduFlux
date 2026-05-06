@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
 import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, buildUploadArgs, recommendSerialPort } from "./configStore";
-import { onDidChangeEmbeddedConfig } from "./events";
+import { onDidChangeArduFluxConfig } from "./events";
 import { runInTerminal } from "./terminal";
-import { BoardCatalogItem, DEFAULT_BOARD_CATALOG, EmbeddedBoardConfig, EmbeddedCurrentConfig, SerialPortInfo } from "./types";
+import { BoardCatalogItem, DEFAULT_BOARD_CATALOG, ArduFluxConfig, ArduFluxCurrentConfig, SerialPortInfo } from "./types";
 
 export interface PanelStatePayload {
-  config: EmbeddedBoardConfig;
+  config: ArduFluxConfig;
   ports: SerialPortInfo[];
   boardCatalog: BoardCatalogItem[];
   recommendedPort: string;
@@ -43,7 +43,7 @@ function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function buildCurrentConfig(form: FormPayload, baseConfig: EmbeddedBoardConfig): EmbeddedCurrentConfig {
+function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): ArduFluxCurrentConfig {
   let pinDefines: Record<string, unknown> = {};
   try {
     const parsed = JSON.parse(form.boardPinDefines.trim() || "{}") as unknown;
@@ -205,7 +205,7 @@ export class ConfigEditorController {
           await this.importProfiles();
           return;
         case "open-config-file":
-          await vscode.commands.executeCommand("embeddedBoardConfig.openConfigFile");
+          await vscode.commands.executeCommand("arduflux.openConfigFile");
           return;
         case "open-monitor":
           await this.openMonitor();
@@ -227,7 +227,7 @@ export class ConfigEditorController {
     try {
       const current = this.store.getData();
       const nextCurrent = buildCurrentConfig(form, current);
-      const nextConfig: EmbeddedBoardConfig = {
+      const nextConfig: ArduFluxConfig = {
         ...current,
         current: nextCurrent
       };
@@ -238,7 +238,7 @@ export class ConfigEditorController {
       await this.store.validateAll();
       await this.store.save();
       await this.syncView("配置已保存");
-      onDidChangeEmbeddedConfig.fire();
+      onDidChangeArduFluxConfig.fire();
     } catch (error) {
       await this.postMessage({ type: "saving", active: false, error: formatError(error) });
       throw error;
@@ -250,7 +250,7 @@ export class ConfigEditorController {
     try {
       const current = this.store.getData();
       const nextCurrent = buildCurrentConfig(form, current);
-      const nextConfig: EmbeddedBoardConfig = {
+      const nextConfig: ArduFluxConfig = {
         ...current,
         current: nextCurrent
       };
@@ -260,7 +260,7 @@ export class ConfigEditorController {
       }
       await this.store.validateAll();
       await this.syncView("校验通过");
-      onDidChangeEmbeddedConfig.fire();
+      onDidChangeArduFluxConfig.fire();
     } catch (error) {
       await this.postMessage({ type: "validating", active: false, error: formatError(error) });
       throw error;
@@ -286,7 +286,7 @@ export class ConfigEditorController {
     this.store.saveProfile(name);
     await this.store.save();
     await this.syncView(`Profile 已保存：${name}`);
-    onDidChangeEmbeddedConfig.fire();
+    onDidChangeArduFluxConfig.fire();
   }
 
   private async applyProfile(payload: { name?: string }): Promise<void> {
@@ -294,7 +294,7 @@ export class ConfigEditorController {
     this.store.applyProfile(name);
     await this.store.save();
     await this.syncView(`Profile 已应用：${name}`);
-    onDidChangeEmbeddedConfig.fire();
+    onDidChangeArduFluxConfig.fire();
   }
 
   private async deleteProfile(payload: { name?: string }): Promise<void> {
@@ -305,7 +305,7 @@ export class ConfigEditorController {
     this.store.deleteProfile(name);
     await this.store.save();
     await this.syncView(`Profile 已删除：${name}`);
-    onDidChangeEmbeddedConfig.fire();
+    onDidChangeArduFluxConfig.fire();
   }
 
   private async exportProfiles(): Promise<void> {
@@ -346,7 +346,7 @@ export class ConfigEditorController {
     await this.store.importProfiles(selected[0].fsPath, mergeChoice.merge);
     await this.store.save();
     await this.syncView("Profiles 已导入");
-    onDidChangeEmbeddedConfig.fire();
+    onDidChangeArduFluxConfig.fire();
   }
 
   private async openMonitor(): Promise<void> {

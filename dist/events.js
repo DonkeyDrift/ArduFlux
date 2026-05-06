@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onDidChangeEmbeddedConfig = void 0;
+exports.onDidChangeArduFluxConfig = void 0;
 const vscode = __importStar(require("vscode"));
-exports.onDidChangeEmbeddedConfig = new vscode.EventEmitter();
+exports.onDidChangeArduFluxConfig = new vscode.EventEmitter();
 //# sourceMappingURL=events.js.map

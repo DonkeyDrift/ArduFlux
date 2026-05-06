@@ -2,20 +2,20 @@ import * as vscode from "vscode";
 import { ConfigStore } from "./configStore";
 import { ConfigEditorController } from "./webviewController";
 
-export class EmbeddedBoardConfigPanel {
-  static currentPanel: EmbeddedBoardConfigPanel | undefined;
+export class ArduFluxPanel {
+  static currentPanel: ArduFluxPanel | undefined;
   private controller: ConfigEditorController;
 
   static async createOrShow(context: vscode.ExtensionContext, store: ConfigStore): Promise<void> {
     const column = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
-    if (EmbeddedBoardConfigPanel.currentPanel) {
-      EmbeddedBoardConfigPanel.currentPanel.panel.reveal(column);
-      await EmbeddedBoardConfigPanel.currentPanel.controller.syncView();
+    if (ArduFluxPanel.currentPanel) {
+      ArduFluxPanel.currentPanel.panel.reveal(column);
+      await ArduFluxPanel.currentPanel.controller.syncView();
       return;
     }
 
     const panel = vscode.window.createWebviewPanel(
-      "embeddedBoardConfig",
+      "arduflux",
       "开发板配置",
       column,
       {
@@ -24,8 +24,8 @@ export class EmbeddedBoardConfigPanel {
       }
     );
 
-    const instance = new EmbeddedBoardConfigPanel(panel, context, store);
-    EmbeddedBoardConfigPanel.currentPanel = instance;
+    const instance = new ArduFluxPanel(panel, context, store);
+    ArduFluxPanel.currentPanel = instance;
     await instance.controller.initialize();
   }
 
@@ -38,7 +38,7 @@ export class EmbeddedBoardConfigPanel {
     this.controller.attach(panel.webview);
 
     this.panel.onDidDispose(() => {
-      EmbeddedBoardConfigPanel.currentPanel = undefined;
+      ArduFluxPanel.currentPanel = undefined;
       this.controller.dispose();
     }, null, this.context.subscriptions);
   }

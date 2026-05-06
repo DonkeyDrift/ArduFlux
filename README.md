@@ -1,10 +1,10 @@
-# Embedded Board Config
+# ArduFlux
 
 将当前项目里的嵌入式开发板配置工具改造成标准 VS Code 扩展，并可打包为 `VSIX` 安装包。
 
 ## 功能
 
-- 管理 `embedded_board_config.json`
+- 管理 `ArduFlux.json`
 - 编辑板型名称、`FQBN`、编译参数、引脚定义
 - 枚举串口并推荐 USB 端口
 - 管理编译输出目录和最近使用路径
@@ -16,9 +16,9 @@
 
 安装扩展后，在命令面板中可用：
 
-- `Embedded Board Config: Open Panel`
-- `Embedded Board Config: Validate Current Config`
-- `Embedded Board Config: Open Config File`
+- `ArduFlux: Open Panel`
+- `ArduFlux: Validate Current Config`
+- `ArduFlux: Open Config File`
 
 ## 本地开发
 
@@ -41,7 +41,7 @@ npm run package
 
 生成的安装包位于项目根目录，文件名类似：
 
-- `embedded-board-config-0.2.0.vsix`
+- `arduflux-0.3.0.vsix`
 
 ## 安装 VSIX
 
@@ -56,6 +56,6 @@ npm run package
 
 扩展直接读写以下文件：
 
-- `embedded_board_config.json`
+- `ArduFlux.json`
 
 数据格式保持和 `upload.ps1` 一致，因此上传脚本无需修改即可继续使用。

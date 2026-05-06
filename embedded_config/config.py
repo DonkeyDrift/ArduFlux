@@ -320,7 +320,7 @@ class ConfigStore:
         self.config_path = (
             Path(config_path).resolve()
             if config_path is not None
-            else (self.base_dir / "embedded_board_config.json")
+            else (self.base_dir / "ArduFlux.json")
         )
         self._data = self._default_data()
 

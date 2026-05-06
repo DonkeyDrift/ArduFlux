@@ -1,3 +1,3 @@
 import * as vscode from "vscode";
 
-export const onDidChangeEmbeddedConfig = new vscode.EventEmitter<void>();
+export const onDidChangeArduFluxConfig = new vscode.EventEmitter<void>();

@@ -197,7 +197,7 @@ class ConfigEditorController {
                     await this.importProfiles();
                     return;
                 case "open-config-file":
-                    await vscode.commands.executeCommand("embeddedBoardConfig.openConfigFile");
+                    await vscode.commands.executeCommand("arduflux.openConfigFile");
                     return;
                 case "open-monitor":
                     await this.openMonitor();
@@ -230,7 +230,7 @@ class ConfigEditorController {
             await this.store.validateAll();
             await this.store.save();
             await this.syncView("配置已保存");
-            events_1.onDidChangeEmbeddedConfig.fire();
+            events_1.onDidChangeArduFluxConfig.fire();
         }
         catch (error) {
             await this.postMessage({ type: "saving", active: false, error: formatError(error) });
@@ -252,7 +252,7 @@ class ConfigEditorController {
             }
             await this.store.validateAll();
             await this.syncView("校验通过");
-            events_1.onDidChangeEmbeddedConfig.fire();
+            events_1.onDidChangeArduFluxConfig.fire();
         }
         catch (error) {
             await this.postMessage({ type: "validating", active: false, error: formatError(error) });
@@ -277,14 +277,14 @@ class ConfigEditorController {
         this.store.saveProfile(name);
         await this.store.save();
         await this.syncView(`Profile 已保存：${name}`);
-        events_1.onDidChangeEmbeddedConfig.fire();
+        events_1.onDidChangeArduFluxConfig.fire();
     }
     async applyProfile(payload) {
         const name = payload.name?.trim() ?? "";
         this.store.applyProfile(name);
         await this.store.save();
         await this.syncView(`Profile 已应用：${name}`);
-        events_1.onDidChangeEmbeddedConfig.fire();
+        events_1.onDidChangeArduFluxConfig.fire();
     }
     async deleteProfile(payload) {
         const name = payload.name?.trim() ?? "";
@@ -294,7 +294,7 @@ class ConfigEditorController {
         this.store.deleteProfile(name);
         await this.store.save();
         await this.syncView(`Profile 已删除：${name}`);
-        events_1.onDidChangeEmbeddedConfig.fire();
+        events_1.onDidChangeArduFluxConfig.fire();
     }
     async exportProfiles() {
         const target = await vscode.window.showSaveDialog({
@@ -328,7 +328,7 @@ class ConfigEditorController {
         await this.store.importProfiles(selected[0].fsPath, mergeChoice.merge);
         await this.store.save();
         await this.syncView("Profiles 已导入");
-        events_1.onDidChangeEmbeddedConfig.fire();
+        events_1.onDidChangeArduFluxConfig.fire();
     }
     async openMonitor() {
         const config = this.store.getData();

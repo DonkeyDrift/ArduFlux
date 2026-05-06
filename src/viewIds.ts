@@ -1,1 +1,1 @@
-export const EMBEDDED_BOARD_CONFIG_EDITOR_VIEW_ID = "embeddedBoardConfig.editor";
+export const ARDUFLUX_EDITOR_VIEW_ID = "arduflux.editor";

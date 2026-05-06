@@ -12,25 +12,25 @@ export interface SerialPortInfo {
   type: string;
 }
 
-export interface EmbeddedBoardState {
+export interface ArduFluxBoardState {
   name: string;
   fqbn: string;
   compileArgs: string[];
   pinDefines: Record<string, unknown>;
 }
 
-export interface EmbeddedPortState {
+export interface ArduFluxPortState {
   address: string;
   auto: boolean;
   lastSuccessfulAddress: string;
 }
 
-export interface EmbeddedBuildState {
+export interface ArduFluxBuildState {
   outputDir: string;
   recentOutputDirs: string[];
 }
 
-export interface EmbeddedMonitorState {
+export interface ArduFluxMonitorState {
   enabled: boolean;
   baudRate: number;
   dataBits: number;
@@ -39,17 +39,17 @@ export interface EmbeddedMonitorState {
   newline: string;
 }
 
-export interface EmbeddedCurrentConfig {
-  board: EmbeddedBoardState;
-  port: EmbeddedPortState;
-  build: EmbeddedBuildState;
-  monitor: EmbeddedMonitorState;
+export interface ArduFluxCurrentConfig {
+  board: ArduFluxBoardState;
+  port: ArduFluxPortState;
+  build: ArduFluxBuildState;
+  monitor: ArduFluxMonitorState;
 }
 
-export interface EmbeddedBoardConfig {
+export interface ArduFluxConfig {
   schemaVersion: number;
-  current: EmbeddedCurrentConfig;
-  profiles: Record<string, Partial<EmbeddedCurrentConfig>>;
+  current: ArduFluxCurrentConfig;
+  profiles: Record<string, Partial<ArduFluxCurrentConfig>>;
 }
 
 export interface ValidationErrorLike {
@@ -57,7 +57,7 @@ export interface ValidationErrorLike {
   suggestion?: string;
 }
 
-export const CONFIG_FILE_NAME = "embedded_board_config.json";
+export const CONFIG_FILE_NAME = "ArduFlux.json";
 
 export const DEFAULT_BOARD_CATALOG: BoardCatalogItem[] = [
   {
@@ -94,7 +94,7 @@ export const DEFAULT_BOARD_CATALOG: BoardCatalogItem[] = [
   }
 ];
 
-export function createDefaultConfig(): EmbeddedBoardConfig {
+export function createDefaultConfig(): ArduFluxConfig {
   return {
     schemaVersion: 1,
     current: {
