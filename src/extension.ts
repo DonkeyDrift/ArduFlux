@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { ConfigStore, ValidationError, buildCompileArgs, buildUploadArgs } from "./configStore";
+import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, buildUploadArgs } from "./configStore";
 import { ConfigSidebarProvider } from "./configSidebar";
 import { EmbeddedBoardConfigPanel } from "./panel";
 import { onDidChangeEmbeddedConfig } from "./events";
@@ -50,6 +50,40 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("embeddedBoardConfig.refreshSidebar", async () => {
       sidebarProvider?.refresh();
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("embeddedBoardConfig.openMonitor", async () => {
+      try {
+        await withStore(async (store) => {
+          const config = store.getData().current;
+          if (!config.monitor.enabled) {
+            throw new ValidationError("监视器未启用", "请在面板中勾选「启用监视器」后再试");
+          }
+          const port = config.port.address.trim();
+          if (!port) {
+            throw new ValidationError("串口未选择", "请先选择串口端口");
+          }
+          const args = buildMonitorArgs({
+            port,
+            fqbn: config.board.fqbn.trim() || undefined,
+            baudRate: config.monitor.baudRate || undefined,
+            dataBits: config.monitor.dataBits || undefined,
+            stopBits: config.monitor.stopBits || undefined,
+            parity: config.monitor.parity || undefined
+          });
+          const cmd = [store.arduinoCliPath, ...args].join(" ");
+          const terminal = vscode.window.createTerminal({
+            name: `Serial Monitor (${port})`,
+            cwd: store.baseDir
+          });
+          terminal.sendText(cmd);
+          terminal.show();
+        });
+      } catch (error) {
+        void vscode.window.showErrorMessage(formatError(error));
+      }
     })
   );
 
@@ -198,11 +232,11 @@ export function activate(context: vscode.ExtensionContext): void {
   btnUpload.command = "embeddedBoardConfig.uploadSketchSilent";
   context.subscriptions.push(btnUpload);
 
-  const btnRefresh = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 97);
-  btnRefresh.text = "$(refresh)";
-  btnRefresh.tooltip = "刷新配置侧边栏";
-  btnRefresh.command = "embeddedBoardConfig.refreshSidebar";
-  context.subscriptions.push(btnRefresh);
+  const btnMonitor = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 97);
+  btnMonitor.text = "$(terminal)";
+  btnMonitor.tooltip = "打开串口监视器";
+  btnMonitor.command = "embeddedBoardConfig.openMonitor";
+  context.subscriptions.push(btnMonitor);
 
   const btnOpenPanel = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);
   btnOpenPanel.text = "$(circuit-board)";
@@ -248,7 +282,7 @@ export function activate(context: vscode.ExtensionContext): void {
       statusBarItem.show();
       btnCompile.show();
       btnUpload.show();
-      btnRefresh.show();
+      btnMonitor.show();
       btnOpenPanel.show();
     } catch {
       statusBarItem.text = "$(circuit-board) 嵌入式配置";
@@ -256,7 +290,7 @@ export function activate(context: vscode.ExtensionContext): void {
       statusBarItem.show();
       btnCompile.hide();
       btnUpload.hide();
-      btnRefresh.hide();
+      btnMonitor.hide();
       btnOpenPanel.hide();
     }
   }
