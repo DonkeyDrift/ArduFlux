@@ -1,0 +1,141 @@
+{
+  "name": "arduflux",
+  "displayName": "开发板配置",
+  "description": "Manage embedded board, serial port, build output, monitor and profiles from VS Code.",
+  "version": "0.3.1",
+  "publisher": "baoshan",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "activationEvents": [
+      "onCommand:arduflux.openPanel",
+      "onCommand:arduflux.validateConfig",
+      "onCommand:arduflux.openConfigFile",
+      "onCommand:arduflux.compileSketch",
+      "onCommand:arduflux.uploadSketch",
+      "onView:arduflux.editor"
+    ],
+    "commands": [
+      {
+        "command": "arduflux.openPanel",
+        "title": "开发板配置: 打开面板"
+      },
+      {
+        "command": "arduflux.validateConfig",
+        "title": "开发板配置: 校验当前配置"
+      },
+      {
+        "command": "arduflux.openConfigFile",
+        "title": "开发板配置: 打开配置文件"
+      },
+      {
+        "command": "arduflux.compileSketch",
+        "title": "开发板配置: 编译 Sketch"
+      },
+      {
+        "command": "arduflux.uploadSketch",
+        "title": "开发板配置: 上传 Sketch"
+      },
+      {
+        "command": "arduflux.refreshSidebar",
+        "title": "开发板配置: 刷新侧边栏",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "arduflux.runUploadScript",
+        "title": "开发板配置: 完整编译+上传+监视（脚本）"
+      },
+      {
+        "command": "arduflux.compileOnly",
+        "title": "开发板配置: 仅编译（脚本）"
+      },
+      {
+        "command": "arduflux.uploadOnly",
+        "title": "开发板配置: 仅上传+监视（脚本）"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "arduflux",
+          "title": "开发板配置",
+          "icon": "$(circuit-board)"
+        }
+      ]
+    },
+    "views": {
+      "arduflux": [
+        {
+          "id": "arduflux.editor",
+          "type": "webview",
+          "name": "配置编辑器"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "arduflux.refreshSidebar",
+          "when": "view == arduflux.editor",
+          "group": "navigation@1"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "arduflux.openPanel",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "arduflux.validateConfig",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "arduflux.compileSketch",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "arduflux.uploadSketch",
+        "key": "ctrl+shift+u",
+        "mac": "cmd+shift+u",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package --allow-missing-repository",
+    "test": "npm run compile && mocha \"dist/test/**/*.test.js\"",
+    "test:watch": "tsc -w -p ./ & mocha --watch \"dist/test/**/*.test.js\"",
+    "install:vsix": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1",
+    "install:vsix:trae": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1 -Ide trae",
+    "install:vsix:code": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1 -Ide code"
+  },
+  "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^24.9.2",
+    "@types/sinon": "^21.0.1",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.6.2",
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "sinon": "^21.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

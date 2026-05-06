@@ -1,0 +1,21 @@
+测试环境
+- OS: Windows
+- Python: 3.12.10
+
+执行命令
+python -m unittest discover -s tests -v
+
+结果
+test_load_default_when_missing (test_config.ConfigTests.test_load_default_when_missing) ... ok
+test_normalize_path_relative (test_config.ConfigTests.test_normalize_path_relative) ... ok
+test_profile_export_import (test_config.ConfigTests.test_profile_export_import) ... ok
+test_profile_save_apply_roundtrip (test_config.ConfigTests.test_profile_save_apply_roundtrip) ... ok
+test_set_output_dir_keeps_recent_5 (test_config.ConfigTests.test_set_output_dir_keeps_recent_5) ... ok
+test_validate_fqbn (test_config.ConfigTests.test_validate_fqbn) ... ok
+test_list_ports_json_format (test_config.PortsTests.test_list_ports_json_format) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.060s
+
+OK
+
