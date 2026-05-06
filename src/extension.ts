@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, buildUploadArgs } from "./configStore";
-import { ConfigSidebarProvider } from "./configSidebar";
+import { EmbeddedBoardConfigEditorProvider } from "./editorView";
 import { EmbeddedBoardConfigPanel } from "./panel";
 import { onDidChangeEmbeddedConfig } from "./events";
 import { runInTerminal } from "./terminal";
@@ -29,27 +29,27 @@ async function withStore<T>(run: (store: ConfigStore) => Promise<T>): Promise<T>
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  // 注册侧边栏 TreeDataProvider
-  let sidebarProvider: ConfigSidebarProvider | undefined;
+  const outputChannel = vscode.window.createOutputChannel("Embedded Board Config");
+  context.subscriptions.push(outputChannel);
+  outputChannel.appendLine("[activate] Extension activating...");
+
+  // 注册侧边栏 WebviewViewProvider
+  const editorProvider = new EmbeddedBoardConfigEditorProvider(context);
   try {
-    const root = getWorkspaceRoot();
-    const store = new ConfigStore(root);
-    sidebarProvider = new ConfigSidebarProvider(store);
     context.subscriptions.push(
-      vscode.window.registerTreeDataProvider("embeddedBoardConfig.sidebar", sidebarProvider)
-    );
-    context.subscriptions.push(
-      onDidChangeEmbeddedConfig.event(() => {
-        sidebarProvider?.refresh();
+      vscode.window.registerWebviewViewProvider("embeddedBoardConfig.sidebar", editorProvider, {
+        webviewOptions: { retainContextWhenHidden: true }
       })
     );
-  } catch {
-    // 无工作区时不注册侧边栏
+    outputChannel.appendLine("[activate] WebviewViewProvider registered successfully");
+  } catch (err) {
+    outputChannel.appendLine(`[activate] FAILED to register WebviewViewProvider: ${err}`);
+    void vscode.window.showErrorMessage(`Embedded Board Config: WebviewView 注册失败: ${err}`);
   }
 
   context.subscriptions.push(
     vscode.commands.registerCommand("embeddedBoardConfig.refreshSidebar", async () => {
-      sidebarProvider?.refresh();
+      await editorProvider.controller?.syncView();
     })
   );
 
@@ -90,11 +90,12 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("embeddedBoardConfig.openPanel", async () => {
       try {
+        await vscode.commands.executeCommand("embeddedBoardConfig.sidebar.focus");
+      } catch {
+        // fallback: open floating panel
         await withStore(async (store) => {
           await EmbeddedBoardConfigPanel.createOrShow(context, store);
         });
-      } catch (error) {
-        void vscode.window.showErrorMessage(formatError(error));
       }
     })
   );
@@ -129,13 +130,8 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("embeddedBoardConfig.compileSketch", async () => {
       try {
-        await withStore(async (store) => {
-          await EmbeddedBoardConfigPanel.createOrShow(context, store);
-          const panel = EmbeddedBoardConfigPanel.currentPanel;
-          if (panel) {
-            await panel.compileSketch();
-          }
-        });
+        await vscode.commands.executeCommand("embeddedBoardConfig.sidebar.focus");
+        await vscode.commands.executeCommand("embeddedBoardConfig.compileSketchSilent");
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));
       }
@@ -145,13 +141,8 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("embeddedBoardConfig.uploadSketch", async () => {
       try {
-        await withStore(async (store) => {
-          await EmbeddedBoardConfigPanel.createOrShow(context, store);
-          const panel = EmbeddedBoardConfigPanel.currentPanel;
-          if (panel) {
-            await panel.uploadSketch();
-          }
-        });
+        await vscode.commands.executeCommand("embeddedBoardConfig.sidebar.focus");
+        await vscode.commands.executeCommand("embeddedBoardConfig.uploadSketchSilent");
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));
       }
@@ -238,14 +229,8 @@ export function activate(context: vscode.ExtensionContext): void {
   btnMonitor.command = "embeddedBoardConfig.openMonitor";
   context.subscriptions.push(btnMonitor);
 
-  const btnOpenPanel = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);
-  btnOpenPanel.text = "$(circuit-board)";
-  btnOpenPanel.tooltip = "打开 Embedded Board Config 面板";
-  btnOpenPanel.command = "embeddedBoardConfig.openPanel";
-  context.subscriptions.push(btnOpenPanel);
-
   // 动态状态栏（正在编译/上传等）
-  const statusAction = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 95);
+  const statusAction = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);
   context.subscriptions.push(statusAction);
 
   const spinnerChars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
@@ -283,7 +268,6 @@ export function activate(context: vscode.ExtensionContext): void {
       btnCompile.show();
       btnUpload.show();
       btnMonitor.show();
-      btnOpenPanel.show();
     } catch {
       statusBarItem.text = "$(circuit-board) 嵌入式配置";
       statusBarItem.tooltip = "点击打开 Embedded Board Config 面板";
@@ -291,7 +275,6 @@ export function activate(context: vscode.ExtensionContext): void {
       btnCompile.hide();
       btnUpload.hide();
       btnMonitor.hide();
-      btnOpenPanel.hide();
     }
   }
 
