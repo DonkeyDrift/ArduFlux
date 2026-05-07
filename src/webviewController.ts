@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, buildUploadArgs, recommendSerialPort } from "./configStore";
 import { onDidChangeArduFluxConfig } from "./events";
-import { runInTerminal } from "./terminal";
+import { runInTerminal, runUploadScript } from "./terminal";
 import { BoardCatalogItem, DEFAULT_BOARD_CATALOG, ArduFluxConfig, ArduFluxCurrentConfig, SerialPortInfo } from "./types";
 
 export interface PanelStatePayload {
@@ -350,76 +350,31 @@ export class ConfigEditorController {
   }
 
   private async openMonitor(): Promise<void> {
-    const config = this.store.getData();
-    const current = config.current;
-
-    if (!current.monitor.enabled) {
-      throw new ValidationError("监视器未启用", "请在面板中勾选「启用监视器」后再试");
-    }
-
-    const port = current.port.address.trim();
-    if (!port) {
-      throw new ValidationError("串口未选择", "请先选择串口端口");
-    }
-
-    const args = buildMonitorArgs({
-      port,
-      fqbn: current.board.fqbn.trim() || undefined,
-      baudRate: current.monitor.baudRate || undefined,
-      dataBits: current.monitor.dataBits || undefined,
-      stopBits: current.monitor.stopBits || undefined,
-      parity: current.monitor.parity || undefined
-    });
-
-    const cmd = [this.store.arduinoCliPath, ...args].join(" ");
-    const terminal = vscode.window.createTerminal({
-      name: `Serial Monitor (${port})`,
-      cwd: this.store.baseDir
-    });
-    terminal.sendText(cmd);
-    terminal.show();
-    await this.syncView(`已打开串口监视器: ${port}`);
+    await runUploadScript(this.context.extensionPath, this.store.baseDir, { monitor: true });
+    await this.syncView("已打开串口监视器");
   }
 
   async compileSketch(): Promise<void> {
-    const config = this.store.getData().current;
-    this.store.validateBoard(config.board);
-    const args = buildCompileArgs({
-      fqbn: config.board.fqbn,
-      sketchPath: this.store.baseDir,
-      outputDir: config.build.outputDir || undefined,
-      extraArgs: config.board.compileArgs.length > 0 ? config.board.compileArgs : undefined
-    });
     await this.postMessage({ type: "compiling", active: true });
     try {
-      await runInTerminal(this.store.arduinoCliPath, this.store.baseDir, "Arduino Compile", args);
+      await runUploadScript(this.context.extensionPath, this.store.baseDir, { compile: true });
       await this.syncView("编译完成");
+      await this.postMessage({ type: "compiling", active: false });
     } catch (error) {
       await this.postMessage({ type: "compiling", active: false, error: formatError(error) });
       throw error;
-    } finally {
-      await this.postMessage({ type: "compiling", active: false });
     }
   }
 
   async uploadSketch(): Promise<void> {
-    const config = this.store.getData().current;
-    await this.store.validatePort(config.port);
-    this.store.validateBoard(config.board);
-    const args = buildUploadArgs({
-      port: config.port.address,
-      fqbn: config.board.fqbn,
-      sketchPath: this.store.baseDir
-    });
     await this.postMessage({ type: "uploading", active: true });
     try {
-      await runInTerminal(this.store.arduinoCliPath, this.store.baseDir, "Arduino Upload", args);
+      await runUploadScript(this.context.extensionPath, this.store.baseDir, { upload: true });
       await this.syncView("上传完成");
+      await this.postMessage({ type: "uploading", active: false });
     } catch (error) {
       await this.postMessage({ type: "uploading", active: false, error: formatError(error) });
       throw error;
-    } finally {
-      await this.postMessage({ type: "uploading", active: false });
     }
   }
 
@@ -498,6 +453,20 @@ export class ConfigEditorController {
     .muted {
       opacity: 0.85;
     }
+    .advanced-item {
+      display: none;
+    }
+    body.show-advanced .advanced-item {
+      display: block;
+    }
+    body.show-advanced .advanced-item.grid,
+    body.show-advanced .grid.advanced-item {
+      display: grid;
+    }
+    body.show-advanced .advanced-item.row,
+    body.show-advanced .row.advanced-item {
+      display: flex;
+    }
   </style>
 </head>
 <body>
@@ -509,6 +478,10 @@ export class ConfigEditorController {
     <button id="openConfigButton" class="secondary">打开配置文件</button>
     <button id="openMonitorButton" class="secondary">打开串口监视器</button>
     <span id="status">就绪</span>
+    <label class="hint" style="margin-left:auto;cursor:pointer;display:flex;align-items:center;gap:4px">
+      <input id="showAdvanced" type="checkbox" style="width:auto" />
+      显示高级选项
+    </label>
   </div>
 
   <h2>板子型号</h2>
@@ -520,6 +493,8 @@ export class ConfigEditorController {
     <input id="boardName" />
     <label for="boardFqbn">FQBN</label>
     <input id="boardFqbn" />
+  </div>
+  <div class="grid advanced-item">
     <label for="boardCompileArgs">编译参数</label>
     <input id="boardCompileArgs" />
     <label for="boardPinDefines">引脚定义 JSON</label>
@@ -538,12 +513,14 @@ export class ConfigEditorController {
   </div>
   <div class="hint" id="recommendedPort">当前推荐端口：无</div>
 
-  <h2>编译输出</h2>
-  <div class="grid">
-    <label for="buildOutputDir">输出目录</label>
-    <input id="buildOutputDir" />
-    <label for="recentOutputDirs">最近路径</label>
-    <select id="recentOutputDirs"></select>
+  <div class="advanced-item">
+    <h2>编译输出</h2>
+    <div class="grid">
+      <label for="buildOutputDir">输出目录</label>
+      <input id="buildOutputDir" />
+      <label for="recentOutputDirs">最近路径</label>
+      <select id="recentOutputDirs"></select>
+    </div>
   </div>
 
   <h2>串口监视器</h2>
@@ -555,6 +532,8 @@ export class ConfigEditorController {
     </div>
     <label for="monitorBaudRate">波特率</label>
     <input id="monitorBaudRate" />
+  </div>
+  <div class="grid advanced-item">
     <label for="monitorDataBits">数据位</label>
     <input id="monitorDataBits" />
     <label for="monitorStopBits">停止位</label>
@@ -575,19 +554,21 @@ export class ConfigEditorController {
     </select>
   </div>
 
-  <h2>Profiles</h2>
-  <div class="row">
-    <select id="profileSelect"></select>
-    <button id="applyProfileButton" class="secondary">应用</button>
-    <button id="deleteProfileButton" class="secondary">删除</button>
-  </div>
-  <div class="row">
-    <input id="profileName" placeholder="输入新的 Profile 名称" />
-    <button id="saveProfileButton" class="secondary">保存当前为 Profile</button>
-  </div>
-  <div class="row">
-    <button id="exportProfilesButton" class="secondary">导出 Profiles</button>
-    <button id="importProfilesButton" class="secondary">导入 Profiles</button>
+  <div class="advanced-item">
+    <h2>Profiles</h2>
+    <div class="row">
+      <select id="profileSelect"></select>
+      <button id="applyProfileButton" class="secondary">应用</button>
+      <button id="deleteProfileButton" class="secondary">删除</button>
+    </div>
+    <div class="row">
+      <input id="profileName" placeholder="输入新的 Profile 名称" />
+      <button id="saveProfileButton" class="secondary">保存当前为 Profile</button>
+    </div>
+    <div class="row">
+      <button id="exportProfilesButton" class="secondary">导出 Profiles</button>
+      <button id="importProfilesButton" class="secondary">导入 Profiles</button>
+    </div>
   </div>
 
   <script nonce="${nonce}">
@@ -800,6 +781,12 @@ export class ConfigEditorController {
       vscode.postMessage({ type: "import-profiles" });
     });
 
+    const showAdvancedEl = document.getElementById("showAdvanced");
+    showAdvancedEl.addEventListener("change", () => {
+      document.body.classList.toggle("show-advanced", showAdvancedEl.checked);
+      vscode.setState({ showAdvanced: showAdvancedEl.checked });
+    });
+
     window.addEventListener("message", (event) => {
       if (event.data?.type === "state" && event.data.payload) {
         state = event.data.payload;
@@ -844,6 +831,13 @@ export class ConfigEditorController {
     });
 
     render();
+
+    const savedUiState = vscode.getState();
+    if (savedUiState && savedUiState.showAdvanced) {
+      showAdvancedEl.checked = true;
+      document.body.classList.add("show-advanced");
+    }
+
     vscode.postMessage({ type: "webview-ready" });
   </script>
 </body>
