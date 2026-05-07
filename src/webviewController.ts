@@ -19,6 +19,7 @@ export interface FormPayload {
   portAddress: string;
   portAuto: boolean;
   buildOutputDir: string;
+  compileBeforeUpload?: boolean;
   monitorEnabled: boolean;
   monitorBaudRate: string;
   monitorDataBits: string;
@@ -73,7 +74,10 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
     },
     build: {
       outputDir: form.buildOutputDir.trim(),
-      recentOutputDirs: [...(baseConfig.current.build.recentOutputDirs ?? [])]
+      recentOutputDirs: [...(baseConfig.current.build.recentOutputDirs ?? [])],
+      compileBeforeUpload: form.compileBeforeUpload !== undefined
+        ? Boolean(form.compileBeforeUpload)
+        : Boolean(baseConfig.current.build.compileBeforeUpload)
     },
     monitor: {
       enabled: Boolean(form.monitorEnabled),
@@ -209,6 +213,9 @@ export class ConfigEditorController {
           return;
         case "open-monitor":
           await this.openMonitor();
+          return;
+        case "toggle-compile-link":
+          await this.toggleCompileLink();
           return;
         default:
           return;
@@ -354,6 +361,25 @@ export class ConfigEditorController {
     await this.syncView("已打开串口监视器");
   }
 
+  private async toggleCompileLink(): Promise<void> {
+    const config = this.store.getData();
+    const nextLinked = !config.current.build.compileBeforeUpload;
+    const nextConfig: ArduFluxConfig = {
+      ...config,
+      current: {
+        ...config.current,
+        build: {
+          ...config.current.build,
+          compileBeforeUpload: nextLinked
+        }
+      }
+    };
+    this.store.setData(nextConfig);
+    await this.store.save();
+    await this.postMessage({ type: "link-toggled", linked: nextLinked });
+    onDidChangeArduFluxConfig.fire();
+  }
+
   async compileSketch(): Promise<void> {
     await this.postMessage({ type: "compiling", active: true });
     try {
@@ -447,6 +473,17 @@ export class ConfigEditorController {
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
     }
+    button#linkButton {
+      padding: 6px 8px;
+      min-width: 32px;
+      font-size: 14px;
+    }
+    button#linkButton.linked {
+      color: var(--vscode-debugIcon-startForeground, #89d185);
+    }
+    button#linkButton.unlinked {
+      color: var(--vscode-descriptionForeground);
+    }
     .hint, #status {
       color: var(--vscode-descriptionForeground);
     }
@@ -471,14 +508,14 @@ export class ConfigEditorController {
 </head>
 <body>
   <div class="toolbar">
-    <button id="saveButton">保存全部</button>
     <button id="compileButton" class="secondary">编译</button>
+    <button id="linkButton" class="secondary unlinked" title="点击切换：上传前是否先编译">✂</button>
     <button id="uploadButton">上传</button>
-    <button id="refreshPortsButton" class="secondary">刷新串口列表</button>
-    <button id="openConfigButton" class="secondary">打开配置文件</button>
-    <button id="openMonitorButton" class="secondary">打开串口监视器</button>
+    <button id="openMonitorButton" class="secondary">串口监视</button>
     <span id="status">就绪</span>
-    <label class="hint" style="margin-left:auto;cursor:pointer;display:flex;align-items:center;gap:4px">
+  </div>
+  <div class="toolbar" style="margin-top:0;justify-content:flex-end">
+    <label class="hint" style="cursor:pointer;display:flex;align-items:center;gap:4px">
       <input id="showAdvanced" type="checkbox" style="width:auto" />
       显示高级选项
     </label>
@@ -502,6 +539,9 @@ export class ConfigEditorController {
   </div>
 
   <h2>串口</h2>
+  <div class="row" style="margin-bottom:8px">
+    <button id="refreshPortsButton" class="secondary">刷新串口列表</button>
+  </div>
   <div class="grid">
     <label for="portAddress">端口</label>
     <select id="portAddress"></select>
@@ -571,6 +611,13 @@ export class ConfigEditorController {
     </div>
   </div>
 
+  <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--vscode-panel-border)">
+    <div class="toolbar">
+      <button id="saveButton">保存全部</button>
+      <button id="openConfigButton" class="secondary">打开配置文件</button>
+    </div>
+  </div>
+
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     let state = ${initialState};
@@ -582,6 +629,9 @@ export class ConfigEditorController {
       "monitorNewline", "profileSelect", "profileName", "status", "recommendedPort"
     ];
     const el = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
+
+    const LINK_SVG_CONNECTED = '<svg width="20" height="10" viewBox="0 0 20 10" style="vertical-align:middle;display:block"><circle cx="4" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="7" y1="5" x2="13" y2="5" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
+    const LINK_SVG_DISCONNECTED = '<svg width="20" height="10" viewBox="0 0 20 10" style="vertical-align:middle;display:block"><circle cx="4" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
 
     const spinnerChars = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
     let spinnerInterval = null;
@@ -697,6 +747,19 @@ export class ConfigEditorController {
         el.profileSelect.value,
         false
       );
+
+      const linkBtn = document.getElementById("linkButton");
+      if (current.build.compileBeforeUpload) {
+        linkBtn.innerHTML = LINK_SVG_CONNECTED;
+        linkBtn.classList.remove("unlinked");
+        linkBtn.classList.add("linked");
+        linkBtn.title = "已联通：上传前自动编译（点击断开）";
+      } else {
+        linkBtn.innerHTML = LINK_SVG_DISCONNECTED;
+        linkBtn.classList.remove("linked");
+        linkBtn.classList.add("unlinked");
+        linkBtn.title = "已断开：直接上传，不自动编译（点击联通）";
+      }
     }
 
     function collectForm() {
@@ -708,6 +771,7 @@ export class ConfigEditorController {
         portAddress: el.portAddress.value,
         portAuto: el.portAuto.checked,
         buildOutputDir: el.buildOutputDir.value,
+        compileBeforeUpload: document.getElementById("linkButton").classList.contains("linked"),
         monitorEnabled: el.monitorEnabled.checked,
         monitorBaudRate: el.monitorBaudRate.value,
         monitorDataBits: el.monitorDataBits.value,
@@ -746,6 +810,9 @@ export class ConfigEditorController {
     });
     document.getElementById("compileButton").addEventListener("click", () => {
       vscode.postMessage({ type: "compile-sketch" });
+    });
+    document.getElementById("linkButton").addEventListener("click", () => {
+      vscode.postMessage({ type: "toggle-compile-link" });
     });
     document.getElementById("uploadButton").addEventListener("click", () => {
       vscode.postMessage({ type: "upload-sketch" });
@@ -826,6 +893,20 @@ export class ConfigEditorController {
         } else {
           stopSpinner();
           setStatus(event.data.error || "校验通过");
+        }
+      }
+      if (event.data?.type === "link-toggled") {
+        const linkBtn = document.getElementById("linkButton");
+        if (event.data.linked) {
+          linkBtn.innerHTML = LINK_SVG_CONNECTED;
+          linkBtn.classList.remove("unlinked");
+          linkBtn.classList.add("linked");
+          linkBtn.title = "已联通：上传前自动编译（点击断开）";
+        } else {
+          linkBtn.innerHTML = LINK_SVG_DISCONNECTED;
+          linkBtn.classList.remove("linked");
+          linkBtn.classList.add("unlinked");
+          linkBtn.title = "已断开：直接上传，不自动编译（点击联通）";
         }
       }
     });

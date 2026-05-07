@@ -42,6 +42,7 @@ $defaultConfig = @{
     LastSuccessfulPort = ""
     OutputDir = ""
     RecentOutputDirs = @()
+    CompileBeforeUpload = $false
     MonitorEnabled = $true
     BaudRate = 115200
     DataBits = 8
@@ -74,6 +75,7 @@ if (Test-Path $embeddedConfigFile) {
     if ($cur.build) {
         if ($cur.build.outputDir) { $config.OutputDir = [string]$cur.build.outputDir }
         if ($cur.build.recentOutputDirs) { $config.RecentOutputDirs = @($cur.build.recentOutputDirs) }
+        if ($null -ne $cur.build.compileBeforeUpload) { $config.CompileBeforeUpload = [bool]$cur.build.compileBeforeUpload }
     }
     if ($cur.monitor) {
         if ($null -ne $cur.monitor.enabled) { $config.MonitorEnabled = [bool]$cur.monitor.enabled }
@@ -99,6 +101,12 @@ if (Test-Path $embeddedConfigFile) {
     Write-Host "Using default config"
 }
 
+# 链节联动：上传时自动编译（必须在配置加载后执行）
+if ($u -and (-not $c) -and $config.CompileBeforeUpload) {
+    $doCompile = $true
+    Write-Host "Compile-before-upload link is ENABLED — compiling first"
+}
+
 function Save-Config {
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
@@ -112,7 +120,7 @@ function Save-Config {
                     auto = [bool]$config.PortAuto
                     lastSuccessfulAddress = $config.LastSuccessfulPort
                 }
-                build = @{ outputDir = $config.OutputDir; recentOutputDirs = @($config.RecentOutputDirs) }
+                build = @{ outputDir = $config.OutputDir; recentOutputDirs = @($config.RecentOutputDirs); compileBeforeUpload = [bool]$config.CompileBeforeUpload }
                 monitor = @{
                     enabled = [bool]$config.MonitorEnabled
                     baudRate = [int]$config.BaudRate
