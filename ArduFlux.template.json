@@ -23,7 +23,8 @@
       "outputDir": "build",
       "recentOutputDirs": [
         "build"
-      ]
+      ],
+      "compileBeforeUpload": false
     },
     "monitor": {
       "enabled": true,
