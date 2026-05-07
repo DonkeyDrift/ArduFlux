@@ -504,9 +504,12 @@ export class ConfigEditorController {
       color: var(--vscode-button-secondaryForeground);
     }
     button#linkButton, button#linkButton2 {
-      padding: 6px 8px;
+      padding: 4px 12px;
       min-width: 32px;
       font-size: 14px;
+      border-radius: 999px;
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
     }
     button#linkButton.linked, button#linkButton2.linked {
       color: var(--vscode-debugIcon-startForeground, #89d185);
