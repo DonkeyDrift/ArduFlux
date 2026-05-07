@@ -364,8 +364,8 @@ export class ConfigEditorController {
   }
 
   private async openMonitor(): Promise<void> {
-    await runUploadScript(this.context.extensionPath, this.store.baseDir, { monitor: true });
     await this.syncView("已打开串口监视器");
+    await runUploadScript(this.context.extensionPath, this.store.baseDir, { monitor: true });
   }
 
   private async toggleCompileLink(): Promise<void> {
@@ -543,10 +543,10 @@ export class ConfigEditorController {
     <button id="uploadButton">上传</button>
     <button id="linkButton2" class="secondary unlinked" title="点击切换：上传后是否打开串口监视器">✂</button>
     <button id="openMonitorButton" class="secondary">串口监视</button>
-    <span id="status">就绪</span>
   </div>
-  <div class="toolbar" style="margin-top:0;justify-content:flex-end">
-    <label class="hint" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+  <div class="toolbar" style="margin-top:0">
+    <span id="status">就绪</span>
+    <label class="hint" style="cursor:pointer;display:flex;align-items:center;gap:4px;margin-left:auto">
       <input id="showAdvanced" type="checkbox" style="width:auto" />
       显示高级选项
     </label>

@@ -11,7 +11,7 @@
                                   "recentOutputDirs":  [
 
                                                        ],
-                                  "compileBeforeUpload":  true
+                                  "compileBeforeUpload":  false
                               },
                     "monitor":  {
                                     "dataBits":  8,
