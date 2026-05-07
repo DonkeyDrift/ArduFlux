@@ -494,28 +494,59 @@ export class ConfigEditorController {
     }
     button {
       padding: 6px 12px;
-      border: 1px solid var(--vscode-button-border, transparent);
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
+      border: 1px solid transparent;
+      border-radius: 6px;
+      font-weight: 500;
       cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    button:not(.secondary):not(.danger) {
+      background: #0891b2;
+      color: #ffffff;
+      border-color: rgba(6, 182, 212, 0.5);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.2);
+    }
+    button:not(.secondary):not(.danger):hover {
+      background: #0e7490;
     }
     button.secondary {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
+      background: #27272a;
+      color: #f4f4f5;
+      border-color: #3f3f46;
+    }
+    button.secondary:hover {
+      background: #3f3f46;
+    }
+    button.secondary:active {
+      background: #18181b;
+    }
+    button.danger {
+      background: #dc2626;
+      color: #ffffff;
+      border-color: rgba(239, 68, 68, 0.5);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 2px rgba(0,0,0,0.2);
+    }
+    button.danger:hover {
+      background: #b91c1c;
     }
     button#linkButton, button#linkButton2 {
-      padding: 4px 12px;
+      padding: 4px 10px;
       min-width: 32px;
       font-size: 14px;
-      border-radius: 999px;
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
     }
     button#linkButton.linked, button#linkButton2.linked {
-      color: var(--vscode-debugIcon-startForeground, #89d185);
+      color: #89d185;
     }
     button#linkButton.unlinked, button#linkButton2.unlinked {
-      color: var(--vscode-descriptionForeground);
+      color: #a1a1aa;
     }
     .hint, #status {
       color: var(--vscode-descriptionForeground);
@@ -633,7 +664,7 @@ export class ConfigEditorController {
     <div class="row">
       <select id="profileSelect"></select>
       <button id="applyProfileButton" class="secondary">应用</button>
-      <button id="deleteProfileButton" class="secondary">删除</button>
+      <button id="deleteProfileButton" class="danger">删除</button>
     </div>
     <div class="row">
       <input id="profileName" placeholder="输入新的 Profile 名称" />
