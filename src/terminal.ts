@@ -1,7 +1,15 @@
-import { spawn } from "child_process";
+import { spawn, exec } from "child_process";
 import * as path from "path";
 import * as vscode from "vscode";
 import { ValidationError } from "./configStore";
+
+function killProcessTree(pid: number): void {
+  try {
+    exec(`taskkill /T /F /PID ${pid}`, () => {});
+  } catch {
+    // ignore
+  }
+}
 
 export function runInTerminal(
   arduinoCliPath: string,
@@ -51,6 +59,20 @@ export function runInTerminal(
       close: () => {
         if (proc && !proc.killed) {
           proc.kill();
+          if (typeof proc.pid === "number") {
+            killProcessTree(proc.pid);
+          }
+        }
+      },
+      handleInput: (data: string) => {
+        if (data === "\u0003" && proc && !proc.killed) {
+          proc.stdin?.write(data);
+          proc.kill();
+          if (typeof proc.pid === "number") {
+            killProcessTree(proc.pid);
+          }
+        } else if (proc && proc.stdin) {
+          proc.stdin.write(data);
         }
       }
     };
@@ -120,6 +142,20 @@ export function runUploadScript(
       close: () => {
         if (proc && !proc.killed) {
           proc.kill();
+          if (typeof proc.pid === "number") {
+            killProcessTree(proc.pid);
+          }
+        }
+      },
+      handleInput: (data: string) => {
+        if (data === "\u0003" && proc && !proc.killed) {
+          proc.stdin?.write(data);
+          proc.kill();
+          if (typeof proc.pid === "number") {
+            killProcessTree(proc.pid);
+          }
+        } else if (proc && proc.stdin) {
+          proc.stdin.write(data);
         }
       }
     };

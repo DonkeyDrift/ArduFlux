@@ -158,12 +158,16 @@ export function activate(context: vscode.ExtensionContext): void {
         const store = new ConfigStore(root);
         await store.load();
         const compileBeforeUpload = store.getData().current.build.compileBeforeUpload ?? false;
+        const uploadThenMonitor = store.getData().current.build.uploadThenMonitor ?? false;
         startStatusSpinner(compileBeforeUpload ? "正在编译并上传" : "正在上传");
         try {
           await runUploadScript(context.extensionPath, root, { compile: compileBeforeUpload, upload: true });
           void vscode.window.showInformationMessage(compileBeforeUpload ? "编译并上传完成" : "上传完成");
         } finally {
           stopStatusSpinner();
+        }
+        if (uploadThenMonitor) {
+          await vscode.commands.executeCommand("arduflux.openMonitor");
         }
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));

@@ -43,6 +43,7 @@ $defaultConfig = @{
     OutputDir = ""
     RecentOutputDirs = @()
     CompileBeforeUpload = $false
+    UploadThenMonitor = $false
     MonitorEnabled = $true
     BaudRate = 115200
     DataBits = 8
@@ -76,6 +77,7 @@ if (Test-Path $embeddedConfigFile) {
         if ($cur.build.outputDir) { $config.OutputDir = [string]$cur.build.outputDir }
         if ($cur.build.recentOutputDirs) { $config.RecentOutputDirs = @($cur.build.recentOutputDirs) }
         if ($null -ne $cur.build.compileBeforeUpload) { $config.CompileBeforeUpload = [bool]$cur.build.compileBeforeUpload }
+        if ($null -ne $cur.build.uploadThenMonitor) { $config.UploadThenMonitor = [bool]$cur.build.uploadThenMonitor }
     }
     if ($cur.monitor) {
         if ($null -ne $cur.monitor.enabled) { $config.MonitorEnabled = [bool]$cur.monitor.enabled }
@@ -120,7 +122,7 @@ function Save-Config {
                     auto = [bool]$config.PortAuto
                     lastSuccessfulAddress = $config.LastSuccessfulPort
                 }
-                build = @{ outputDir = $config.OutputDir; recentOutputDirs = @($config.RecentOutputDirs); compileBeforeUpload = [bool]$config.CompileBeforeUpload }
+                build = @{ outputDir = $config.OutputDir; recentOutputDirs = @($config.RecentOutputDirs); compileBeforeUpload = [bool]$config.CompileBeforeUpload; uploadThenMonitor = [bool]$config.UploadThenMonitor }
                 monitor = @{
                     enabled = [bool]$config.MonitorEnabled
                     baudRate = [int]$config.BaudRate

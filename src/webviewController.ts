@@ -20,6 +20,7 @@ export interface FormPayload {
   portAuto: boolean;
   buildOutputDir: string;
   compileBeforeUpload?: boolean;
+  uploadThenMonitor?: boolean;
   monitorEnabled: boolean;
   monitorBaudRate: string;
   monitorDataBits: string;
@@ -77,7 +78,10 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
       recentOutputDirs: [...(baseConfig.current.build.recentOutputDirs ?? [])],
       compileBeforeUpload: form.compileBeforeUpload !== undefined
         ? Boolean(form.compileBeforeUpload)
-        : Boolean(baseConfig.current.build.compileBeforeUpload)
+        : Boolean(baseConfig.current.build.compileBeforeUpload),
+      uploadThenMonitor: form.uploadThenMonitor !== undefined
+        ? Boolean(form.uploadThenMonitor)
+        : Boolean(baseConfig.current.build.uploadThenMonitor)
     },
     monitor: {
       enabled: Boolean(form.monitorEnabled),
@@ -216,6 +220,9 @@ export class ConfigEditorController {
           return;
         case "toggle-compile-link":
           await this.toggleCompileLink();
+          return;
+        case "toggle-monitor-link":
+          await this.toggleMonitorLink();
           return;
         default:
           return;
@@ -380,6 +387,25 @@ export class ConfigEditorController {
     onDidChangeArduFluxConfig.fire();
   }
 
+  private async toggleMonitorLink(): Promise<void> {
+    const config = this.store.getData();
+    const nextLinked = !config.current.build.uploadThenMonitor;
+    const nextConfig: ArduFluxConfig = {
+      ...config,
+      current: {
+        ...config.current,
+        build: {
+          ...config.current.build,
+          uploadThenMonitor: nextLinked
+        }
+      }
+    };
+    this.store.setData(nextConfig);
+    await this.store.save();
+    await this.postMessage({ type: "monitor-link-toggled", linked: nextLinked });
+    onDidChangeArduFluxConfig.fire();
+  }
+
   async compileSketch(): Promise<void> {
     await this.postMessage({ type: "compiling", active: true });
     try {
@@ -396,8 +422,12 @@ export class ConfigEditorController {
     await this.postMessage({ type: "uploading", active: true });
     try {
       await runUploadScript(this.context.extensionPath, this.store.baseDir, { upload: true });
-      await this.syncView("上传完成");
       await this.postMessage({ type: "uploading", active: false });
+      await this.syncView("上传完成");
+      const uploadThenMonitor = this.store.getData().current.build.uploadThenMonitor ?? false;
+      if (uploadThenMonitor) {
+        await this.openMonitor();
+      }
     } catch (error) {
       await this.postMessage({ type: "uploading", active: false, error: formatError(error) });
       throw error;
@@ -473,15 +503,15 @@ export class ConfigEditorController {
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
     }
-    button#linkButton {
+    button#linkButton, button#linkButton2 {
       padding: 6px 8px;
       min-width: 32px;
       font-size: 14px;
     }
-    button#linkButton.linked {
+    button#linkButton.linked, button#linkButton2.linked {
       color: var(--vscode-debugIcon-startForeground, #89d185);
     }
-    button#linkButton.unlinked {
+    button#linkButton.unlinked, button#linkButton2.unlinked {
       color: var(--vscode-descriptionForeground);
     }
     .hint, #status {
@@ -511,6 +541,7 @@ export class ConfigEditorController {
     <button id="compileButton" class="secondary">编译</button>
     <button id="linkButton" class="secondary unlinked" title="点击切换：上传前是否先编译">✂</button>
     <button id="uploadButton">上传</button>
+    <button id="linkButton2" class="secondary unlinked" title="点击切换：上传后是否打开串口监视器">✂</button>
     <button id="openMonitorButton" class="secondary">串口监视</button>
     <span id="status">就绪</span>
   </div>
@@ -760,6 +791,19 @@ export class ConfigEditorController {
         linkBtn.classList.add("unlinked");
         linkBtn.title = "已断开：直接上传，不自动编译（点击联通）";
       }
+
+      const linkBtn2 = document.getElementById("linkButton2");
+      if (current.build.uploadThenMonitor) {
+        linkBtn2.innerHTML = LINK_SVG_CONNECTED;
+        linkBtn2.classList.remove("unlinked");
+        linkBtn2.classList.add("linked");
+        linkBtn2.title = "已联通：上传后自动打开串口监视器（点击断开）";
+      } else {
+        linkBtn2.innerHTML = LINK_SVG_DISCONNECTED;
+        linkBtn2.classList.remove("linked");
+        linkBtn2.classList.add("unlinked");
+        linkBtn2.title = "已断开：上传后不自动打开串口监视器（点击联通）";
+      }
     }
 
     function collectForm() {
@@ -772,6 +816,7 @@ export class ConfigEditorController {
         portAuto: el.portAuto.checked,
         buildOutputDir: el.buildOutputDir.value,
         compileBeforeUpload: document.getElementById("linkButton").classList.contains("linked"),
+        uploadThenMonitor: document.getElementById("linkButton2").classList.contains("linked"),
         monitorEnabled: el.monitorEnabled.checked,
         monitorBaudRate: el.monitorBaudRate.value,
         monitorDataBits: el.monitorDataBits.value,
@@ -813,6 +858,9 @@ export class ConfigEditorController {
     });
     document.getElementById("linkButton").addEventListener("click", () => {
       vscode.postMessage({ type: "toggle-compile-link" });
+    });
+    document.getElementById("linkButton2").addEventListener("click", () => {
+      vscode.postMessage({ type: "toggle-monitor-link" });
     });
     document.getElementById("uploadButton").addEventListener("click", () => {
       vscode.postMessage({ type: "upload-sketch" });
@@ -907,6 +955,20 @@ export class ConfigEditorController {
           linkBtn.classList.remove("linked");
           linkBtn.classList.add("unlinked");
           linkBtn.title = "已断开：直接上传，不自动编译（点击联通）";
+        }
+      }
+      if (event.data?.type === "monitor-link-toggled") {
+        const linkBtn2 = document.getElementById("linkButton2");
+        if (event.data.linked) {
+          linkBtn2.innerHTML = LINK_SVG_CONNECTED;
+          linkBtn2.classList.remove("unlinked");
+          linkBtn2.classList.add("linked");
+          linkBtn2.title = "已联通：上传后自动打开串口监视器（点击断开）";
+        } else {
+          linkBtn2.innerHTML = LINK_SVG_DISCONNECTED;
+          linkBtn2.classList.remove("linked");
+          linkBtn2.classList.add("unlinked");
+          linkBtn2.title = "已断开：上传后不自动打开串口监视器（点击联通）";
         }
       }
     });
