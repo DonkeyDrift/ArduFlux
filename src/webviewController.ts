@@ -382,9 +382,9 @@ export class ConfigEditorController {
       }
     };
     this.store.setData(nextConfig);
-    await this.store.save();
     await this.postMessage({ type: "link-toggled", linked: nextLinked });
     onDidChangeArduFluxConfig.fire();
+    await this.store.save();
   }
 
   private async toggleMonitorLink(): Promise<void> {
@@ -401,12 +401,13 @@ export class ConfigEditorController {
       }
     };
     this.store.setData(nextConfig);
-    await this.store.save();
     await this.postMessage({ type: "monitor-link-toggled", linked: nextLinked });
     onDidChangeArduFluxConfig.fire();
+    await this.store.save();
   }
 
   async compileSketch(): Promise<void> {
+    await ConfigStore.waitForSave();
     await this.postMessage({ type: "compiling", active: true });
     try {
       await runUploadScript(this.context.extensionPath, this.store.baseDir, { compile: true });
@@ -419,6 +420,7 @@ export class ConfigEditorController {
   }
 
   async uploadSketch(): Promise<void> {
+    await ConfigStore.waitForSave();
     await this.postMessage({ type: "uploading", active: true });
     try {
       await runUploadScript(this.context.extensionPath, this.store.baseDir, { upload: true });
@@ -891,9 +893,33 @@ export class ConfigEditorController {
       vscode.postMessage({ type: "compile-sketch" });
     });
     document.getElementById("linkButton").addEventListener("click", () => {
+      const btn = document.getElementById("linkButton");
+      if (btn.classList.contains("linked")) {
+        btn.innerHTML = LINK_SVG_DISCONNECTED;
+        btn.classList.remove("linked");
+        btn.classList.add("unlinked");
+        btn.title = "已断开：直接上传，不自动编译（点击联通）";
+      } else {
+        btn.innerHTML = LINK_SVG_CONNECTED;
+        btn.classList.remove("unlinked");
+        btn.classList.add("linked");
+        btn.title = "已联通：上传前自动编译（点击断开）";
+      }
       vscode.postMessage({ type: "toggle-compile-link" });
     });
     document.getElementById("linkButton2").addEventListener("click", () => {
+      const btn = document.getElementById("linkButton2");
+      if (btn.classList.contains("linked")) {
+        btn.innerHTML = LINK_SVG_DISCONNECTED;
+        btn.classList.remove("linked");
+        btn.classList.add("unlinked");
+        btn.title = "已断开：上传后不自动打开串口监视器（点击联通）";
+      } else {
+        btn.innerHTML = LINK_SVG_CONNECTED;
+        btn.classList.remove("unlinked");
+        btn.classList.add("linked");
+        btn.title = "已联通：上传后自动打开串口监视器（点击断开）";
+      }
       vscode.postMessage({ type: "toggle-monitor-link" });
     });
     document.getElementById("uploadButton").addEventListener("click", () => {

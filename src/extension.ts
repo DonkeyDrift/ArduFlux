@@ -137,6 +137,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("arduflux.compileSketchSilent", async () => {
       try {
+        await ConfigStore.waitForSave();
         const root = getWorkspaceRoot();
         startStatusSpinner("正在编译");
         try {
@@ -154,6 +155,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("arduflux.uploadSketchSilent", async () => {
       try {
+        await ConfigStore.waitForSave();
         const root = getWorkspaceRoot();
         const store = new ConfigStore(root);
         await store.load();
