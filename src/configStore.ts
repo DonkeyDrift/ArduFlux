@@ -10,6 +10,8 @@ import {
   createDefaultConfig
 } from "./types";
 
+let saveLock: Promise<void> | null = null;
+
 export class ValidationError extends Error implements ValidationErrorLike {
   suggestion?: string;
 
@@ -375,7 +377,15 @@ export class ConfigStore {
   }
 
   async save(): Promise<void> {
-    await fs.writeFile(this.configPath, JSON.stringify(this.data, null, 2), "utf8");
+    const promise = fs.writeFile(this.configPath, JSON.stringify(this.data, null, 2), "utf8")
+      .then(() => { if (saveLock === promise) saveLock = null; })
+      .catch((e) => { if (saveLock === promise) saveLock = null; throw e; });
+    saveLock = promise;
+    await promise;
+  }
+
+  static async waitForSave(): Promise<void> {
+    if (saveLock) await saveLock;
   }
 
   getData(): ArduFluxConfig {
