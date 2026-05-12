@@ -612,7 +612,7 @@ export class ConfigEditorController {
   <div class="grid">
     <label for="portAddress">端口</label>
     <select id="portAddress"></select>
-    <div></div>
+    <div class="hint" id="recommendedPort">推荐：无</div>
     <div class="row" style="margin-bottom:0;gap:12px">
       <button id="refreshPortsButton" class="secondary">刷新串口</button>
       <label class="hint" style="cursor:pointer;display:flex;align-items:center;gap:4px">
@@ -621,7 +621,6 @@ export class ConfigEditorController {
       </label>
     </div>
   </div>
-  <div class="hint" id="recommendedPort">当前推荐端口：无</div>
 
   <div class="advanced-item">
     <h2>编译输出</h2>
@@ -793,7 +792,7 @@ export class ConfigEditorController {
         true
       );
       el.portAuto.checked = !!current.port.auto;
-      el.recommendedPort.textContent = "当前推荐端口：" + (state.recommendedPort || "无");
+      el.recommendedPort.textContent = "推荐：" + (state.recommendedPort || "无");
 
       el.buildOutputDir.value = current.build.outputDir || "";
       fillSelect(
