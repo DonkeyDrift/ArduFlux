@@ -1,4 +1,4 @@
-# AGENTS.md — ArduFlux
+<!-- AGENTS.md — ArduFlux -->
 
 > 本文件面向 AI 编码助手。阅读者应被假设为**完全不了解本项目**。
 
@@ -39,7 +39,7 @@
 ├── src/                          # VS Code 扩展 TypeScript 源码
 │   ├── extension.ts              # 扩展入口：注册命令、状态栏、输出通道、定时刷新
 │   ├── editorView.ts             # WebviewViewProvider：侧边栏 Webview 视图提供者
-│   ├── webviewController.ts      # Webview 控制器：HTML 生成、消息路由、配置/编译/上传/Profile 操作
+│   ├── webviewController.ts      # Webview 控制器：内联 HTML 生成、消息路由、配置/编译/上传/Profile 操作
 │   ├── panel.ts                  # 浮动 WebviewPanel（侧边栏不可用时作为 fallback）
 │   ├── configStore.ts            # 配置读写、校验、串口枚举、Profile 管理、参数构建
 │   ├── types.ts                  # 类型定义、默认配置、预置板型目录
@@ -121,21 +121,29 @@ npm run install:vsix:code   # 强制使用 VS Code
 
 ---
 
-## 测试命令
+## 测试策略与测试命令
 
 **TypeScript 单元测试：**
 ```bash
 npm test
 ```
 
-当前测试覆盖（`src/test/`）：
-- `configStore.store.test.ts`：ConfigStore 加载/保存、校验（board/monitor/build）、Profile 增删改查、导入导出
-- `configStore.compile.test.ts`：`buildCompileArgs` / `buildUploadArgs` 参数构建与边界校验
-- `configStore.feature.test.ts`：`buildMonitorArgs`、串口监视器参数、`execFileText` 执行
-- `configStore.logic.test.ts`：纯逻辑函数（`deepClone`、`dedupeKeepLatest`、`normalizePath`、`validateFqbn`、`isUsbPort`、`normalizeSerialAddress`、`mapJsonPortEntry`、`recommendSerialPort`）
-- `statusBar.test.ts`：状态栏文本格式化
-- `types.test.ts`：默认配置、预置板型目录常量
-- `webviewView.test.ts`：package.json 视图声明校验、扩展激活与 WebviewView 注册流程
+当前测试覆盖（`src/test/`）共 7 个文件：
+
+| 测试文件 | 覆盖内容 |
+|----------|----------|
+| `configStore.store.test.ts` | ConfigStore 加载/保存、校验（board/monitor/build）、Profile 增删改查、导入导出 |
+| `configStore.compile.test.ts` | `buildCompileArgs` / `buildUploadArgs` 参数构建与边界校验 |
+| `configStore.feature.test.ts` | `buildMonitorArgs`、串口监视器参数、`execFileText` 执行 |
+| `configStore.logic.test.ts` | 纯逻辑函数（`deepClone`、`dedupeKeepLatest`、`normalizePath`、`validateFqbn`、`isUsbPort`、`normalizeSerialAddress`、`mapJsonPortEntry`、`recommendSerialPort`） |
+| `statusBar.test.ts` | 状态栏文本格式化 |
+| `types.test.ts` | 默认配置、预置板型目录常量 |
+| `webviewView.test.ts` | package.json 视图声明校验、扩展激活与 WebviewView 注册流程（使用 fake VS Code 模块） |
+
+**测试原则：**
+- 所有纯逻辑（参数构造、路径拼接、校验）必须先写单元测试（红→绿）。
+- VS Code API 交互（Terminal、StatusBar、Webview）在单元测试通过后集成。
+- 快捷键为纯声明式配置，直接修改 `package.json`，无需代码测试。
 
 ---
 
@@ -146,7 +154,7 @@ npm test
 - 目标 `ES2020`，输出 `CommonJS`。
 - 源码放在 `src/`，编译输出到 `dist/`。
 - 错误处理使用自定义 `ValidationError`，携带 `message` 和可选的 `suggestion`（建议）。
-- Webview 使用内联 HTML（非外部文件），通过 `nonce` 设置 CSP。
+- Webview 使用**内联 HTML**（非外部文件），通过 `nonce` 设置 CSP。所有 HTML、CSS、JavaScript 均在 `src/webviewController.ts` 的 `getHtml()` 方法中生成。
 - 所有需要在命令面板中可见的 VS Code 命令，必须在 `package.json` 的 `contributes.commands` 中注册。
 - `arduino-cli` 命令通过 `terminal.ts` 的 Pseudoterminal 运行，设置 `shell: false`，避免注入。
 
@@ -202,8 +210,9 @@ npm test
 3. `src/scripts/upload.ps1`（PowerShell 解析逻辑）
 
 特别注意事项：
-- `schemaVersion` 用于配置迁移。新增版本时需在 `migrateConfig`（TS）中处理旧版本升级逻辑。
+- `schemaVersion` 用于配置迁移。新增版本时需在 `migrateConfig`（TS）和 PowerShell 侧同样处理旧版本升级逻辑。
 - `arduino-cli` 路径默认为 `arduino-cli`，PowerShell 侧同样如此。
+- upload.ps1 额外功能：自动解析 `.ino` 文件中的 `#include <...>` 并尝试通过 `arduino-cli lib install` 安装所需外部库（内置系统库已排除）。
 
 ---
 
@@ -237,3 +246,7 @@ npm test
 - 测试文件位于 `src/test/*.test.ts`。
 - 使用 Chai (`expect`) + Sinon（stub/mock）。
 - 运行方式：`npm test`。
+
+**启用/禁用 configSidebar TreeDataProvider**：
+- `src/configSidebar.ts` 已实现 `ConfigSidebarProvider`，但当前 `extension.ts` **未注册**该 Provider。
+- 如需启用，在 `extension.ts` 的 `activate()` 中调用 `vscode.window.registerTreeDataProvider()` 并传入 `ConfigSidebarProvider` 实例。
