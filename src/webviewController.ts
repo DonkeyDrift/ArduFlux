@@ -21,7 +21,6 @@ export interface FormPayload {
   buildOutputDir: string;
   compileBeforeUpload?: boolean;
   uploadThenMonitor?: boolean;
-  monitorEnabled: boolean;
   monitorBaudRate: string;
   monitorDataBits: string;
   monitorStopBits: string;
@@ -84,7 +83,7 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
         : Boolean(baseConfig.current.build.uploadThenMonitor)
     },
     monitor: {
-      enabled: Boolean(form.monitorEnabled),
+      enabled: true,
       baudRate: Number(form.monitorBaudRate || 0),
       dataBits: Number(form.monitorDataBits || 0),
       stopBits: Number(form.monitorStopBits || 0),
@@ -489,6 +488,10 @@ export class ConfigEditorController {
       border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
       padding: 6px 8px;
     }
+    select option {
+      background: var(--vscode-dropdown-background, var(--vscode-input-background));
+      color: var(--vscode-dropdown-foreground, var(--vscode-input-foreground));
+    }
     textarea {
       min-height: 120px;
       resize: vertical;
@@ -606,16 +609,16 @@ export class ConfigEditorController {
   </div>
 
   <h2>串口</h2>
-  <div class="row" style="margin-bottom:8px">
-    <button id="refreshPortsButton" class="secondary">刷新串口列表</button>
-  </div>
   <div class="grid">
     <label for="portAddress">端口</label>
     <select id="portAddress"></select>
-    <label for="portAuto">自动选择</label>
-    <div class="row">
-      <input id="portAuto" type="checkbox" style="width:auto" />
-      <span class="hint">优先 USB 端口</span>
+    <div></div>
+    <div class="row" style="margin-bottom:0;gap:12px">
+      <button id="refreshPortsButton" class="secondary">刷新串口</button>
+      <label class="hint" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+        <input id="portAuto" type="checkbox" style="width:auto" />
+        优先 USB 端口
+      </label>
     </div>
   </div>
   <div class="hint" id="recommendedPort">当前推荐端口：无</div>
@@ -630,15 +633,18 @@ export class ConfigEditorController {
     </div>
   </div>
 
-  <h2>串口监视器</h2>
   <div class="grid">
-    <label for="monitorEnabled">启用监视器</label>
-    <div class="row">
-      <input id="monitorEnabled" type="checkbox" style="width:auto" />
-      <span class="hint">上传后自动打开</span>
-    </div>
     <label for="monitorBaudRate">波特率</label>
-    <input id="monitorBaudRate" />
+    <select id="monitorBaudRate">
+      <option value="9600">9600</option>
+      <option value="19200">19200</option>
+      <option value="38400">38400</option>
+      <option value="57600">57600</option>
+      <option value="115200">115200</option>
+      <option value="230400">230400</option>
+      <option value="460800">460800</option>
+      <option value="921600">921600</option>
+    </select>
   </div>
   <div class="grid advanced-item">
     <label for="monitorDataBits">数据位</label>
@@ -681,7 +687,7 @@ export class ConfigEditorController {
   <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--vscode-panel-border)">
     <div class="toolbar">
       <button id="saveButton">保存全部</button>
-      <button id="openConfigButton" class="secondary">打开配置文件</button>
+      <button id="openConfigButton" class="secondary">打开配置</button>
     </div>
   </div>
 
@@ -691,7 +697,7 @@ export class ConfigEditorController {
 
     const ids = [
       "boardPreset", "boardName", "boardFqbn", "boardCompileArgs", "boardPinDefines",
-      "portAddress", "portAuto", "buildOutputDir", "recentOutputDirs", "monitorEnabled",
+      "portAddress", "portAuto", "buildOutputDir", "recentOutputDirs",
       "monitorBaudRate", "monitorDataBits", "monitorStopBits", "monitorParity",
       "monitorNewline", "profileSelect", "profileName", "status", "recommendedPort"
     ];
@@ -799,7 +805,6 @@ export class ConfigEditorController {
         true
       );
 
-      el.monitorEnabled.checked = !!current.monitor.enabled;
       el.monitorBaudRate.value = String(current.monitor.baudRate ?? 115200);
       el.monitorDataBits.value = String(current.monitor.dataBits ?? 8);
       el.monitorStopBits.value = String(current.monitor.stopBits ?? 1);
@@ -853,7 +858,6 @@ export class ConfigEditorController {
         buildOutputDir: el.buildOutputDir.value,
         compileBeforeUpload: document.getElementById("linkButton").classList.contains("linked"),
         uploadThenMonitor: document.getElementById("linkButton2").classList.contains("linked"),
-        monitorEnabled: el.monitorEnabled.checked,
         monitorBaudRate: el.monitorBaudRate.value,
         monitorDataBits: el.monitorDataBits.value,
         monitorStopBits: el.monitorStopBits.value,
