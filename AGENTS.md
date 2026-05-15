@@ -6,7 +6,7 @@
 
 ## 项目概述
 
-本项目是一个 **VS Code 扩展**（显示名称为「开发板配置」），用于管理嵌入式开发板配置。扩展直接读写工作区根目录下的 `ArduFlux.json`，管理内容包括：
+本项目是一个 **VS Code 扩展**（显示名称为「开发板配置」，扩展 ID 为 `baoshan.arduflux`，版本 `0.3.2`），用于管理嵌入式开发板配置。扩展直接读写工作区根目录下的 `ArduFlux.json`，管理内容包括：
 
 - 板子型号（名称、FQBN、编译参数、引脚定义）
 - 串口（枚举、自动选择、USB 优先）
@@ -30,6 +30,17 @@
 | 上传脚本 | PowerShell (`src/scripts/upload.ps1`)，依赖 `arduino-cli` |
 | 嵌入式固件 | Arduino C++ (`ArduFlux.ino`) |
 
+### TypeScript 编译配置
+
+`tsconfig.json` 关键选项：
+- `target`: `ES2020`
+- `module`: `CommonJS`
+- `outDir`: `dist`
+- `rootDir`: `src`
+- `strict`: `true`（严格模式，禁止隐式 `any`）
+- `sourceMap`: `true`
+- `types`: `["node", "vscode", "mocha", "chai"]`
+
 ---
 
 ## 项目结构
@@ -47,7 +58,7 @@
 │   ├── events.ts                 # 全局 EventEmitter：配置变更事件
 │   ├── terminal.ts               # Pseudoterminal 封装：在 VS Code 终端中运行 arduino-cli / PowerShell
 │   ├── statusBar.ts              # 状态栏文本格式化
-│   ├── viewIds.ts                # 视图 ID 常量
+│   ├── viewIds.ts                # 视图 ID 常量（ARDUFLUX_EDITOR_VIEW_ID = "arduflux.editor"）
 │   ├── scripts/                  # 项目级脚本
 │   │   └── upload.ps1            # PowerShell 上传脚本（读取 ArduFlux.json）
 │   └── test/                     # TypeScript 单元测试（Mocha/Chai/Sinon）
@@ -70,6 +81,20 @@
 ├── tsconfig.json                 # TypeScript 严格模式编译配置
 └── .vscodeignore                 # VSIX 打包排除规则
 ```
+
+### 源码模块职责详解
+
+| 文件 | 职责 |
+|------|------|
+| `extension.ts` | 扩展激活入口。注册所有命令、WebviewViewProvider、状态栏（含编译/上传/监视器快捷图标和动态 spinner）、定时刷新（5 秒间隔）。 |
+| `editorView.ts` | 实现 `vscode.WebviewViewProvider`，为侧边栏 `arduflux.editor` 视图提供 Webview。处理无工作区时的占位提示，以及视图显隐切换时的状态同步。 |
+| `webviewController.ts` | 核心控制器 `ConfigEditorController`。生成完整内联 HTML/CSS/JS（`getHtml`），处理前端 `postMessage`（save-config、compile-sketch、upload-sketch、refresh-ports、Profiles 操作等），调用 `terminal.ts` 执行实际任务。 |
+| `panel.ts` | 浮动面板 `ArduFluxPanel`，作为侧边栏不可用时的 fallback。包装同一套 `ConfigEditorController`。 |
+| `configStore.ts` | 配置持久化核心。`ConfigStore` 类负责加载/保存 `ArduFlux.json`、配置迁移（`migrateConfig`）、校验（board/port/build/monitor）、串口枚举（带 5 秒缓存）、Profile 增删改查/导入导出。同时导出大量纯工具函数（`buildCompileArgs`、`buildUploadArgs`、`buildMonitorArgs`、`normalizePath`、`validateFqbn` 等）。 |
+| `types.ts` | 所有接口定义和默认配置工厂函数 `createDefaultConfig()`。预置板型目录 `DEFAULT_BOARD_CATALOG` 包含 ESP32-S3、ESP32 Dev Module、Arduino Uno、STM32 (Custom FQBN)。 |
+| `terminal.ts` | 提供 `runInTerminal`（直接运行 arduino-cli）和 `runUploadScript`（调用 upload.ps1）。均使用 VS Code `Pseudoterminal` 实现，支持进程树强制终止（Ctrl+C）。 |
+| `statusBar.ts` | 仅含 `formatStatusBarText(boardName, portAddress)` 纯函数。 |
+| `configSidebar.ts` | 已实现 `ConfigSidebarProvider`（`TreeDataProvider`），但 `extension.ts` 的 `activate()` **未注册**该 Provider。如需启用，需手动调用 `vscode.window.registerTreeDataProvider()`。 |
 
 ---
 
@@ -106,7 +131,7 @@ npm run test:watch
 ```bash
 npm run package
 ```
-生成 `arduflux-<version>.vsix`。
+生成 `arduflux-<version>.vsix`。`.vscodeignore` 会排除 `src/`、`node_modules/`、`dist/test/` 等。
 
 **自动安装 VSIX（PowerShell）：**
 ```bash
@@ -132,13 +157,13 @@ npm test
 
 | 测试文件 | 覆盖内容 |
 |----------|----------|
-| `configStore.store.test.ts` | ConfigStore 加载/保存、校验（board/monitor/build）、Profile 增删改查、导入导出 |
+| `configStore.store.test.ts` | `ConfigStore` 加载/保存、校验（board/monitor/build）、Profile 增删改查、导入导出 |
 | `configStore.compile.test.ts` | `buildCompileArgs` / `buildUploadArgs` 参数构建与边界校验 |
 | `configStore.feature.test.ts` | `buildMonitorArgs`、串口监视器参数、`execFileText` 执行 |
 | `configStore.logic.test.ts` | 纯逻辑函数（`deepClone`、`dedupeKeepLatest`、`normalizePath`、`validateFqbn`、`isUsbPort`、`normalizeSerialAddress`、`mapJsonPortEntry`、`recommendSerialPort`） |
 | `statusBar.test.ts` | 状态栏文本格式化 |
 | `types.test.ts` | 默认配置、预置板型目录常量 |
-| `webviewView.test.ts` | package.json 视图声明校验、扩展激活与 WebviewView 注册流程（使用 fake VS Code 模块） |
+| `webviewView.test.ts` | `package.json` 视图声明校验、扩展激活与 WebviewView 注册流程（使用 fake VS Code 模块） |
 
 **测试原则：**
 - 所有纯逻辑（参数构造、路径拼接、校验）必须先写单元测试（红→绿）。
@@ -213,6 +238,7 @@ npm test
 - `schemaVersion` 用于配置迁移。新增版本时需在 `migrateConfig`（TS）和 PowerShell 侧同样处理旧版本升级逻辑。
 - `arduino-cli` 路径默认为 `arduino-cli`，PowerShell 侧同样如此。
 - upload.ps1 额外功能：自动解析 `.ino` 文件中的 `#include <...>` 并尝试通过 `arduino-cli lib install` 安装所需外部库（内置系统库已排除）。
+- upload.ps1 的上传逻辑支持多端口候选重试（优先使用保存端口，失败时依次尝试其他 USB 端口）。
 
 ---
 
