@@ -88,6 +88,7 @@ export interface UploadScriptFlags {
   compile?: boolean;
   upload?: boolean;
   monitor?: boolean;
+  sketchPath?: string;
 }
 
 export function runUploadScript(
@@ -106,6 +107,7 @@ export function runUploadScript(
     if (flags.compile) args.push("-c");
     if (flags.upload) args.push("-u");
     if (flags.monitor) args.push("-s");
+    if (flags.sketchPath) args.push(`-sketchPath:${flags.sketchPath}`);
     args.push(`-workspace:${workspaceRoot}`);
 
     let terminal: vscode.Terminal;

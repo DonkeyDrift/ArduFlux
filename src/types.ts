@@ -28,6 +28,7 @@ export interface ArduFluxPortState {
 export interface ArduFluxBuildState {
   outputDir: string;
   recentOutputDirs: string[];
+  sketchPath: string;
   compileBeforeUpload?: boolean;
   uploadThenMonitor?: boolean;
 }
@@ -114,6 +115,7 @@ export function createDefaultConfig(): ArduFluxConfig {
       build: {
         outputDir: "",
         recentOutputDirs: [],
+        sketchPath: "",
         compileBeforeUpload: false,
         uploadThenMonitor: false
       },

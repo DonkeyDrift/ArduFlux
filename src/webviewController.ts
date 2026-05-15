@@ -19,6 +19,7 @@ export interface FormPayload {
   portAddress: string;
   portAuto: boolean;
   buildOutputDir: string;
+  sketchPath: string;
   compileBeforeUpload?: boolean;
   uploadThenMonitor?: boolean;
   monitorBaudRate: string;
@@ -75,6 +76,7 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
     build: {
       outputDir: form.buildOutputDir.trim(),
       recentOutputDirs: [...(baseConfig.current.build.recentOutputDirs ?? [])],
+      sketchPath: form.sketchPath.trim(),
       compileBeforeUpload: form.compileBeforeUpload !== undefined
         ? Boolean(form.compileBeforeUpload)
         : Boolean(baseConfig.current.build.compileBeforeUpload),
@@ -216,6 +218,9 @@ export class ConfigEditorController {
           return;
         case "open-monitor":
           await this.openMonitor();
+          return;
+        case "select-sketch":
+          await this.selectSketch();
           return;
         case "toggle-compile-link":
           await this.toggleCompileLink();
@@ -364,7 +369,22 @@ export class ConfigEditorController {
 
   private async openMonitor(): Promise<void> {
     await this.syncView("已打开串口监视器");
-    await runUploadScript(this.context.extensionPath, this.store.baseDir, { monitor: true });
+    const sketchPath = this.store.getData().current.build.sketchPath ?? "";
+    await runUploadScript(this.context.extensionPath, this.store.baseDir, { monitor: true, sketchPath });
+  }
+
+  private async selectSketch(): Promise<void> {
+    const selected = await vscode.window.showOpenDialog({
+      canSelectFiles: true,
+      canSelectFolders: false,
+      canSelectMany: false,
+      filters: { "Arduino Sketch": ["ino"] },
+      defaultUri: vscode.Uri.file(this.store.baseDir)
+    });
+    if (!selected || selected.length === 0) {
+      return;
+    }
+    await this.postMessage({ type: "sketch-selected", path: selected[0].fsPath });
   }
 
   private async toggleCompileLink(): Promise<void> {
@@ -409,7 +429,8 @@ export class ConfigEditorController {
     await ConfigStore.waitForSave();
     await this.postMessage({ type: "compiling", active: true });
     try {
-      await runUploadScript(this.context.extensionPath, this.store.baseDir, { compile: true });
+      const sketchPath = this.store.getData().current.build.sketchPath ?? "";
+      await runUploadScript(this.context.extensionPath, this.store.baseDir, { compile: true, sketchPath });
       await this.syncView("编译完成");
       await this.postMessage({ type: "compiling", active: false });
     } catch (error) {
@@ -422,7 +443,8 @@ export class ConfigEditorController {
     await ConfigStore.waitForSave();
     await this.postMessage({ type: "uploading", active: true });
     try {
-      await runUploadScript(this.context.extensionPath, this.store.baseDir, { upload: true });
+      const sketchPath = this.store.getData().current.build.sketchPath ?? "";
+      await runUploadScript(this.context.extensionPath, this.store.baseDir, { upload: true, sketchPath });
       await this.postMessage({ type: "uploading", active: false });
       await this.syncView("上传完成");
       const uploadThenMonitor = this.store.getData().current.build.uploadThenMonitor ?? false;
@@ -595,11 +617,17 @@ export class ConfigEditorController {
     </label>
   </div>
 
-  <h2>板子型号</h2>
+  <h2>源码</h2>
+  <div class="row" style="margin-bottom:0">
+    <input id="sketchPath" readonly style="flex:1;background:var(--vscode-input-background);" placeholder="未选择 .ino 文件" />
+    <button id="selectSketchButton" class="secondary">加载</button>
+  </div>
+
+  <h2>型号</h2>
   <div class="row">
     <select id="boardPreset"></select>
   </div>
-  <div class="grid">
+  <div class="grid advanced-item">
     <label for="boardName">显示名称</label>
     <input id="boardName" />
     <label for="boardFqbn">FQBN</label>
@@ -702,7 +730,8 @@ export class ConfigEditorController {
       "boardPreset", "boardName", "boardFqbn", "boardCompileArgs", "boardPinDefines",
       "portAddress", "portAuto", "buildOutputDir", "recentOutputDirs",
       "monitorBaudRate", "monitorDataBits", "monitorStopBits", "monitorParity",
-      "monitorNewline", "profileSelect", "profileName", "status", "recommendedPort"
+      "monitorNewline", "profileSelect", "profileName", "status", "recommendedPort",
+      "sketchPath", "selectSketchButton"
     ];
     const el = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
 
@@ -786,6 +815,7 @@ export class ConfigEditorController {
       el.boardFqbn.value = current.board.fqbn || "";
       el.boardCompileArgs.value = (current.board.compileArgs || []).join(" ");
       el.boardPinDefines.value = JSON.stringify(current.board.pinDefines || {}, null, 2);
+      el.sketchPath.value = current.build.sketchPath || "";
 
       fillSelect(
         el.portAddress,
@@ -859,6 +889,7 @@ export class ConfigEditorController {
         portAddress: el.portAddress.value,
         portAuto: el.portAuto.checked,
         buildOutputDir: el.buildOutputDir.value,
+        sketchPath: el.sketchPath.value,
         compileBeforeUpload: document.getElementById("linkButton").classList.contains("linked"),
         uploadThenMonitor: document.getElementById("linkButton2").classList.contains("linked"),
         monitorBaudRate: el.monitorBaudRate.value,
@@ -940,6 +971,9 @@ export class ConfigEditorController {
     });
     document.getElementById("openMonitorButton").addEventListener("click", () => {
       vscode.postMessage({ type: "open-monitor" });
+    });
+    document.getElementById("selectSketchButton").addEventListener("click", () => {
+      vscode.postMessage({ type: "select-sketch" });
     });
     document.getElementById("saveProfileButton").addEventListener("click", () => {
       vscode.postMessage({
@@ -1023,6 +1057,9 @@ export class ConfigEditorController {
           linkBtn.classList.add("unlinked");
           linkBtn.title = "已断开：直接上传，不自动编译（点击联通）";
         }
+      }
+      if (event.data?.type === "sketch-selected") {
+        document.getElementById("sketchPath").value = event.data.path || "";
       }
       if (event.data?.type === "monitor-link-toggled") {
         const linkBtn2 = document.getElementById("linkButton2");
