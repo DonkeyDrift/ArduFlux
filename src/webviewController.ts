@@ -188,6 +188,13 @@ export class ConfigEditorController {
         case "validate-config":
           await this.validateConfig(message.payload as FormPayload);
           return;
+        case "auto-save-config":
+          try {
+            await this.saveConfig(message.payload as FormPayload);
+          } catch {
+            // Auto-save errors are silently shown in webview status bar via saveConfig's postMessage
+          }
+          return;
         case "compile-sketch":
           await this.compileSketch();
           return;
@@ -277,6 +284,7 @@ export class ConfigEditorController {
         this.store.setOutputDir(nextCurrent.build.outputDir);
       }
       await this.store.validateAll();
+      await this.store.save();
       await this.syncView("校验通过");
       onDidChangeArduFluxConfig.fire();
     } catch (error) {
@@ -384,7 +392,22 @@ export class ConfigEditorController {
     if (!selected || selected.length === 0) {
       return;
     }
-    await this.postMessage({ type: "sketch-selected", path: selected[0].fsPath });
+    const path = selected[0].fsPath;
+    const config = this.store.getData();
+    const nextConfig: ArduFluxConfig = {
+      ...config,
+      current: {
+        ...config.current,
+        build: {
+          ...config.current.build,
+          sketchPath: path
+        }
+      }
+    };
+    this.store.setData(nextConfig);
+    await this.store.save();
+    onDidChangeArduFluxConfig.fire();
+    await this.postMessage({ type: "sketch-selected", path });
   }
 
   private async toggleCompileLink(): Promise<void> {
@@ -717,7 +740,7 @@ export class ConfigEditorController {
 
   <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--vscode-panel-border)">
     <div class="toolbar">
-      <button id="saveButton">保存全部</button>
+      <button id="saveButton" class="secondary">检查配置</button>
       <button id="openConfigButton" class="secondary">打开配置</button>
     </div>
   </div>
@@ -744,6 +767,21 @@ export class ConfigEditorController {
     function setStatus(text) {
       stopSpinner();
       el.status.textContent = text || "就绪";
+    }
+
+    let autoSaveTimeout = null;
+
+    function debouncedAutoSave() {
+      if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+      }
+      autoSaveTimeout = setTimeout(() => {
+        try {
+          vscode.postMessage({ type: "auto-save-config", payload: collectForm() });
+        } catch (err) {
+          setStatus("自动保存失败: " + (err.message || String(err)));
+        }
+      }, 500);
     }
 
     function startSpinner(text) {
@@ -921,10 +959,10 @@ export class ConfigEditorController {
 
     document.getElementById("saveButton").addEventListener("click", () => {
       try {
-        setStatus("正在校验并保存...");
-        vscode.postMessage({ type: "save-config", payload: collectForm() });
+        setStatus("正在校验...");
+        vscode.postMessage({ type: "validate-config", payload: collectForm() });
       } catch (err) {
-        setStatus("保存失败: " + (err.message || String(err)));
+        setStatus("校验失败: " + (err.message || String(err)));
       }
     });
     document.getElementById("compileButton").addEventListener("click", () => {
@@ -1076,6 +1114,9 @@ export class ConfigEditorController {
         }
       }
     });
+
+    document.body.addEventListener("input", debouncedAutoSave);
+    document.body.addEventListener("change", debouncedAutoSave);
 
     render();
 

@@ -138,7 +138,7 @@ export function runUploadScript(
             }
           }
           const isMonitorOnly = !flags.compile && !flags.upload && flags.monitor;
-          if (!isMonitorOnly) {
+          if (!isMonitorOnly && (code === 0 || killedByUser)) {
             let countdown = 3;
             const timer = setInterval(() => {
               if (countdown > 0) {
