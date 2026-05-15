@@ -468,9 +468,13 @@ export class ConfigEditorController {
     }
     .grid {
       display: grid;
-      grid-template-columns: 160px minmax(0, 1fr);
+      grid-template-columns: 60px minmax(0, 1fr);
       gap: 8px 12px;
       margin-bottom: 18px;
+    }
+    .grid > label {
+      text-align: left;
+      align-self: center;
     }
     h2 {
       margin: 20px 0 10px;
