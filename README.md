@@ -65,7 +65,7 @@ npm run install:vsix:code
    ```bash
    npm run package
    ```
-   生成文件类似 `arduflux-0.3.2.vsix`
+   生成文件类似 `arduflux-0.3.3.vsix`
 
 2. 在 VS Code / TRAE 中安装：
    - 打开扩展视图（`Ctrl+Shift+X`）
