@@ -2,7 +2,8 @@ param(
     [switch]$c,
     [switch]$u,
     [switch]$s,
-    [string]$workspace
+    [string]$workspace,
+    [string]$sketchPath
 )
 
 $doCompile = $c -or (-not $c -and -not $u -and -not $s)
@@ -318,6 +319,21 @@ if ($doUpload -or $doMonitorBlock -or $forceMonitor) {
 }
 
 $sketchPath = $projectRoot
+$inoFile = $null
+
+if ($sketchPath) {
+    $resolvedSketch = $sketchPath
+    if (Test-Path $resolvedSketch) {
+        $item = Get-Item -Path $resolvedSketch
+        if ($item -is [System.IO.FileInfo] -and $item.Extension -eq '.ino') {
+            $inoFile = $item
+            $sketchPath = $item.DirectoryName
+        } elseif ($item -is [System.IO.DirectoryInfo]) {
+            $sketchPath = $item.FullName
+            $inoFile = Get-ChildItem -Path $sketchPath -Filter "*.ino" | Select-Object -First 1
+        }
+    }
+}
 
 function Get-RequiredLibraries {
     param([string]$inoPath)
@@ -373,7 +389,9 @@ function Get-RequiredLibraries {
 }
 
 if ($doCompile) {
-    $inoFile = Get-ChildItem -Path $sketchPath -Filter "*.ino" | Select-Object -First 1
+    if (-not $inoFile) {
+        $inoFile = Get-ChildItem -Path $sketchPath -Filter "*.ino" | Select-Object -First 1
+    }
     if (-not $inoFile) {
         Write-Host "Error: No .ino sketch file found in $sketchPath"
         exit 1
