@@ -367,10 +367,22 @@ function Get-RequiredLibraries {
         "Ticker.h", "assert.h"
     )
 
+    # 头文件 → Library Manager 库名映射（处理启发式规则失效的特殊情况）
+    $libNameOverrides = @{
+        "Adafruit_Sensor.h" = "Adafruit Unified Sensor"
+        "BleGamepad.h"      = "ESP32-BLE-Gamepad"
+    }
+
     $required = @()
     foreach ($header in $includes) {
         if ([string]::IsNullOrWhiteSpace($header)) { continue }
         if ($systemHeaders -contains $header) { continue }
+
+        # 如果存在显式映射，直接使用
+        if ($libNameOverrides.ContainsKey($header)) {
+            $required += $libNameOverrides[$header]
+            continue
+        }
 
         # 去掉 .h 后缀得到库目录/名称候选
         $baseName = $header -replace '\.h$',''
