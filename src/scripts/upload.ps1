@@ -318,7 +318,9 @@ if ($doUpload -or $doMonitorBlock -or $forceMonitor) {
     }
 }
 
-$sketchPath = $projectRoot
+if (-not $sketchPath) {
+    $sketchPath = $projectRoot
+}
 $inoFile = $null
 
 if ($sketchPath) {
