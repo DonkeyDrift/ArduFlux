@@ -3,3 +3,4 @@ dist
 .vscode
 *.vsix
 *.log
+ArduFlux.json
