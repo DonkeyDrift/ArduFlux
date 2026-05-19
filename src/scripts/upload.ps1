@@ -57,6 +57,8 @@ $configSource = "default"
 $embeddedProfiles = @{}
 $embeddedSchemaVersion = 1
 
+$script:cache = @{}
+
 if (Test-Path $embeddedConfigFile) {
     $embedded = Get-Content $embeddedConfigFile | ConvertFrom-Json
     $embeddedSchemaVersion = [int]($embedded.schemaVersion | ForEach-Object { $_ } )
@@ -89,9 +91,14 @@ if (Test-Path $embeddedConfigFile) {
         if ($cur.monitor.newline) { $config.Newline = [string]$cur.monitor.newline }
     }
 
+    if ($embedded -and $embedded.cache) {
+        $script:cache = $embedded.cache
+    }
+
     $configSource = "embedded"
     Write-Host "Config loaded (ArduFlux.json)"
 } elseif (Test-Path $legacyConfigFile) {
+    $script:cache = @{}
     $legacy = Get-Content $legacyConfigFile | ConvertFrom-Json
     $config = $defaultConfig
     if ($legacy.BoardFQBN) { $config.BoardFQBN = [string]$legacy.BoardFQBN }
@@ -100,6 +107,7 @@ if (Test-Path $embeddedConfigFile) {
     $configSource = "legacy"
     Write-Host "Config loaded (upload_config.json)"
 } else {
+    $script:cache = @{}
     $config = $defaultConfig
     Write-Host "Using default config"
 }
@@ -134,6 +142,7 @@ function Save-Config {
                 }
             }
             profiles = $embeddedProfiles
+            cache = $script:cache
         }
         $jsonText = $saveObj | ConvertTo-Json -Depth 20
         [System.IO.File]::WriteAllText($embeddedConfigFile, $jsonText, $utf8NoBom)
@@ -151,6 +160,25 @@ function Save-Config {
     Write-Host "Config saved (upload_config.json)"
 }
 
+function Save-Cache {
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    if (Test-Path $embeddedConfigFile) {
+        try {
+            $jsonText = Get-Content $embeddedConfigFile -Raw
+            $jsonObj = $jsonText | ConvertFrom-Json
+            if (-not $jsonObj) { return }
+            if ($jsonObj.PSObject.Properties.Name -contains "cache") {
+                $jsonObj.cache = $script:cache
+            } else {
+                $jsonObj | Add-Member -MemberType NoteProperty -Name "cache" -Value $script:cache -Force
+            }
+            $newJson = $jsonObj | ConvertTo-Json -Depth 20
+            [System.IO.File]::WriteAllText($embeddedConfigFile, $newJson, $utf8NoBom)
+        } catch {
+        }
+    }
+}
+
 function Release-SerialPort {
     param([string]$port)
     Write-Host "Releasing serial port $port..."
@@ -163,6 +191,29 @@ function Release-SerialPort {
 }
 
 function Get-AvailablePorts {
+    $CACHE_TTL_SECONDS = 3600
+    $now = [int64]([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
+
+    if ($script:cache.ports -and $script:cache.ports.timestamp) {
+        $age = $now - [int64]$script:cache.ports.timestamp
+        if ($age -lt $CACHE_TTL_SECONDS) {
+            $cachedItems = @($script:cache.ports.items)
+            if ($cachedItems.Count -gt 0) {
+                Write-Host "Using cached port list (cached ${age}s ago)"
+                return @($cachedItems | ForEach-Object {
+                    $protocolLabel = [string]($_.protocolLabel ?? $_.type ?? "")
+                    [pscustomobject]@{
+                        Address = [string]$_.address
+                        Label = [string]$_.label
+                        Protocol = [string]$_.protocol
+                        ProtocolLabel = $protocolLabel
+                        IsUsb = $protocolLabel -match "USB"
+                    }
+                })
+            }
+        }
+    }
+
     $jsonText = arduino-cli board list --format json
     $ports = @()
 
@@ -191,6 +242,18 @@ function Get-AvailablePorts {
     }
 
     if ($ports.Count -gt 0) {
+        $script:cache.ports = [pscustomobject]@{
+            items = @($ports | ForEach-Object {
+                [pscustomobject]@{
+                    address = $_.Address
+                    label = $_.Label
+                    protocol = $_.Protocol
+                    type = $_.ProtocolLabel
+                }
+            })
+            timestamp = $now
+        }
+        Save-Cache
         return $ports
     }
 
@@ -206,6 +269,21 @@ function Get-AvailablePorts {
                 IsUsb = ($line -match "USB")
             }
         }
+    }
+
+    if ($fallbackPorts.Count -gt 0) {
+        $script:cache.ports = [pscustomobject]@{
+            items = @($fallbackPorts | ForEach-Object {
+                [pscustomobject]@{
+                    address = $_.Address
+                    label = $_.Label
+                    protocol = $_.Protocol
+                    type = $_.ProtocolLabel
+                }
+            })
+            timestamp = $now
+        }
+        Save-Cache
     }
     return $fallbackPorts
 }
@@ -340,6 +418,23 @@ if ($sketchPath) {
 function Get-RequiredLibraries {
     param([string]$inoPath)
 
+    $CACHE_TTL_SECONDS = 3600
+    $now = [int64]([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
+    $inoItem = Get-Item -Path $inoPath
+    $inoMtime = [int64]($inoItem.LastWriteTimeUtc - [datetime]"1970-01-01").TotalSeconds
+
+    if ($script:cache.libraries -and $script:cache.libraries.timestamp) {
+        $age = $now - [int64]$script:cache.libraries.timestamp
+        $cachedHash = [string]$script:cache.libraries.inoHash
+        if ($age -lt $CACHE_TTL_SECONDS -and $cachedHash -eq "$inoMtime") {
+            $cachedItems = @($script:cache.libraries.items)
+            if ($cachedItems.Count -gt 0) {
+                Write-Host "Using cached library list (cached ${age}s ago)"
+                return $cachedItems
+            }
+        }
+    }
+
     # 读取 .ino 文件中所有 #include <...>（尖括号形式通常表示外部库）
     $includes = Get-Content $inoPath | ForEach-Object {
         if ($_ -match '^\s*#include\s+<([^>]+)>') {
@@ -399,7 +494,16 @@ function Get-RequiredLibraries {
         $required += $libName
     }
 
-    return $required | Select-Object -Unique
+    $required = $required | Select-Object -Unique
+
+    $script:cache.libraries = [pscustomobject]@{
+        items = @($required)
+        inoHash = "$inoMtime"
+        timestamp = $now
+    }
+    Save-Cache
+
+    return $required
 }
 
 if ($doCompile) {

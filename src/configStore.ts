@@ -301,6 +301,7 @@ function migrateConfig(data: unknown): ArduFluxConfig {
 
   const current = source.current && typeof source.current === "object" ? source.current as Partial<ArduFluxCurrentConfig> : {};
   const profiles = source.profiles && typeof source.profiles === "object" ? source.profiles as ArduFluxConfig["profiles"] : { default: {} };
+  const cache = "cache" in source ? (source.cache as ArduFluxConfig["cache"]) : undefined;
 
   const board = { ...defaults.current.board, ...(current.board ?? {}) };
   const pinDefines = current.board?.pinDefines;
@@ -328,7 +329,8 @@ function migrateConfig(data: unknown): ArduFluxConfig {
     profiles: {
       default: {},
       ...profiles
-    }
+    },
+    ...(cache ? { cache } : {})
   };
 }
 
@@ -413,7 +415,7 @@ export class ConfigStore {
       throw new ValidationError("串口为空", "请刷新串口列表并选择一个端口，例如 COM36 或 /dev/ttyACM0");
     }
 
-    const ports = await listSerialPorts(this.arduinoCliPath);
+    const ports = await this.getSerialPorts();
     const known = new Set(ports.map((item) => item.address));
     if (known.size > 0 && !known.has(address)) {
       throw new ValidationError("串口不存在或不可用", "点击“刷新串口列表”重新枚举串口，或检查 USB 连接/驱动");
