@@ -36,6 +36,21 @@ describe("types.ts", () => {
       expect(config.current.port.auto).to.be.true;
     });
 
+    it("默认编译上传链节应为断开", () => {
+      const config = createDefaultConfig();
+      expect(config.current.build.compileBeforeUpload).to.be.false;
+    });
+
+    it("默认上传监视器链节应为断开", () => {
+      const config = createDefaultConfig();
+      expect(config.current.build.uploadThenMonitor).to.be.false;
+    });
+
+    it("默认源码路径应为空", () => {
+      const config = createDefaultConfig();
+      expect(config.current.build.sketchPath).to.equal("");
+    });
+
     it("默认监视器参数应正确", () => {
       const config = createDefaultConfig();
       const monitor = config.current.monitor;
