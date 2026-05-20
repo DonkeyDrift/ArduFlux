@@ -194,6 +194,26 @@ function Release-SerialPort {
     Start-Sleep 2
 }
 
+function Reset-Esp32 {
+    param([string]$port, [int]$baudRate = 115200)
+    if (-not $port) { return $false }
+    try {
+        $serial = New-Object System.IO.Ports.SerialPort $port, $baudRate
+        $serial.DtrEnable = $false
+        $serial.RtsEnable = $false
+        $serial.Open()
+        Start-Sleep -Milliseconds 100
+        $serial.RtsEnable = $true
+        Start-Sleep -Milliseconds 100
+        $serial.RtsEnable = $false
+        Start-Sleep -Milliseconds 100
+        $serial.Close()
+        return $true
+    } catch {
+        return $false
+    }
+}
+
 function Get-AvailablePorts {
     $CACHE_TTL_SECONDS = 3600
     $now = [int64]([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
@@ -366,7 +386,9 @@ function Get-UploadCandidates {
 }
 
 if ($doUpload -or $doMonitorBlock -or $forceMonitor) {
-    Write-Host "`n=== Finding available ports ==="
+    if ($script:debugMode) {
+        Write-Host "`n=== Finding available ports ==="
+    }
     $availablePortObjects = @(Get-AvailablePorts)
     $availablePorts = @($availablePortObjects | ForEach-Object { $_.Address })
 
@@ -387,7 +409,9 @@ if ($doUpload -or $doMonitorBlock -or $forceMonitor) {
     }
 
     if ($config.Port) {
-        Write-Host "Using saved port: $($config.Port)"
+        if ($script:debugMode) {
+            Write-Host "Using saved port: $($config.Port)"
+        }
     } else {
         $resolvedPort = Resolve-Port -Ports $availablePortObjects -SavedPort $config.Port -AutoSelect $config.PortAuto
         if (-not $resolvedPort) {
@@ -396,10 +420,12 @@ if ($doUpload -or $doMonitorBlock -or $forceMonitor) {
         }
         $config.Port = $resolvedPort
         $resolvedIsUsb = ($availablePortObjects | Where-Object { $_.Address -eq $resolvedPort } | Select-Object -First 1).IsUsb
-        if ($resolvedIsUsb) {
-            Write-Host "Auto selected USB port: $($config.Port)"
-        } else {
-            Write-Host "Auto selected port: $($config.Port)"
+        if ($script:debugMode) {
+            if ($resolvedIsUsb) {
+                Write-Host "Auto selected USB port: $($config.Port)"
+            } else {
+                Write-Host "Auto selected port: $($config.Port)"
+            }
         }
     }
 }
@@ -644,6 +670,10 @@ if ($doMonitorBlock -or $forceMonitor) {
     if ($config.MonitorEnabled -or $forceMonitor) {
         Write-Host "`n=== Opening serial monitor ==="
         Write-Host "Press Ctrl+C to exit monitor"
+        if ($config.BoardFQBN -match "esp32") {
+            Reset-Esp32 -port $config.Port -baudRate $config.BaudRate | Out-Null
+            Start-Sleep -Milliseconds 200
+        }
         $monitorArgs = @("-p", $config.Port, "-c", "baudrate=$($config.BaudRate)")
         if ($config.BoardFQBN -match "esp32") {
             $monitorArgs += @("-c", "dtr=off", "-c", "rts=off")
