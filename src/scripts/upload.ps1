@@ -685,7 +685,13 @@ if ($doUpload) {
             Write-Host "Trying alternate port: $candidatePort"
         }
         $config.Port = $candidatePort
-        arduino-cli upload -p $config.Port --fqbn $config.BoardFQBN $sketchPath
+        $uploadCmd = @("upload", "-p", $config.Port, "--fqbn", $config.BoardFQBN)
+        if ($config.UploadThenMonitor -and $config.BoardFQBN -match "esp32") {
+            $customPattern = '--chip {build.mcu} --port "{serial.port}" --baud {upload.speed} {upload.flags} --before default-reset --after no-reset write-flash {upload.erase_cmd} -z --flash-mode keep --flash-freq keep --flash-size keep {build.bootloader_addr} "{build.path}/{build.project_name}.bootloader.bin" 0x8000 "{build.path}/{build.project_name}.partitions.bin" 0xe000 "{runtime.platform.path}/tools/partitions/boot_app0.bin" 0x10000 "{build.path}/{build.project_name}.bin" {upload.extra_flags}'
+            $uploadCmd += @("--upload-property", "upload.pattern_args=$customPattern")
+        }
+        $uploadCmd += $sketchPath
+        arduino-cli @uploadCmd
         if ($LASTEXITCODE -eq 0) {
             $uploadSuccess = $true
             $config.LastSuccessfulPort = $config.Port
@@ -714,7 +720,9 @@ if ($doMonitorBlock -or $forceMonitor) {
         if ($config.BoardFQBN -match "esp32") {
             # Use custom monitor for ESP32 to ensure reset and read happen on the same port handle,
             # eliminating the gap where output is lost between reset and monitor startup.
-            Start-CustomMonitor -port $config.Port -baudRate $config.BaudRate -resetOnOpen:$forceMonitor
+            # Reset when: monitor-only (-s), or upload+monitor where upload was skipped reset (uploadThenMonitor).
+            $shouldReset = $forceMonitor -or ($doUpload -and $config.UploadThenMonitor)
+            Start-CustomMonitor -port $config.Port -baudRate $config.BaudRate -resetOnOpen:$shouldReset
         } else {
             $monitorArgs = @("-p", $config.Port, "-c", "baudrate=$($config.BaudRate)")
             arduino-cli monitor @monitorArgs
