@@ -191,6 +191,15 @@ function Release-SerialPort {
         $_.ProcessName -like "*serial*" -or
         $_.MainWindowTitle -like "*monitor*"
     } | Stop-Process -Force -ErrorAction SilentlyContinue
+    # Also kill any other PowerShell processes running upload.ps1 for this project,
+    # since Start-CustomMonitor holds the port open inside the PowerShell process itself.
+    Get-Process powershell, pwsh -ErrorAction SilentlyContinue | Where-Object {
+        try {
+            if ($_.Id -eq $PID) { return $false }
+            $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId=$($_.Id)").CommandLine
+            $cmd -like "*upload.ps1*" -and $cmd -like "*$projectRoot*"
+        } catch { $false }
+    } | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep 2
 }
 
