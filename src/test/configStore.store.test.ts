@@ -53,6 +53,34 @@ describe("ConfigStore", () => {
       expect(data.profiles).to.have.property("dev");
     });
 
+    it("应保留配置中的 cache 字段", async () => {
+      const configWithCache = {
+        schemaVersion: 1,
+        current: {
+          board: { name: "Custom", fqbn: "a:b:c", compileArgs: [], pinDefines: {} },
+          port: { address: "COM36", auto: false, lastSuccessfulAddress: "" },
+          build: { outputDir: "build", recentOutputDirs: [] },
+          monitor: { enabled: false, baudRate: 9600, dataBits: 8, stopBits: 1, parity: "even", newline: "LF" }
+        },
+        profiles: { default: {} },
+        cache: {
+          ports: {
+            items: [{ address: "COM36", label: "COM36", protocol: "serial", type: "USB" }],
+            timestamp: 1234567890
+          },
+          libraries: {
+            items: ["FastLED"],
+            inoHash: "abc123",
+            timestamp: 1234567890
+          }
+        }
+      };
+      readFileStub.resolves(JSON.stringify(configWithCache));
+
+      const data = await store.load();
+      expect(data.cache).to.deep.equal(configWithCache.cache);
+    });
+
     it("v0 配置应迁移为 v1 并保留 current", async () => {
       const oldConfig = {
         board: { name: "Old", fqbn: "x:y:z", compileArgs: [], pinDefines: {} },
@@ -84,6 +112,32 @@ describe("ConfigStore", () => {
       const [, content] = writeFileStub.firstCall.args;
       const parsed = JSON.parse(content as string);
       expect(parsed.schemaVersion).to.equal(1);
+    });
+
+    it("保存时应保留 cache 字段", async () => {
+      const configWithCache = {
+        schemaVersion: 1,
+        current: {
+          board: { name: "Custom", fqbn: "a:b:c", compileArgs: [], pinDefines: {} },
+          port: { address: "COM36", auto: false, lastSuccessfulAddress: "" },
+          build: { outputDir: "build", recentOutputDirs: [] },
+          monitor: { enabled: false, baudRate: 9600, dataBits: 8, stopBits: 1, parity: "even", newline: "LF" }
+        },
+        profiles: { default: {} },
+        cache: {
+          ports: {
+            items: [{ address: "COM36", label: "COM36", protocol: "serial", type: "USB" }],
+            timestamp: 1234567890
+          }
+        }
+      };
+      readFileStub.resolves(JSON.stringify(configWithCache));
+      await store.load();
+      await store.save();
+
+      const [, content] = writeFileStub.lastCall.args;
+      const parsed = JSON.parse(content as string);
+      expect(parsed.cache).to.deep.equal(configWithCache.cache);
     });
   });
 
