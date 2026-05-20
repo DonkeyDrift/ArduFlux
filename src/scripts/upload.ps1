@@ -2,10 +2,12 @@ param(
     [switch]$c,
     [switch]$u,
     [switch]$s,
+    [switch]$Debug,
     [string]$workspace,
     [string]$sketchPath
 )
 
+$script:debugMode = $Debug
 $doCompile = $c -or (-not $c -and -not $u -and -not $s)
 $doUpload = $u -or (-not $c -and -not $u -and -not $s)
 $doMonitorBlock = (-not $c -and -not $u -and -not $s)
@@ -201,7 +203,9 @@ function Get-AvailablePorts {
         if ($age -lt $CACHE_TTL_SECONDS) {
             $cachedItems = @($script:cache.ports.items)
             if ($cachedItems.Count -gt 0) {
-                Write-Host "Using cached port list (cached ${age}s ago)"
+                if ($script:debugMode) {
+                    Write-Host "Using cached port list (cached ${age}s ago)"
+                }
                 return @($cachedItems | ForEach-Object {
                     $protocolLabel = ""
                     if ($_.protocolLabel) { $protocolLabel = [string]$_.protocolLabel }
@@ -371,12 +375,14 @@ if ($doUpload -or $doMonitorBlock -or $forceMonitor) {
         exit 1
     }
 
-    Write-Host "Available ports:"
-    $availablePortObjects | ForEach-Object {
-        if ($_.IsUsb) {
-            Write-Host "  - $($_.Address) [USB]"
-        } else {
-            Write-Host "  - $($_.Address)"
+    if ($script:debugMode) {
+        Write-Host "Available ports:"
+        $availablePortObjects | ForEach-Object {
+            if ($_.IsUsb) {
+                Write-Host "  - $($_.Address) [USB]"
+            } else {
+                Write-Host "  - $($_.Address)"
+            }
         }
     }
 
@@ -429,7 +435,9 @@ function Get-RequiredLibraries {
         $cachedHash = [string]$script:cache.libraries.inoHash
         if ($age -lt $CACHE_TTL_SECONDS -and $cachedHash -eq $inoHash) {
             $cachedItems = @($script:cache.libraries.items)
-            Write-Host "Using cached library list (cached ${age}s ago)"
+            if ($script:debugMode) {
+                Write-Host "Using cached library list (cached ${age}s ago)"
+            }
             return $cachedItems
         }
     }
@@ -636,7 +644,11 @@ if ($doMonitorBlock -or $forceMonitor) {
     if ($config.MonitorEnabled -or $forceMonitor) {
         Write-Host "`n=== Opening serial monitor ==="
         Write-Host "Press Ctrl+C to exit monitor"
-        arduino-cli monitor -p $config.Port -c baudrate=$($config.BaudRate)
+        $monitorArgs = @("-p", $config.Port, "-c", "baudrate=$($config.BaudRate)")
+        if ($config.BoardFQBN -match "esp32") {
+            $monitorArgs += @("-c", "dtr=off", "-c", "rts=off")
+        }
+        arduino-cli monitor @monitorArgs
     } else {
         Write-Host "`n=== Serial monitor disabled ==="
     }
