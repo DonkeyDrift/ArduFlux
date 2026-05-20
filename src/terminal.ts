@@ -1,4 +1,5 @@
 import { spawn, exec } from "child_process";
+import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import { ValidationError } from "./configStore";
@@ -97,7 +98,8 @@ export function runUploadScript(
   flags: UploadScriptFlags = {}
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const scriptPath = path.join(extensionPath, "src", "scripts", "upload.ps1");
+    const workspaceScriptPath = path.join(workspaceRoot, "src", "scripts", "upload.ps1");
+    const scriptPath = fs.existsSync(workspaceScriptPath) ? workspaceScriptPath : path.join(extensionPath, "src", "scripts", "upload.ps1");
     const writeEmitter = new vscode.EventEmitter<string>();
     let proc: ReturnType<typeof spawn> | null = null;
     let resolved = false;

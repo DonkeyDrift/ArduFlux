@@ -53,6 +53,26 @@ export interface ArduFluxConfig {
   schemaVersion: number;
   current: ArduFluxCurrentConfig;
   profiles: Record<string, Partial<ArduFluxCurrentConfig>>;
+  cache?: ArduFluxCache;
+}
+
+export interface ArduFluxCachePort {
+  address: string;
+  label: string;
+  protocol: string;
+  type: string;
+}
+
+export interface ArduFluxCache {
+  ports?: {
+    items: ArduFluxCachePort[];
+    timestamp: number;
+  };
+  libraries?: {
+    items: string[];
+    inoHash: string;
+    timestamp: number;
+  };
 }
 
 export interface ValidationErrorLike {
