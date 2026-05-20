@@ -186,21 +186,35 @@ function Save-Cache {
 function Release-SerialPort {
     param([string]$port)
     Write-Host "Releasing serial port $port..."
-    Get-Process | Where-Object { 
-        $_.ProcessName -like "*arduino*" -or 
+    # Terminate all processes gracefully via WMI with exit code 0 to avoid
+    # abnormal exit-code propagation within the same console host.
+    $procList = Get-Process | Where-Object {
+        $_.ProcessName -like "*arduino*" -or
         $_.ProcessName -like "*serial*" -or
         $_.MainWindowTitle -like "*monitor*"
-    } | Stop-Process -Force -ErrorAction SilentlyContinue
-    # Also kill any other PowerShell processes running upload.ps1 for this project,
+    }
+    foreach ($p in $procList) {
+        try {
+            $wmiProc = Get-WmiObject Win32_Process -Filter "ProcessId=$($p.Id)" -ErrorAction SilentlyContinue
+            if ($wmiProc) { $wmiProc.Terminate(0) | Out-Null }
+        } catch {}
+    }
+    # Also terminate any other PowerShell processes running upload.ps1 for this project,
     # since Start-CustomMonitor holds the port open inside the PowerShell process itself.
-    Get-Process powershell, pwsh -ErrorAction SilentlyContinue | Where-Object {
+    $targets = Get-Process powershell, pwsh -ErrorAction SilentlyContinue | Where-Object {
         try {
             if ($_.Id -eq $PID) { return $false }
             $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId=$($_.Id)").CommandLine
             $cmd -like "*upload.ps1*" -and $cmd -like "*$projectRoot*"
         } catch { $false }
-    } | Stop-Process -Force -ErrorAction SilentlyContinue
-    Start-Sleep 2
+    }
+    foreach ($p in $targets) {
+        try {
+            $wmiProc = Get-WmiObject Win32_Process -Filter "ProcessId=$($p.Id)" -ErrorAction SilentlyContinue
+            if ($wmiProc) { $wmiProc.Terminate(0) | Out-Null }
+        } catch {}
+    }
+    Start-Sleep 3
 }
 
 function Reset-Esp32 {
@@ -724,7 +738,7 @@ if ($doUpload) {
         }
         $uploadCmd += $sketchPath
         arduino-cli @uploadCmd
-        if ($LASTEXITCODE -eq 0) {
+        if ($?) {
             $uploadSuccess = $true
             $config.LastSuccessfulPort = $config.Port
         } else {
@@ -763,3 +777,10 @@ if ($doMonitorBlock -or $forceMonitor) {
         Write-Host "`n=== Serial monitor disabled ==="
     }
 }
+
+# Use [Environment]::Exit to bypass any PowerShell exit-code quirks caused by
+# taskkill, Stop-Process, or $LASTEXITCODE leakage from sibling commands.
+if ($doUpload -and -not $uploadSuccess) {
+    [Environment]::Exit(1)
+}
+[Environment]::Exit(0)
