@@ -1,4 +1,3 @@
-<!-- From: C:\Dev\OPC\ArduFlux\AGENTS.md -->
 <!-- AGENTS.md — ArduFlux -->
 
 > 本文件面向 AI 编码助手。阅读者应被假设为**完全不了解本项目**。

@@ -214,6 +214,47 @@ function Reset-Esp32 {
     }
 }
 
+function Start-CustomMonitor {
+    param(
+        [string]$port,
+        [int]$baudRate = 115200,
+        [switch]$resetOnOpen
+    )
+    $serial = $null
+    try {
+        $serial = New-Object System.IO.Ports.SerialPort($port, $baudRate, [System.IO.Ports.Parity]::None, 8, [System.IO.Ports.StopBits]::One)
+        $serial.Encoding = [System.Text.Encoding]::UTF8
+        $serial.DtrEnable = $false
+        $serial.RtsEnable = $false
+        $serial.ReadTimeout = 100
+        $serial.Open()
+        if ($resetOnOpen) {
+            Start-Sleep -Milliseconds 50
+            $serial.RtsEnable = $true
+            Start-Sleep -Milliseconds 100
+            $serial.RtsEnable = $false
+            Start-Sleep -Milliseconds 100
+        }
+        while ($serial.IsOpen) {
+            try {
+                if ($serial.BytesToRead -gt 0) {
+                    $text = $serial.ReadExisting()
+                    if ($text) { [Console]::Write($text) }
+                } else {
+                    Start-Sleep -Milliseconds 10
+                }
+            } catch {
+                Start-Sleep -Milliseconds 10
+            }
+        }
+    } finally {
+        if ($serial -and $serial.IsOpen) {
+            $serial.Close()
+            $serial.Dispose()
+        }
+    }
+}
+
 function Get-AvailablePorts {
     $CACHE_TTL_SECONDS = 3600
     $now = [int64]([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
@@ -671,14 +712,13 @@ if ($doMonitorBlock -or $forceMonitor) {
         Write-Host "`n=== Opening serial monitor ==="
         Write-Host "Press Ctrl+C to exit monitor"
         if ($config.BoardFQBN -match "esp32") {
-            Reset-Esp32 -port $config.Port -baudRate $config.BaudRate | Out-Null
-            Start-Sleep -Milliseconds 200
+            # Use custom monitor for ESP32 to ensure reset and read happen on the same port handle,
+            # eliminating the gap where output is lost between reset and monitor startup.
+            Start-CustomMonitor -port $config.Port -baudRate $config.BaudRate -resetOnOpen:$forceMonitor
+        } else {
+            $monitorArgs = @("-p", $config.Port, "-c", "baudrate=$($config.BaudRate)")
+            arduino-cli monitor @monitorArgs
         }
-        $monitorArgs = @("-p", $config.Port, "-c", "baudrate=$($config.BaudRate)")
-        if ($config.BoardFQBN -match "esp32") {
-            $monitorArgs += @("-c", "dtr=off", "-c", "rts=off")
-        }
-        arduino-cli monitor @monitorArgs
     } else {
         Write-Host "`n=== Serial monitor disabled ==="
     }
