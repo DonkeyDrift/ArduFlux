@@ -214,6 +214,15 @@ function Reset-Esp32 {
     }
 }
 
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class Keyboard {
+    [DllImport("user32.dll")]
+    public static extern short GetAsyncKeyState(int vKey);
+}
+"@ -ErrorAction SilentlyContinue
+
 function Start-CustomMonitor {
     param(
         [string]$port,
@@ -222,7 +231,10 @@ function Start-CustomMonitor {
     )
     $serial = $null
     try {
-        $serial = New-Object System.IO.Ports.SerialPort($port, $baudRate, [System.IO.Ports.Parity]::None, 8, [System.IO.Ports.StopBits]::One)
+        $serial = New-Object System.IO.Ports.SerialPort($port, $baudRate)
+        $serial.Parity = [System.IO.Ports.Parity]::None
+        $serial.DataBits = 8
+        $serial.StopBits = [System.IO.Ports.StopBits]::One
         $serial.Encoding = [System.Text.Encoding]::UTF8
         $serial.DtrEnable = $false
         $serial.RtsEnable = $false
@@ -235,11 +247,22 @@ function Start-CustomMonitor {
             $serial.RtsEnable = $false
             Start-Sleep -Milliseconds 100
         }
+        $escWasDown = $false
         while ($serial.IsOpen) {
             try {
+                if ($null -ne ([Keyboard] -as [type])) {
+                    $escState = [Keyboard]::GetAsyncKeyState(0x1B)
+                    $escDown = ($escState -lt 0)
+                    if ($escDown -and -not $escWasDown) {
+                        $escWasDown = $true
+                    }
+                    if (-not $escDown -and $escWasDown) {
+                        break
+                    }
+                }
                 if ($serial.BytesToRead -gt 0) {
                     $text = $serial.ReadExisting()
-                    if ($text) { [Console]::Write($text) }
+                    if ($text) { Write-Host -NoNewline $text }
                 } else {
                     Start-Sleep -Milliseconds 10
                 }
