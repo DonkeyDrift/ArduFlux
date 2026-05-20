@@ -6,7 +6,7 @@
 
 ## 项目概述
 
-本项目是一个 **VS Code 扩展**（显示名称为「开发板配置」，扩展 ID 为 `baoshan.arduflux`，版本 `0.3.3`），用于管理嵌入式开发板配置。扩展直接读写工作区根目录下的 `ArduFlux.json`，管理内容包括：
+本项目是一个 **VS Code 扩展**（显示名称为「开发板配置」，扩展 ID 为 `baoshan.arduflux`，版本 `0.3.4`），用于管理嵌入式开发板配置。扩展直接读写工作区根目录下的 `ArduFlux.json`，管理内容包括：
 
 - 板子型号（名称、FQBN、编译参数、引脚定义）
 - 串口（枚举、自动选择、USB 优先）
@@ -78,7 +78,7 @@
 ├── docs/                         # 项目级技术文档
 │   └── roadmap-phase6-8.md       # 扩展功能开发路线图
 ├── rel/                          # 预构建发布包
-│   └── arduflux-0.3.3.vsix
+│   └── arduflux-0.3.4.vsix
 ├── test/                         # 测试用 Arduino 项目
 │   └── mus4/                     # 示例草图（含 .ino、.cpp、.h 文件）
 ├── ArduFlux.json                 # 扩展直接读写的配置文件（运行时生成/更新，gitignored）

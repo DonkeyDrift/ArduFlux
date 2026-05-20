@@ -2,7 +2,7 @@
   "name": "arduflux",
   "displayName": "开发板配置",
   "description": "Manage embedded board, serial port, build output, monitor and profiles from VS Code.",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "publisher": "baoshan",
   "license": "MIT",
   "engines": {
