@@ -201,7 +201,9 @@ function Get-AvailablePorts {
             if ($cachedItems.Count -gt 0) {
                 Write-Host "Using cached port list (cached ${age}s ago)"
                 return @($cachedItems | ForEach-Object {
-                    $protocolLabel = [string]($_.protocolLabel ?? $_.type ?? "")
+                    $protocolLabel = ""
+                    if ($_.protocolLabel) { $protocolLabel = [string]$_.protocolLabel }
+                    elseif ($_.type) { $protocolLabel = [string]$_.type }
                     [pscustomobject]@{
                         Address = [string]$_.address
                         Label = [string]$_.label
