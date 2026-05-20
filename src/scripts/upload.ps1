@@ -43,6 +43,7 @@ $defaultConfig = @{
     LastSuccessfulPort = ""
     OutputDir = ""
     RecentOutputDirs = @()
+    SketchPath = ""
     CompileBeforeUpload = $false
     UploadThenMonitor = $false
     MonitorEnabled = $true
@@ -79,6 +80,7 @@ if (Test-Path $embeddedConfigFile) {
     if ($cur.build) {
         if ($cur.build.outputDir) { $config.OutputDir = [string]$cur.build.outputDir }
         if ($cur.build.recentOutputDirs) { $config.RecentOutputDirs = @($cur.build.recentOutputDirs) }
+        if ($cur.build.sketchPath) { $config.SketchPath = [string]$cur.build.sketchPath }
         if ($null -ne $cur.build.compileBeforeUpload) { $config.CompileBeforeUpload = [bool]$cur.build.compileBeforeUpload }
         if ($null -ne $cur.build.uploadThenMonitor) { $config.UploadThenMonitor = [bool]$cur.build.uploadThenMonitor }
     }
@@ -131,7 +133,7 @@ function Save-Config {
                     auto = [bool]$config.PortAuto
                     lastSuccessfulAddress = $config.LastSuccessfulPort
                 }
-                build = @{ outputDir = $config.OutputDir; recentOutputDirs = @($config.RecentOutputDirs); compileBeforeUpload = [bool]$config.CompileBeforeUpload; uploadThenMonitor = [bool]$config.UploadThenMonitor }
+                build = @{ outputDir = $config.OutputDir; recentOutputDirs = @($config.RecentOutputDirs); sketchPath = $config.SketchPath; compileBeforeUpload = [bool]$config.CompileBeforeUpload; uploadThenMonitor = [bool]$config.UploadThenMonitor }
                 monitor = @{
                     enabled = [bool]$config.MonitorEnabled
                     baudRate = [int]$config.BaudRate
@@ -378,13 +380,14 @@ if ($doUpload -or $doMonitorBlock -or $forceMonitor) {
         }
     }
 
-    $resolvedPort = Resolve-Port -Ports $availablePortObjects -SavedPort $config.Port -AutoSelect $config.PortAuto
-    if (-not $resolvedPort) {
-        Write-Host "Unable to resolve a valid serial port"
-        exit 1
-    }
-
-    if ($config.PortAuto) {
+    if ($config.Port) {
+        Write-Host "Using saved port: $($config.Port)"
+    } else {
+        $resolvedPort = Resolve-Port -Ports $availablePortObjects -SavedPort $config.Port -AutoSelect $config.PortAuto
+        if (-not $resolvedPort) {
+            Write-Host "Unable to resolve a valid serial port"
+            exit 1
+        }
         $config.Port = $resolvedPort
         $resolvedIsUsb = ($availablePortObjects | Where-Object { $_.Address -eq $resolvedPort } | Select-Object -First 1).IsUsb
         if ($resolvedIsUsb) {
@@ -392,9 +395,6 @@ if ($doUpload -or $doMonitorBlock -or $forceMonitor) {
         } else {
             Write-Host "Auto selected port: $($config.Port)"
         }
-    } else {
-        $config.Port = $resolvedPort
-        Write-Host "Using saved port: $($config.Port)"
     }
 }
 
@@ -422,18 +422,15 @@ function Get-RequiredLibraries {
 
     $CACHE_TTL_SECONDS = 3600
     $now = [int64]([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
-    $inoItem = Get-Item -Path $inoPath
-    $inoMtime = [int64]($inoItem.LastWriteTimeUtc - [datetime]"1970-01-01").TotalSeconds
+    $inoHash = (Get-FileHash -Path $inoPath -Algorithm SHA256).Hash
 
     if ($script:cache.libraries -and $script:cache.libraries.timestamp) {
         $age = $now - [int64]$script:cache.libraries.timestamp
         $cachedHash = [string]$script:cache.libraries.inoHash
-        if ($age -lt $CACHE_TTL_SECONDS -and $cachedHash -eq "$inoMtime") {
+        if ($age -lt $CACHE_TTL_SECONDS -and $cachedHash -eq $inoHash) {
             $cachedItems = @($script:cache.libraries.items)
-            if ($cachedItems.Count -gt 0) {
-                Write-Host "Using cached library list (cached ${age}s ago)"
-                return $cachedItems
-            }
+            Write-Host "Using cached library list (cached ${age}s ago)"
+            return $cachedItems
         }
     }
 
@@ -500,7 +497,7 @@ function Get-RequiredLibraries {
 
     $script:cache.libraries = [pscustomobject]@{
         items = @($required)
-        inoHash = "$inoMtime"
+        inoHash = $inoHash
         timestamp = $now
     }
     Save-Cache
@@ -518,12 +515,37 @@ if ($doCompile) {
     }
     $requiredLibs = Get-RequiredLibraries -inoPath $inoFile.FullName
 
+    $missingLibs = @()
     if ($requiredLibs.Count -gt 0) {
-        Write-Host "`n=== Installing required libraries ==="
+        $installedLibNames = @()
+        try {
+            $libListJson = arduino-cli lib list --format json
+            if ($libListJson) {
+                $libListData = $libListJson | ConvertFrom-Json
+                $installedLibNames = @($libListData | ForEach-Object {
+                    if ($_.library -and $_.library.name) { $_.library.name }
+                    elseif ($_.name) { $_.name }
+                })
+            }
+        } catch {
+            $installedLibNames = @()
+        }
+
         foreach ($lib in $requiredLibs) {
+            if (-not ($installedLibNames -contains $lib)) {
+                $missingLibs += $lib
+            }
+        }
+    }
+
+    if ($missingLibs.Count -gt 0) {
+        Write-Host "`n=== Installing required libraries ==="
+        foreach ($lib in $missingLibs) {
             Write-Host "Installing library: $lib"
             arduino-cli lib install "$lib"
         }
+    } elseif ($requiredLibs.Count -gt 0) {
+        Write-Host "`n=== All required libraries already installed ==="
     } else {
         Write-Host "`n=== No external libraries to install ==="
     }
