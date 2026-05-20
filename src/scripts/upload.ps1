@@ -522,7 +522,13 @@ if ($doCompile) {
             $libListJson = arduino-cli lib list --format json
             if ($libListJson) {
                 $libListData = $libListJson | ConvertFrom-Json
-                $installedLibNames = @($libListData | ForEach-Object {
+                $libsArray = @()
+                if ($libListData.installed_libraries) {
+                    $libsArray = @($libListData.installed_libraries)
+                } elseif ($libListData -is [array]) {
+                    $libsArray = @($libListData)
+                }
+                $installedLibNames = @($libsArray | ForEach-Object {
                     if ($_.library -and $_.library.name) { $_.library.name }
                     elseif ($_.name) { $_.name }
                 })
