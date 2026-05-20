@@ -1,3 +1,4 @@
+<!-- From: C:\Dev\OPC\ArduFlux\AGENTS.md -->
 <!-- AGENTS.md — ArduFlux -->
 
 > 本文件面向 AI 编码助手。阅读者应被假设为**完全不了解本项目**。
@@ -18,7 +19,7 @@
 
 扩展的数据格式与项目自带的 `src/scripts/upload.ps1` PowerShell 上传脚本保持兼容，该脚本可直接读取同一配置文件并完成编译、上传、监视器打开等操作。
 
-本项目同时包含一个 Arduino 示例草图 `ArduFlux.ino`（ESP32-S3 触摸按键 + WS2812B LED 控制），用于验证配置与上传流程。
+本项目同时包含一个 Arduino 示例草图 `ArduFlux.ino`（ESP32-S3 触摸按键 + WS2812B LED 控制），以及一个测试用 Arduino 项目目录 `test/mus4/`，用于验证配置与上传流程。
 
 ---
 
@@ -30,7 +31,7 @@
 | 构建工具 | `tsc`（TypeScript 编译器）、`vsce`（VSIX 打包工具） |
 | 扩展测试 | Mocha + Chai + Sinon（TypeScript 侧单元测试） |
 | 上传脚本 | PowerShell (`src/scripts/upload.ps1`)，依赖 `arduino-cli` |
-| 嵌入式固件 | Arduino C++ (`ArduFlux.ino`) |
+| 嵌入式固件 | Arduino C++ (`ArduFlux.ino`、`test/mus4/*.ino`) |
 
 ### TypeScript 编译配置
 
@@ -79,8 +80,10 @@
 │   └── roadmap-phase6-8.md       # 扩展功能开发路线图
 ├── rel/                          # 预构建发布包
 │   └── arduflux-0.3.3.vsix
+├── test/                         # 测试用 Arduino 项目
+│   └── mus4/                     # 示例草图（含 .ino、.cpp、.h 文件）
 ├── ArduFlux.json                 # 扩展直接读写的配置文件（运行时生成/更新，gitignored）
-├── ArduFlux.template.json        # 配置文件模板
+├── ArduFlux.template.json        # 配置文件模板（含示例端口/目录数据）
 ├── upload_config.json            # 旧版上传配置（upload.ps1 兼容读取）
 ├── install-vsix.ps1              # 自动卸载旧扩展并安装最新 VSIX（支持 TRAE / VS Code）
 ├── ArduFlux.ino                  # Arduino 示例草图
@@ -97,7 +100,7 @@
 | `editorView.ts` | 实现 `vscode.WebviewViewProvider`，为侧边栏 `arduflux.editor` 视图提供 Webview。处理无工作区时的占位提示，以及视图显隐切换时的状态同步。 |
 | `webviewController.ts` | 核心控制器 `ConfigEditorController`。生成完整内联 HTML/CSS/JS（`getHtml`），处理前端 `postMessage`（save-config、compile-sketch、upload-sketch、refresh-ports、Profiles 操作等），调用 `terminal.ts` 执行实际任务。 |
 | `panel.ts` | 浮动面板 `ArduFluxPanel`，作为侧边栏不可用时的 fallback。包装同一套 `ConfigEditorController`。 |
-| `configStore.ts` | 配置持久化核心。`ConfigStore` 类负责加载/保存 `ArduFlux.json`、配置迁移（`migrateConfig`）、校验（board/port/build/monitor）、串口枚举（带 5 秒缓存）、Profile 增删改查/导入导出。同时导出大量纯工具函数（`buildCompileArgs`、`buildUploadArgs`、`buildMonitorArgs`、`normalizePath`、`validateFqbn` 等）。 |
+| `configStore.ts` | 配置持久化核心。`ConfigStore` 类负责加载/保存 `ArduFlux.json`、配置迁移（`migrateConfig`）、校验（board/port/build/monitor）、串口枚举（带 5 秒缓存）、Profile 增删改查/导入导出。同时导出大量纯工具函数（`buildCompileArgs`、`buildUploadArgs`、`buildMonitorArgs`、`normalizePath`、`validateFqbn`、`deepClone`、`recommendSerialPort` 等）。 |
 | `types.ts` | 所有接口定义和默认配置工厂函数 `createDefaultConfig()`。预置板型目录 `DEFAULT_BOARD_CATALOG` 包含 ESP32-S3、ESP32 Dev Module、Arduino Uno、STM32 (Custom FQBN)。 |
 | `terminal.ts` | 提供 `runInTerminal`（直接运行 arduino-cli）和 `runUploadScript`（调用 upload.ps1）。均使用 VS Code `Pseudoterminal` 实现，支持进程树强制终止（Ctrl+C）。上传脚本执行成功后，非监视器模式下终端窗口会在 3 秒后自动关闭。 |
 | `statusBar.ts` | 仅含 `formatStatusBarText(boardName, portAddress)` 纯函数。 |
@@ -129,7 +132,7 @@ npm run watch
 ```bash
 npm test
 ```
-先执行 `npm run compile`，再用 Mocha 运行 `dist/test/**/*.test.js`。当前共 101 个测试用例全部通过。
+先执行 `npm run compile`，再用 Mocha 运行 `dist/test/**/*.test.js`。当前共 103 个测试用例全部通过。
 
 **测试监视模式：**
 ```bash
@@ -162,7 +165,7 @@ npm run install:vsix:code   # 强制使用 VS Code
 npm test
 ```
 
-当前测试覆盖（`src/test/`）共 7 个文件、101 个用例：
+当前测试覆盖（`src/test/`）共 7 个文件、103 个用例：
 
 | 测试文件 | 覆盖内容 |
 |----------|----------|
@@ -186,8 +189,9 @@ npm test
 
 ### TypeScript 侧
 - 使用 **严格模式**（`strict: true`），禁止隐式 `any`。
-- 目标 `ES2020`，输出 `CommonJS`。源码中使用 `structuredClone` 进行深拷贝。
+- 目标 `ES2020`，输出 `CommonJS`。
 - 源码放在 `src/`，编译输出到 `dist/`。
+- 深拷贝：工具函数 `deepClone` 使用 `JSON.parse(JSON.stringify(value))`；`createDefaultConfig()` 中使用 `structuredClone` 复制预置引脚定义。
 - 错误处理使用自定义 `ValidationError`，携带 `message` 和可选的 `suggestion`（建议）。
 - Webview 使用**内联 HTML**（非外部文件），通过 `nonce` 设置 CSP。所有 HTML、CSS、JavaScript 均在 `src/webviewController.ts` 的 `getHtml()` 方法中生成。
 - 所有需要在命令面板中可见的 VS Code 命令，必须在 `package.json` 的 `contributes.commands` 中注册。
