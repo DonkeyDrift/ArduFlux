@@ -20,4 +20,7 @@ tsconfig.json
 AGENTS.md
 *.vsix
 dist/test/**
+build/**
+test/**
+test-mcp.js
 upload.ps1
