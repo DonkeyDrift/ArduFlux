@@ -1,3 +1,36 @@
+## [0.4.0] - 2026-05-21
+
+### MCP (Model Context Protocol) 支持
+
+- 新增 MCP 服务器 `dist/mcpServer.js`，支持 stdio / SSE / StreamableHTTP 三种传输
+- 注册 14 个 MCP Tools：`get_state`、`list_ports`、`validate_config`、`set_config`、`compile`、`upload`、`monitor`、`get_task_status`、`apply_profile`、`list_profiles`、`save_profile`、`delete_profile`、`discover_sketches`、`health`
+- 支持任务日志实时推送（`sendLoggingMessage`）和后台异步轮询
+- VS Code 扩展激活时自动注册 `McpServerDefinitionProvider`（1.99+）
+- 新增 `--health-check-interval` CLI 参数和全局异常捕获
+
+### 安全增强
+
+- 新增 `validateFqbn` 严格校验（3–4 段，仅 `a-zA-Z0-9_-=`）
+- 新增 `validateCliArgs` 拦截 shell 元字符
+- 新增 `validateSketchPath` 强制 `.ino` 后缀 + 工作区内防穿越
+- `buildCompileArgs` / `buildUploadArgs` 统一调用 `validateCliArgs`
+
+### 测试与文档
+
+- 新增 MCP 端到端集成测试（stdio / SSE / StreamableHTTP）
+- 测试总数从 103 增至 **135** 个，全部通过
+- 新增 CLI 配置文档：`mcp-claude-cli.md`、`mcp-kimi-cli.md`、`mcp-codebuddy-cli.md`
+- 新增 IDE 配置文档：`mcp-trae.md`、`mcp-codebuddy.md`
+- 新增验收报告：`docs/validation/phase9-12-validation.md`
+
+### 工程改进
+
+- 新增 `bin/arduflux-mcp` CLI 入口脚本，修复 Windows npm wrapper 无 `node` 前缀问题
+- VSIX 体积从 22 MB 优化至 **77 KB**（排除 build/test 目录）
+- `.vscodeignore` 精简，确保 `dist/mcpServer.js` 和 `bin/arduflux-mcp` 被打包
+
+---
+
 ## [0.2.0] - 2026-05-05
 
 - 新增标准 VS Code 扩展工程：`package.json`、`tsconfig.json`、`src/`
@@ -12,5 +45,5 @@
 - 新增 tkinter 图形化配置工具 `python -m embedded_config.ui`
 - 新增命令行工具 `python -m embedded_config.cli`
 - `upload.ps1` 支持读取 `ArduFlux.json`，支持编译输出目录与监视器开关
-- 编译阶段增加“循环流动点”UI 动画
+- 编译阶段增加"循环流动点"UI 动画
 - 增加单元测试 `tests/`
