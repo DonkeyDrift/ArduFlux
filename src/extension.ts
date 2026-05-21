@@ -49,10 +49,15 @@ export function activate(context: vscode.ExtensionContext): void {
       `[activate] WebviewViewProvider registered successfully (viewId=${ARDUFLUX_EDITOR_VIEW_ID}, disposable=${typeof registration.dispose === "function"})`
     );
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     outputChannel.appendLine(
-      `[activate] FAILED to register WebviewViewProvider (viewId=${ARDUFLUX_EDITOR_VIEW_ID}): ${err}`
+      `[activate] FAILED to register WebviewViewProvider (viewId=${ARDUFLUX_EDITOR_VIEW_ID}): ${msg}`
     );
-    void vscode.window.showErrorMessage(`开发板配置: WebviewView 注册失败: ${err}`);
+    // 热重载或窗口重新加载时，旧的 provider 可能尚未完全 dispose，
+    // 导致 "already registered" 错误。此情况属于良性竞争，仅记录日志即可。
+    if (!msg.includes("already registered")) {
+      void vscode.window.showErrorMessage(`开发板配置: WebviewView 注册失败: ${msg}`);
+    }
   }
 
   context.subscriptions.push(
