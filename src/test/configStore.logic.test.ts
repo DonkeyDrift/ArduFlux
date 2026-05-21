@@ -6,6 +6,8 @@ import {
   dedupeKeepLatest,
   normalizePath,
   validateFqbn,
+  validateCliArgs,
+  validateSketchPath,
   isUsbPort,
   normalizeSerialAddress,
   mapJsonPortEntry,
@@ -103,6 +105,45 @@ describe("configStore.ts - 纯逻辑", () => {
 
     it("只有一个冒号的 FQBN 应抛异常", () => {
       expect(() => validateFqbn("esp32:esp32")).to.throw(ValidationError, "FQBN 格式不正确");
+    });
+
+    it("包含非法字符的 FQBN 应抛异常", () => {
+      expect(() => validateFqbn("esp32;rm -rf /")).to.throw(ValidationError);
+      expect(() => validateFqbn("esp32|evil")).to.throw(ValidationError);
+      expect(() => validateFqbn("a:b:c$(whoami)")).to.throw(ValidationError);
+    });
+
+    it("4 段的合法 FQBN 应通过", () => {
+      expect(() => validateFqbn("esp32:esp32:esp32s3:PartitionScheme=default")).to.not.throw();
+    });
+  });
+
+  describe("validateCliArgs", () => {
+    it("合法参数应通过", () => {
+      expect(() => validateCliArgs(["compile", "--fqbn", "esp32:esp32:esp32s3", "/project/ArduFlux.ino"])).to.not.throw();
+    });
+
+    it("包含 shell 元字符的参数应抛异常", () => {
+      expect(() => validateCliArgs(["; rm -rf /"])).to.throw(ValidationError);
+      expect(() => validateCliArgs(["| cat /etc/passwd"])).to.throw(ValidationError);
+      expect(() => validateCliArgs(["$(whoami)"])).to.throw(ValidationError);
+      expect(() => validateCliArgs(["`id`"])).to.throw(ValidationError);
+    });
+  });
+
+  describe("validateSketchPath", () => {
+    it("工作区内的 .ino 文件应通过", () => {
+      expect(() => validateSketchPath("ArduFlux.ino", "/project")).to.not.throw();
+      expect(() => validateSketchPath("src/ArduFlux.ino", "/project")).to.not.throw();
+    });
+
+    it("非 .ino 文件应抛异常", () => {
+      expect(() => validateSketchPath("main.cpp", "/project")).to.throw(ValidationError);
+    });
+
+    it("目录穿越应被拦截", () => {
+      expect(() => validateSketchPath("../evil.ino", "/project")).to.throw(ValidationError);
+      expect(() => validateSketchPath("/etc/passwd.ino", "/project")).to.throw(ValidationError);
     });
   });
 

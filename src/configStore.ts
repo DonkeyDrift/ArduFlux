@@ -53,13 +53,44 @@ export function normalizePath(pathText: string, baseDir: string): string {
   return path.isAbsolute(expanded) ? path.normalize(expanded) : path.resolve(baseDir, expanded);
 }
 
+const FQBN_PART_REGEX = /^[a-zA-Z0-9_=-]+$/;
+
 export function validateFqbn(fqbn: string): void {
   const value = fqbn.trim();
   if (!value) {
     throw new ValidationError("FQBN 不能为空", "例如：esp32:esp32:esp32s3 或 arduino:avr:uno");
   }
-  if ((value.match(/:/g) ?? []).length < 2) {
-    throw new ValidationError("FQBN 格式不正确", "格式通常为 vendor:arch:board，例如 esp32:esp32:esp32s3");
+  const parts = value.split(":");
+  if (parts.length < 3 || parts.length > 4) {
+    throw new ValidationError("FQBN 格式不正确", "格式应为 vendor:arch:board[:option]，例如 esp32:esp32:esp32s3");
+  }
+  for (const part of parts) {
+    if (!FQBN_PART_REGEX.test(part)) {
+      throw new ValidationError(`FQBN 包含非法字符: "${part}"`, "FQBN 各部分只能包含字母、数字、下划线和连字符");
+    }
+  }
+}
+
+const DANGEROUS_ARG_CHARS = /[;|&$`*?<>{}[\]!#~]/;
+
+export function validateCliArgs(args: string[]): void {
+  for (const arg of args) {
+    if (DANGEROUS_ARG_CHARS.test(arg)) {
+      throw new ValidationError(`参数包含非法字符: "${arg}"`, "参数中禁止包含 shell 元字符（; | & $ ` \\ * ? < > { } [ ] ! # ~）");
+    }
+  }
+}
+
+export function validateSketchPath(sketchPath: string, baseDir: string): void {
+  const trimmed = sketchPath.trim();
+  if (!trimmed.endsWith(".ino")) {
+    throw new ValidationError("草图路径必须以 .ino 结尾", "请指定一个有效的 Arduino 草图文件");
+  }
+  const resolved = path.resolve(baseDir, trimmed);
+  const base = path.resolve(baseDir);
+  const rel = path.relative(base, resolved);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new ValidationError("草图路径必须位于工作区内", "禁止访问工作区外的文件");
   }
 }
 
@@ -99,10 +130,13 @@ export function buildCompileArgs(opts: {
   sketchPath: string;
   outputDir?: string;
   extraArgs?: string[];
-}): string[] {
+}, baseDir?: string): string[] {
   validateFqbn(opts.fqbn);
   if (!opts.sketchPath.trim()) {
     throw new ValidationError("草图路径为空", "请确保工作区根目录包含 Arduino 草图");
+  }
+  if (baseDir) {
+    validateSketchPath(opts.sketchPath, baseDir);
   }
   const args = ["compile", "--fqbn", opts.fqbn.trim()];
   if (opts.outputDir?.trim()) {
@@ -112,6 +146,7 @@ export function buildCompileArgs(opts: {
     args.push(...opts.extraArgs);
   }
   args.push(opts.sketchPath.trim());
+  validateCliArgs(args);
   return args;
 }
 
@@ -119,7 +154,7 @@ export function buildUploadArgs(opts: {
   port: string;
   fqbn: string;
   sketchPath: string;
-}): string[] {
+}, baseDir?: string): string[] {
   const port = normalizeSerialAddress(opts.port);
   if (!port) {
     throw new ValidationError("串口未选择", "请先选择串口端口");
@@ -128,7 +163,12 @@ export function buildUploadArgs(opts: {
   if (!opts.sketchPath.trim()) {
     throw new ValidationError("草图路径为空", "请确保工作区根目录包含 Arduino 草图");
   }
-  return ["upload", "-p", port, "--fqbn", opts.fqbn.trim(), opts.sketchPath.trim()];
+  if (baseDir) {
+    validateSketchPath(opts.sketchPath, baseDir);
+  }
+  const args = ["upload", "-p", port, "--fqbn", opts.fqbn.trim(), opts.sketchPath.trim()];
+  validateCliArgs(args);
+  return args;
 }
 
 export function buildMonitorArgs(opts: {
@@ -427,6 +467,11 @@ export class ConfigStore {
   }
 
   async validateBuild(buildState = this.data.current.build): Promise<void> {
+    const sketchPath = String(buildState.sketchPath ?? "").trim();
+    if (sketchPath) {
+      validateSketchPath(sketchPath, this.baseDir);
+    }
+
     const outputDir = String(buildState.outputDir ?? "").trim();
     if (!outputDir) {
       return;

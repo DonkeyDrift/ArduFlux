@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import { spawn as cpSpawn, ChildProcess } from "child_process";
+import * as path from "path";
 import {
   ConfigStore,
   ValidationError,
@@ -237,6 +238,22 @@ export function createMcpServer(
         next.current.build.outputDir = args.build_output_dir;
       }
       if (args.sketch_path !== undefined) {
+        const resolved = path.resolve(workspaceRoot, args.sketch_path);
+        const rel = path.relative(workspaceRoot, resolved);
+        if (rel.startsWith("..") || path.isAbsolute(rel)) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({
+                  saved: false,
+                  error: `sketch_path 必须位于工作区内`,
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
         next.current.build.sketchPath = args.sketch_path;
       }
       if (args.compile_before_upload !== undefined) {
@@ -461,7 +478,7 @@ export function createMcpServer(
           sketchPath,
           outputDir: config.current.build.outputDir,
           extraArgs: config.current.board.compileArgs,
-        });
+        }, workspaceRoot);
 
         const taskId = startTask("compile", "arduino-cli", cliArgs, workspaceRoot, extra.sessionId);
         return {
@@ -514,7 +531,7 @@ export function createMcpServer(
             sketchPath,
             outputDir: config.current.build.outputDir,
             extraArgs: config.current.board.compileArgs,
-          });
+          }, workspaceRoot);
           startTask("compile", "arduino-cli", compileArgs, workspaceRoot, extra.sessionId);
         }
 
@@ -522,7 +539,7 @@ export function createMcpServer(
           port,
           fqbn: config.current.board.fqbn,
           sketchPath,
-        });
+        }, workspaceRoot);
         const taskId = startTask("upload", "arduino-cli", uploadArgs, workspaceRoot, extra.sessionId);
 
         return {
