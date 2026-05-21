@@ -56,10 +56,13 @@ export function createMcpServer(
     tasks.set(id, task);
 
     function pushLog(text: string): void {
-      task.logs.push(text);
-      void server.sendLoggingMessage({ level: "info", data: text.trimEnd() }, sessionId).catch(() => {
-        // ignore: client may not support logging
-      });
+      const line = text.trimEnd();
+      task.logs.push(line);
+      if (sessionId) {
+        server.sendLoggingMessage({ level: "info", data: line }, sessionId).catch(() => {
+          // ignore: client may not support logging
+        });
+      }
     }
 
     try {
@@ -70,8 +73,15 @@ export function createMcpServer(
       proc.stderr?.on("data", (data: Buffer) => {
         pushLog(data.toString());
       });
-      proc.on("close", (code) => {
-        task.status = code === 0 ? "completed" : "failed";
+      proc.on("close", (code, signal) => {
+        if (code === 0) {
+          task.status = "completed";
+        } else if (signal) {
+          task.status = "failed";
+          pushLog(`[task] process terminated by signal ${signal}`);
+        } else {
+          task.status = "failed";
+        }
         task.exitCode = code ?? -1;
       });
       proc.on("error", (err) => {

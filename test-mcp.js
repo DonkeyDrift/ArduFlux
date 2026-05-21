@@ -96,10 +96,11 @@ async function main() {
   const taskId = compileResult.task_id;
   console.log('Task ID:', taskId);
 
-  // Poll task status
+  // Poll task status (5s interval, up to 180 times = 15 min max)
   let taskDone = false;
-  for (let i = 0; i < 120 && !taskDone; i++) {
-    await new Promise(r => setTimeout(r, 2000));
+  let lastLogCount = 0;
+  for (let i = 0; i < 180 && !taskDone; i++) {
+    await new Promise(r => setTimeout(r, 5000));
     const statusRes = await send('tools/call', {
       name: 'arduflux_get_task_status',
       arguments: { task_id: taskId }
@@ -107,7 +108,16 @@ async function main() {
     const statusText = statusRes.result?.content?.[0]?.text || '{}';
     let status;
     try { status = JSON.parse(statusText); } catch { status = { raw: statusText }; }
-    console.log(`  [${i+1}] status=${status.status}, exitCode=${status.exit_code}, logs=${status.logs?.length || 0}`);
+    const newLogs = status.logs?.slice(lastLogCount) || [];
+    lastLogCount = status.logs?.length || 0;
+    // Print new logs
+    for (const log of newLogs) {
+      process.stdout.write(log);
+    }
+    // Only print status line every 6 polls (30s) or on terminal state
+    if (i % 6 === 0 || status.status === 'completed' || status.status === 'failed') {
+      console.log(`\n  [${i+1}] status=${status.status}, exitCode=${status.exit_code}, logs=${lastLogCount}`);
+    }
     if (status.status === 'completed' || status.status === 'failed') {
       taskDone = true;
       if (status.status === 'completed') {
@@ -149,10 +159,11 @@ async function main() {
     return;
   }
 
-  // Poll task status
+  // Poll task status (5s interval, up to 60 times = 5 min max)
   taskDone = false;
-  for (let i = 0; i < 120 && !taskDone; i++) {
-    await new Promise(r => setTimeout(r, 2000));
+  lastLogCount = 0;
+  for (let i = 0; i < 60 && !taskDone; i++) {
+    await new Promise(r => setTimeout(r, 5000));
     const statusRes = await send('tools/call', {
       name: 'arduflux_get_task_status',
       arguments: { task_id: uploadResult.task_id }
@@ -160,7 +171,14 @@ async function main() {
     const statusText = statusRes.result?.content?.[0]?.text || '{}';
     let status;
     try { status = JSON.parse(statusText); } catch { status = { raw: statusText }; }
-    console.log(`  [${i+1}] status=${status.status}, exitCode=${status.exit_code}, logs=${status.logs?.length || 0}`);
+    const newLogs = status.logs?.slice(lastLogCount) || [];
+    lastLogCount = status.logs?.length || 0;
+    for (const log of newLogs) {
+      process.stdout.write(log);
+    }
+    if (i % 6 === 0 || status.status === 'completed' || status.status === 'failed') {
+      console.log(`\n  [${i+1}] status=${status.status}, exitCode=${status.exit_code}, logs=${lastLogCount}`);
+    }
     if (status.status === 'completed' || status.status === 'failed') {
       taskDone = true;
       if (status.status === 'completed') {
