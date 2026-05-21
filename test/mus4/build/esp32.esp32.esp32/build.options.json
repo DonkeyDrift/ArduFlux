@@ -1,0 +1,9 @@
+{
+  "additionalFiles": "..\\..,..\\..,..\\..,..\\..,..\\..",
+  "compiler.optimization_flags": "-Os",
+  "customBuildProperties": "",
+  "fqbn": "esp32:esp32:esp32",
+  "hardwareFolders": "C:\\Users\\cross\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\3.3.8-cn,C:\\Users\\cross\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\3.3.8-cn",
+  "otherLibrariesFolders": "C:\\Users\\cross\\Documents\\Arduino\\libraries",
+  "sketchLocation": "C:\\Dev\\OPC\\ArduFlux\\test\\mus4"
+}
