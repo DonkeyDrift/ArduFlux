@@ -4,7 +4,8 @@
 
 - Claude Code CLI 已安装（`claude --version` 可查看版本）
 - 已安装 Node.js ≥ 18
-- 项目已执行 `npm install && npm run compile`
+- 已执行 `npm install && npm run compile`
+- **路径选择**：根据你的安装方式选择对应的命令（见下文「安装方式与路径」）
 
 ## 支持的传输类型
 
@@ -15,20 +16,81 @@ Claude Code CLI 支持两种 MCP 传输方式：
 
 ## 配置方式
 
+## 安装方式与路径
+
+根据你的 ArduFlux 安装方式，选择对应的命令路径：
+
+| 安装方式 | 命令 | 说明 |
+|----------|------|------|
+| **全局 npm 安装**（推荐） | `arduflux-mcp` | 执行 `npm install -g .` 后全局可用，跨电脑兼容 |
+| **本地源码开发** | `node ./dist/mcpServer.js` | 在项目根目录执行，适合开发调试 |
+| **VSIX 扩展安装** | 见下方查找脚本 | 路径含版本号，需动态获取 |
+
+### 全局 npm 安装（推荐，跨电脑兼容）
+
+在项目根目录执行：
+
+```bash
+npm install -g .
+```
+
+这会注册全局命令 `arduflux-mcp`（来自 `package.json` 的 `bin` 字段）。
+
+验证：
+
+```bash
+arduflux-mcp --help
+```
+
+### 本地源码开发
+
+无需全局安装，直接在项目根目录使用相对路径：
+
+```bash
+node ./dist/mcpServer.js --stdio --workspace .
+```
+
+### VSIX 扩展安装后查找路径
+
+VS Code / TRAE 安装 VSIX 后，扩展位于扩展目录，路径含版本号：
+
+**PowerShell：**
+
+```powershell
+$ardufluxPath = (Get-ChildItem "$env:USERPROFILE\.vscode\extensions\baoshan.arduflux-*\dist\mcpServer.js" | Select-Object -First 1).FullName
+Write-Host $ardufluxPath
+```
+
+**Bash：**
+
+```bash
+ls ~/.vscode/extensions/baoshan.arduflux-*/dist/mcpServer.js | head -1
+```
+
+获取到路径后，将其填入下方命令或配置文件中。
+
+---
+
 ### 方式一：命令行快速添加（推荐）
 
 使用 `claude mcp add` 命令直接注册 MCP 服务器：
 
-**Bash / zsh / cmd：**
+**Bash / zsh / cmd（全局安装方式）：**
 
 ```bash
-claude mcp add --transport stdio --scope user arduflux -- node "C:/Dev/OPC/ArduFlux/dist/mcpServer.js" "--stdio" "--workspace" "C:/Dev/OPC/ArduFlux"
+claude mcp add --transport stdio --scope user arduflux -- arduflux-mcp "--stdio" "--workspace" "."
+```
+
+**Bash / zsh / cmd（本地开发方式）：**
+
+```bash
+claude mcp add --transport stdio --scope user arduflux -- node "./dist/mcpServer.js" "--stdio" "--workspace" "."
 ```
 
 **PowerShell（单行，参数用引号包裹）：**
 
 ```powershell
-claude mcp add --transport stdio --scope user arduflux -- node "C:/Dev/OPC/ArduFlux/dist/mcpServer.js" "--stdio" "--workspace" "C:/Dev/OPC/ArduFlux"
+claude mcp add --transport stdio --scope user arduflux -- arduflux-mcp "--stdio" "--workspace" "."
 ```
 
 > **⚠️ PowerShell 注意事项**：
@@ -62,6 +124,26 @@ claude mcp reconnect arduflux
 - **Windows**: `%APPDATA%\claude-code\mcp.json`
 - **Linux**: `~/.config/claude-code/mcp.json`
 
+**全局 npm 安装方式（推荐，跨电脑兼容）：**
+
+```json
+{
+  "mcpServers": {
+    "arduflux": {
+      "type": "stdio",
+      "command": "arduflux-mcp",
+      "args": [
+        "--stdio",
+        "--workspace",
+        "."
+      ]
+    }
+  }
+}
+```
+
+**本地开发方式：**
+
 ```json
 {
   "mcpServers": {
@@ -69,10 +151,10 @@ claude mcp reconnect arduflux
       "type": "stdio",
       "command": "node",
       "args": [
-        "C:/Dev/OPC/ArduFlux/dist/mcpServer.js",
+        "./dist/mcpServer.js",
         "--stdio",
         "--workspace",
-        "C:/Dev/OPC/ArduFlux"
+        "."
       ]
     }
   }
