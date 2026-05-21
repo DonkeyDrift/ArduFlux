@@ -4,11 +4,13 @@ import { randomUUID } from "crypto";
 import { spawn as cpSpawn, ChildProcess } from "child_process";
 import {
   ConfigStore,
+  ValidationError,
   recommendSerialPort,
   isUsbPort,
   buildCompileArgs,
   buildUploadArgs,
   buildMonitorArgs,
+  discoverSketches,
 } from "./configStore";
 import { ArduFluxConfig, DEFAULT_BOARD_CATALOG } from "./types";
 import { startSseServer, startStdioServer } from "./mcp/transports";
@@ -38,7 +40,8 @@ export function createMcpServer(
     type: "compile" | "upload" | "monitor",
     command: string,
     args: string[],
-    cwd: string
+    cwd: string,
+    sessionId?: string
   ): string {
     const id = randomUUID();
     const task: TaskRecord = {
@@ -51,13 +54,20 @@ export function createMcpServer(
     };
     tasks.set(id, task);
 
+    function pushLog(text: string): void {
+      task.logs.push(text);
+      void server.sendLoggingMessage({ level: "info", data: text.trimEnd() }, sessionId).catch(() => {
+        // ignore: client may not support logging
+      });
+    }
+
     try {
       const proc = spawn(command, args, { cwd, shell: false });
       proc.stdout?.on("data", (data: Buffer) => {
-        task.logs.push(data.toString());
+        pushLog(data.toString());
       });
       proc.stderr?.on("data", (data: Buffer) => {
-        task.logs.push(data.toString());
+        pushLog(data.toString());
       });
       proc.on("close", (code) => {
         task.status = code === 0 ? "completed" : "failed";
@@ -66,12 +76,12 @@ export function createMcpServer(
       proc.on("error", (err) => {
         task.status = "failed";
         task.exitCode = -1;
-        task.logs.push(`[error] ${err.message}`);
+        pushLog(`[error] ${err.message}`);
       });
     } catch (err) {
       task.status = "failed";
       task.exitCode = -1;
-      task.logs.push(`[error] ${err instanceof Error ? err.message : String(err)}`);
+      pushLog(`[error] ${err instanceof Error ? err.message : String(err)}`);
     }
 
     return id;
@@ -299,9 +309,138 @@ export function createMcpServer(
     }
   );
 
+  server.registerTool(
+    "arduflux_list_profiles",
+    {
+      description: "列出当前所有可用的 Profile 名称",
+    },
+    async () => {
+      const store = new ConfigStore(workspaceRoot);
+      const config = await store.load();
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({
+              profiles: Object.keys(config.profiles),
+            }),
+          },
+        ],
+      };
+    }
+  );
+
+  const SaveProfileSchema = z.object({
+    name: z.string(),
+    overwrite: z.boolean().optional(),
+  });
+
+  server.registerTool(
+    "arduflux_save_profile",
+    {
+      description: "将当前配置保存为指定名称的 Profile",
+      inputSchema: SaveProfileSchema,
+    },
+    async (args) => {
+      const store = new ConfigStore(workspaceRoot);
+      await store.load();
+      if (!args.overwrite && store.getData().profiles[args.name]) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                saved: false,
+                error: `Profile "${args.name}" 已存在，设置 overwrite=true 可覆盖`,
+              }),
+            },
+          ],
+          isError: true,
+        };
+      }
+      store.saveProfile(args.name);
+      await store.save();
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ saved: true, profile_name: args.name }),
+          },
+        ],
+      };
+    }
+  );
+
+  const DeleteProfileSchema = z.object({
+    name: z.string(),
+  });
+
+  server.registerTool(
+    "arduflux_delete_profile",
+    {
+      description: "删除指定 Profile",
+      inputSchema: DeleteProfileSchema,
+    },
+    async (args) => {
+      const store = new ConfigStore(workspaceRoot);
+      await store.load();
+      store.deleteProfile(args.name);
+      await store.save();
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ deleted: true, profile_name: args.name }),
+          },
+        ],
+      };
+    }
+  );
+
   const CompileSchema = z.object({
     sketch_path: z.string().optional(),
   });
+
+  server.registerTool(
+    "arduflux_discover_sketches",
+    {
+      description: "扫描工作区及子目录，自动发现所有 .ino Sketch 文件",
+    },
+    async () => {
+      const sketches = await discoverSketches(workspaceRoot);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ sketches }),
+          },
+        ],
+      };
+    }
+  );
+
+  async function resolveSketchPath(
+    explicitPath: string | undefined,
+    configPath: string
+  ): Promise<string> {
+    if (explicitPath) {
+      return explicitPath;
+    }
+    if (configPath) {
+      return configPath;
+    }
+    const sketches = await discoverSketches(workspaceRoot);
+    if (sketches.length === 0) {
+      throw new ValidationError("未找到 .ino 文件", "请指定 sketch_path 或在工作区中创建 .ino 文件");
+    }
+    if (sketches.length > 1) {
+      throw new ValidationError(
+        `发现多个 .ino 文件 (${sketches.length} 个)`,
+        `请通过 sketch_path 指定其中一个：${sketches.join(", ")}`
+      );
+    }
+    return sketches[0]!;
+  }
 
   server.registerTool(
     "arduflux_compile",
@@ -309,11 +448,14 @@ export function createMcpServer(
       description: "编译 Sketch。这是一个长耗时任务，返回 taskId 后需轮询 arduflux_get_task_status",
       inputSchema: CompileSchema,
     },
-    async (args) => {
+    async (args, extra) => {
       try {
         const store = new ConfigStore(workspaceRoot);
         const config = await store.load();
-        const sketchPath = args.sketch_path ?? config.current.build.sketchPath ?? "";
+        const sketchPath = await resolveSketchPath(
+          args.sketch_path,
+          config.current.build.sketchPath
+        );
         const cliArgs = buildCompileArgs({
           fqbn: config.current.board.fqbn,
           sketchPath,
@@ -321,12 +463,12 @@ export function createMcpServer(
           extraArgs: config.current.board.compileArgs,
         });
 
-        const taskId = startTask("compile", "arduino-cli", cliArgs, workspaceRoot);
+        const taskId = startTask("compile", "arduino-cli", cliArgs, workspaceRoot, extra.sessionId);
         return {
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify({ task_id: taskId, status: "running" }),
+              text: JSON.stringify({ task_id: taskId, status: "running", sketch_path: sketchPath }),
             },
           ],
         };
@@ -356,37 +498,53 @@ export function createMcpServer(
       description: "上传固件到开发板。自动遵循配置中的 compile_before_upload 链节开关",
       inputSchema: UploadSchema,
     },
-    async (args) => {
-      const store = new ConfigStore(workspaceRoot);
-      const config = await store.load();
-      const port = args.port ?? config.current.port.address;
-      const sketchPath = args.sketch_path ?? config.current.build.sketchPath ?? "";
+    async (args, extra) => {
+      try {
+        const store = new ConfigStore(workspaceRoot);
+        const config = await store.load();
+        const port = args.port ?? config.current.port.address;
+        const sketchPath = await resolveSketchPath(
+          args.sketch_path,
+          config.current.build.sketchPath
+        );
 
-      if (config.current.build.compileBeforeUpload) {
-        const compileArgs = buildCompileArgs({
+        if (config.current.build.compileBeforeUpload) {
+          const compileArgs = buildCompileArgs({
+            fqbn: config.current.board.fqbn,
+            sketchPath,
+            outputDir: config.current.build.outputDir,
+            extraArgs: config.current.board.compileArgs,
+          });
+          startTask("compile", "arduino-cli", compileArgs, workspaceRoot, extra.sessionId);
+        }
+
+        const uploadArgs = buildUploadArgs({
+          port,
           fqbn: config.current.board.fqbn,
           sketchPath,
-          outputDir: config.current.build.outputDir,
-          extraArgs: config.current.board.compileArgs,
         });
-        startTask("compile", "arduino-cli", compileArgs, workspaceRoot);
+        const taskId = startTask("upload", "arduino-cli", uploadArgs, workspaceRoot, extra.sessionId);
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({ task_id: taskId, status: "running", sketch_path: sketchPath }),
+            },
+          ],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({ error: message }),
+            },
+          ],
+          isError: true,
+        };
       }
-
-      const uploadArgs = buildUploadArgs({
-        port,
-        fqbn: config.current.board.fqbn,
-        sketchPath,
-      });
-      const taskId = startTask("upload", "arduino-cli", uploadArgs, workspaceRoot);
-
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ task_id: taskId, status: "running" }),
-          },
-        ],
-      };
     }
   );
 
@@ -437,7 +595,7 @@ export function createMcpServer(
     {
       description: "打开串口监视器。由于监视器是阻塞式终端操作，仅负责启动并返回终端信息",
     },
-    async () => {
+    async (extra) => {
       const store = new ConfigStore(workspaceRoot);
       const config = await store.load();
       const port = config.current.port.address;
@@ -462,7 +620,7 @@ export function createMcpServer(
         parity: config.current.monitor.parity,
       });
 
-      startTask("monitor", "arduino-cli", args, workspaceRoot);
+      startTask("monitor", "arduino-cli", args, workspaceRoot, extra.sessionId);
 
       return {
         content: [

@@ -525,3 +525,50 @@ export class ConfigStore {
       : { ...parsed.profiles };
   }
 }
+
+const EXCLUDED_DIRS = new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  ".vscode",
+  ".trae",
+  ".venv",
+  "venv",
+  "__pycache__",
+  "target",
+  "build",
+  ".idea",
+  ".kimi",
+]);
+
+export async function discoverSketches(baseDir: string): Promise<string[]> {
+  const results: string[] = [];
+
+  async function walk(dir: string, depth: number): Promise<void> {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (EXCLUDED_DIRS.has(entry.name)) {
+          continue;
+        }
+        await walk(path.join(dir, entry.name), depth + 1);
+      } else if (entry.isFile() && entry.name.endsWith(".ino")) {
+        results.push(path.join(dir, entry.name));
+      }
+    }
+  }
+
+  await walk(baseDir, 0);
+
+  // Sort by depth (root directory first), then alphabetically
+  results.sort((a, b) => {
+    const depthA = a.split(path.sep).length;
+    const depthB = b.split(path.sep).length;
+    if (depthA !== depthB) {
+      return depthA - depthB;
+    }
+    return a.localeCompare(b);
+  });
+
+  return results;
+}
