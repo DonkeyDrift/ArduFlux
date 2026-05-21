@@ -115,6 +115,12 @@
         "mac": "cmd+shift+u",
         "when": "editorTextFocus"
       }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "baoshan.arduflux.mcp",
+        "label": "ArduFlux MCP Server"
+      }
     ]
   },
   "scripts": {

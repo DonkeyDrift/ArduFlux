@@ -32,6 +32,7 @@ export function createMcpServer(
 ): McpServer {
   const spawn = deps.spawn ?? cpSpawn;
   const tasks = new Map<string, TaskRecord>();
+  const startTime = Date.now();
 
   function startTask(
     type: "compile" | "upload" | "monitor",
@@ -478,6 +479,34 @@ export function createMcpServer(
     }
   );
 
+  server.registerTool(
+    "arduflux_health",
+    {
+      description: "获取服务器健康状态，包括运行时长、内存占用、活跃任务数",
+    },
+    async () => {
+      const uptime = Math.floor((Date.now() - startTime) / 1000);
+      const mem = process.memoryUsage();
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({
+              uptime_seconds: uptime,
+              memory: {
+                rss: mem.rss,
+                heap_used: mem.heapUsed,
+                heap_total: mem.heapTotal,
+                external: mem.external,
+              },
+              active_tasks: tasks.size,
+            }),
+          },
+        ],
+      };
+    }
+  );
+
   return server;
 }
 
@@ -496,6 +525,40 @@ function parseCliArgs(argv: string[]): Record<string, string> {
     }
   }
   return args;
+}
+
+function setupHealthPing(intervalSeconds: number): NodeJS.Timeout {
+  const intervalMs = intervalSeconds * 1000;
+  return setInterval(() => {
+    // eslint-disable-next-line no-console
+    console.error(`[arduflux-mcp] ping`);
+  }, intervalMs);
+}
+
+function setupGlobalErrorHandlers(): void {
+  process.on("uncaughtException", (err) => {
+    const summary = {
+      type: "uncaughtException",
+      message: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString(),
+    };
+    // eslint-disable-next-line no-console
+    console.error(JSON.stringify(summary));
+    process.exit(1);
+  });
+
+  process.on("unhandledRejection", (reason) => {
+    const summary = {
+      type: "unhandledRejection",
+      reason: reason instanceof Error ? reason.message : String(reason),
+      stack: reason instanceof Error ? reason.stack : undefined,
+      timestamp: new Date().toISOString(),
+    };
+    // eslint-disable-next-line no-console
+    console.error(JSON.stringify(summary));
+    process.exit(1);
+  });
 }
 
 function findProjectRoot(startDir: string): string {
@@ -526,17 +589,22 @@ if (require.main === module) {
     const workspaceRoot = findProjectRoot(startDir);
     const useSse = args.sse === "true" || (!args.sse && !args.stdio);
     const port = parseInt(args.port || "0", 10);
+    const healthInterval = parseInt(args["health-check-interval"] || "30", 10);
+
+    setupGlobalErrorHandlers();
 
     const server = createMcpServer(workspaceRoot);
 
     if (useSse) {
-      const { port: actualPort } = await startSseServer(server, port);
+      const { port: actualPort } = await startSseServer(server, port, () => createMcpServer(workspaceRoot));
       // eslint-disable-next-line no-console
       console.error(
         `[arduflux-mcp] SSE server listening on http://127.0.0.1:${actualPort}`
       );
     } else {
+      const pingTimer = setupHealthPing(healthInterval);
       await startStdioServer(server);
+      clearInterval(pingTimer);
     }
   })();
 }

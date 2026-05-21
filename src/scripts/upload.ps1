@@ -4,7 +4,7 @@ param(
     [switch]$s,
     [switch]$Debug,
     [string]$workspace,
-    [string]$sketchPath
+    [string]$sketchPathParam
 )
 
 $script:debugMode = $Debug
@@ -520,10 +520,10 @@ if ($doUpload -or $doMonitorBlock -or $forceMonitor) {
 if (-not $sketchPath) {
     $sketchPath = $projectRoot
 }
-$inoFile = $null
 
-if ($sketchPath) {
-    $resolvedSketch = $sketchPath
+# 新增逻辑：处理 sketchPathParam
+if ($sketchPathParam) {
+    $resolvedSketch = $sketchPathParam
     if (Test-Path $resolvedSketch) {
         $item = Get-Item -Path $resolvedSketch
         if ($item -is [System.IO.FileInfo] -and $item.Extension -eq '.ino') {
@@ -533,8 +533,39 @@ if ($sketchPath) {
             $sketchPath = $item.FullName
             $inoFile = Get-ChildItem -Path $sketchPath -Filter "*.ino" | Select-Object -First 1
         }
+    } else {
+        Write-Host "Error: Specified sketch path '$sketchPathParam' does not exist."
+        exit 1
+    }
+} else {
+    # 如果没有通过参数指定 sketchPath，则从 ArduFlux.json 或项目根目录获取
+    if ($config.SketchPath) {
+        $sketchPath = $config.SketchPath
+    } else {
+        # 如果 ArduFlux.json 中也没有，则使用项目根目录
+        $sketchPath = $projectRoot
+    }
+    # 尝试在 $sketchPath 中查找 .ino 文件
+    if (Test-Path $sketchPath -PathType Container) {
+        $inoFile = Get-ChildItem -Path $sketchPath -Filter "*.ino" | Select-Object -First 1
+    } elseif (Test-Path $sketchPath -PathType Leaf -and (Get-Item -Path $sketchPath).Extension -eq '.ino') {
+        $inoFile = Get-Item -Path $sketchPath
+        $sketchPath = $inoFile.DirectoryName
     }
 }
+
+if (-not $inoFile) {
+    Write-Host "Error: No .ino sketch file found in '$sketchPath' or specified by '$sketchPathParam'."
+    exit 1
+}
+
+# 确保 $sketchPath 是 ino 文件所在的目录
+$sketchPath = $inoFile.DirectoryName
+
+# 确保 $config.SketchPath 与当前使用的 sketch 路径一致
+$config.SketchPath = $sketchPath
+
+
 
 function Get-RequiredLibraries {
     param([string]$inoPath)
@@ -627,9 +658,7 @@ function Get-RequiredLibraries {
 }
 
 if ($doCompile) {
-    if (-not $inoFile) {
-        $inoFile = Get-ChildItem -Path $sketchPath -Filter "*.ino" | Select-Object -First 1
-    }
+
     if (-not $inoFile) {
         Write-Host "Error: No .ino sketch file found in $sketchPath"
         exit 1
