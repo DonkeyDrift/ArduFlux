@@ -548,7 +548,7 @@ if ($sketchPathParam) {
     # 尝试在 $sketchPath 中查找 .ino 文件
     if (Test-Path $sketchPath -PathType Container) {
         $inoFile = Get-ChildItem -Path $sketchPath -Filter "*.ino" | Select-Object -First 1
-    } elseif (Test-Path $sketchPath -PathType Leaf -and (Get-Item -Path $sketchPath).Extension -eq '.ino') {
+    } elseif ((Test-Path $sketchPath -PathType Leaf) -and ((Get-Item -Path $sketchPath).Extension -eq '.ino')) {
         $inoFile = Get-Item -Path $sketchPath
         $sketchPath = $inoFile.DirectoryName
     }
