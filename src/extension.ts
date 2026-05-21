@@ -6,6 +6,7 @@ import { onDidChangeArduFluxConfig } from "./events";
 import { runInTerminal, runUploadScript } from "./terminal";
 import { formatStatusBarText } from "./statusBar";
 import { ARDUFLUX_EDITOR_VIEW_ID } from "./viewIds";
+import { startMcpSseServer } from "./mcp/extensionIntegration";
 
 function getWorkspaceRoot(): string {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -323,6 +324,66 @@ export function activate(context: vscode.ExtensionContext): void {
   void updateStatusBar();
   const interval = setInterval(() => void updateStatusBar(), 5000);
   context.subscriptions.push({ dispose: () => clearInterval(interval) });
+
+  // 启动 MCP SSE 服务器（供 IDE AI 调用）
+  void (async () => {
+    try {
+      const root = getWorkspaceRoot();
+      outputChannel.appendLine("[activate] Starting MCP SSE server...");
+      const mcp = startMcpSseServer(context.extensionPath, root);
+
+      const port = await mcp.port;
+      outputChannel.appendLine(`[activate] MCP SSE server listening on port ${port}`);
+
+      context.subscriptions.push({
+        dispose: () => {
+          if (mcp.process && !mcp.process.killed) {
+            mcp.process.kill();
+            outputChannel.appendLine("[deactivate] MCP SSE server stopped");
+          }
+        },
+      });
+
+      // VS Code 原生 MCP 注册表适配（1.99+）
+      if (
+        vscode.lm &&
+        typeof vscode.lm.registerMcpServerDefinitionProvider === "function" &&
+        typeof (vscode as unknown as Record<string, unknown>).McpHttpServerDefinition === "function"
+      ) {
+        const mcpEmitter = new vscode.EventEmitter<void>();
+        let currentMcpPort = port;
+
+        const provider: vscode.McpServerDefinitionProvider = {
+          onDidChangeMcpServerDefinitions: mcpEmitter.event,
+          provideMcpServerDefinitions: () => {
+            if (!currentMcpPort) {
+              return [];
+            }
+            const McpHttpServerDefinition = (vscode as unknown as Record<string, unknown>).McpHttpServerDefinition as new (
+              label: string,
+              uri: vscode.Uri
+            ) => vscode.McpServerDefinition;
+            return [
+              new McpHttpServerDefinition(
+                "ArduFlux MCP",
+                vscode.Uri.parse(`http://127.0.0.1:${currentMcpPort}/mcp`)
+              ),
+            ];
+          },
+        };
+
+        const providerDisposable = vscode.lm.registerMcpServerDefinitionProvider(
+          "ffedu.arduflux.mcp",
+          provider
+        );
+        context.subscriptions.push(providerDisposable);
+        mcpEmitter.fire();
+        outputChannel.appendLine(`[activate] MCP provider registered with VS Code lm registry`);
+      }
+    } catch (err) {
+      outputChannel.appendLine(`[activate] MCP SSE server failed to start: ${err}`);
+    }
+  })();
 }
 
 export function deactivate(): void {
