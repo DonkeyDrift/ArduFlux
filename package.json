@@ -12,6 +12,9 @@
     "Other"
   ],
   "main": "./dist/extension.js",
+  "bin": {
+    "arduflux-mcp": "./dist/mcpServer.js"
+  },
   "contributes": {
     "activationEvents": [
       "onCommand:arduflux.openPanel",
@@ -123,7 +126,9 @@
     "test:watch": "tsc -w -p ./ & mocha --watch \"dist/test/**/*.test.js\"",
     "install:vsix": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1",
     "install:vsix:trae": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1 -Ide trae",
-    "install:vsix:code": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1 -Ide code"
+    "install:vsix:code": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1 -Ide code",
+    "mcp:stdio": "node dist/mcpServer.js --stdio",
+    "mcp:sse": "node dist/mcpServer.js --sse"
   },
   "devDependencies": {
     "@types/chai": "^5.2.3",

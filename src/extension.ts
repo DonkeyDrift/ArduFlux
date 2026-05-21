@@ -6,6 +6,7 @@ import { onDidChangeArduFluxConfig } from "./events";
 import { runInTerminal, runUploadScript } from "./terminal";
 import { formatStatusBarText } from "./statusBar";
 import { ARDUFLUX_EDITOR_VIEW_ID } from "./viewIds";
+import { startMcpSseServer } from "./mcp/extensionIntegration";
 
 function getWorkspaceRoot(): string {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -323,6 +324,29 @@ export function activate(context: vscode.ExtensionContext): void {
   void updateStatusBar();
   const interval = setInterval(() => void updateStatusBar(), 5000);
   context.subscriptions.push({ dispose: () => clearInterval(interval) });
+
+  // 启动 MCP SSE 服务器（供 IDE AI 调用）
+  void (async () => {
+    try {
+      const root = getWorkspaceRoot();
+      outputChannel.appendLine("[activate] Starting MCP SSE server...");
+      const mcp = startMcpSseServer(context.extensionPath, root);
+
+      const port = await mcp.port;
+      outputChannel.appendLine(`[activate] MCP SSE server listening on port ${port}`);
+
+      context.subscriptions.push({
+        dispose: () => {
+          if (mcp.process && !mcp.process.killed) {
+            mcp.process.kill();
+            outputChannel.appendLine("[deactivate] MCP SSE server stopped");
+          }
+        },
+      });
+    } catch (err) {
+      outputChannel.appendLine(`[activate] MCP SSE server failed to start: ${err}`);
+    }
+  })();
 }
 
 export function deactivate(): void {
