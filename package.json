@@ -13,7 +13,7 @@
   ],
   "main": "./dist/extension.js",
   "bin": {
-    "arduflux-mcp": "./dist/mcpServer.js"
+    "arduflux-mcp": "./bin/arduflux-mcp"
   },
   "contributes": {
     "activationEvents": [
