@@ -2,8 +2,8 @@
   "name": "arduflux",
   "displayName": "开发板配置",
   "description": "Manage embedded board, serial port, build output, monitor and profiles from VS Code.",
-  "version": "0.3.3",
-  "publisher": "baoshan",
+  "version": "0.4.0",
+  "publisher": "ffedu",
   "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"
@@ -12,6 +12,9 @@
     "Other"
   ],
   "main": "./dist/extension.js",
+  "bin": {
+    "arduflux-mcp": "./bin/arduflux-mcp"
+  },
   "contributes": {
     "activationEvents": [
       "onCommand:arduflux.openPanel",
@@ -112,6 +115,12 @@
         "mac": "cmd+shift+u",
         "when": "editorTextFocus"
       }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "ffedu.arduflux.mcp",
+        "label": "ArduFlux MCP Server"
+      }
     ]
   },
   "scripts": {
@@ -123,7 +132,9 @@
     "test:watch": "tsc -w -p ./ & mocha --watch \"dist/test/**/*.test.js\"",
     "install:vsix": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1",
     "install:vsix:trae": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1 -Ide trae",
-    "install:vsix:code": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1 -Ide code"
+    "install:vsix:code": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1 -Ide code",
+    "mcp:stdio": "node dist/mcpServer.js --stdio",
+    "mcp:sse": "node dist/mcpServer.js --sse"
   },
   "devDependencies": {
     "@types/chai": "^5.2.3",
@@ -137,5 +148,9 @@
     "sinon": "^21.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
   }
 }

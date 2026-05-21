@@ -4,3 +4,6 @@ dist
 *.vsix
 *.log
 ArduFlux.json
+test/
+rel/
+build

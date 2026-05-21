@@ -6,17 +6,19 @@
 
 ## 项目概述
 
-本项目是一个 **VS Code 扩展**（显示名称为「开发板配置」，扩展 ID 为 `baoshan.arduflux`，版本 `0.3.3`），用于管理嵌入式开发板配置。扩展直接读写工作区根目录下的 `ArduFlux.json`，管理内容包括：
+本项目是一个 **VS Code 扩展**（显示名称为「开发板配置」，扩展 ID 为 `ffedu.arduflux`，版本 `0.4.0`），用于管理嵌入式开发板配置。扩展直接读写工作区根目录下的 `ArduFlux.json`，管理内容包括：
 
 - 板子型号（名称、FQBN、编译参数、引脚定义）
 - 串口（枚举、自动选择、USB 优先）
 - 编译输出目录及最近使用路径
 - 串口监视器参数（波特率、数据位、停止位、校验位、换行符）
 - Profiles（保存、应用、删除、导入、导出）
+- Sketch 路径选择（`.ino` 文件）
+- 链节开关：上传前自动编译、上传后自动打开串口监视器
 
 扩展的数据格式与项目自带的 `src/scripts/upload.ps1` PowerShell 上传脚本保持兼容，该脚本可直接读取同一配置文件并完成编译、上传、监视器打开等操作。
 
-本项目同时包含一个 Arduino 示例草图 `ArduFlux.ino`（ESP32-S3 触摸按键 + WS2812B LED 控制），用于验证配置与上传流程。
+本项目同时包含一个 Arduino 示例草图 `ArduFlux.ino`（ESP32-S3 触摸按键 + WS2812B LED 控制），以及一个测试用 Arduino 项目目录 `test/mus4/`，用于验证配置与上传流程。
 
 ---
 
@@ -28,7 +30,7 @@
 | 构建工具 | `tsc`（TypeScript 编译器）、`vsce`（VSIX 打包工具） |
 | 扩展测试 | Mocha + Chai + Sinon（TypeScript 侧单元测试） |
 | 上传脚本 | PowerShell (`src/scripts/upload.ps1`)，依赖 `arduino-cli` |
-| 嵌入式固件 | Arduino C++ (`ArduFlux.ino`) |
+| 嵌入式固件 | Arduino C++ (`ArduFlux.ino`、`test/mus4/*.ino`) |
 
 ### TypeScript 编译配置
 
@@ -39,6 +41,9 @@
 - `rootDir`: `src`
 - `strict`: `true`（严格模式，禁止隐式 `any`）
 - `sourceMap`: `true`
+- `esModuleInterop`: `true`
+- `moduleResolution`: `node`
+- `skipLibCheck`: `true`
 - `types`: `["node", "vscode", "mocha", "chai"]`
 
 ---
@@ -57,10 +62,10 @@
 │   ├── configSidebar.ts          # TreeDataProvider 实现（目前未在 extension.ts 中注册）
 │   ├── events.ts                 # 全局 EventEmitter：配置变更事件
 │   ├── terminal.ts               # Pseudoterminal 封装：在 VS Code 终端中运行 arduino-cli / PowerShell
-│   ├── statusBar.ts              # 状态栏文本格式化
+│   ├── statusBar.ts              # 状态栏文本格式化纯函数
 │   ├── viewIds.ts                # 视图 ID 常量（ARDUFLUX_EDITOR_VIEW_ID = "arduflux.editor"）
 │   ├── scripts/                  # 项目级脚本
-│   │   └── upload.ps1            # PowerShell 上传脚本（读取 ArduFlux.json）
+│   │   └── upload.ps1            # PowerShell 上传脚本（读取 ArduFlux.json，兼容旧版 upload_config.json）
 │   └── test/                     # TypeScript 单元测试（Mocha/Chai/Sinon）
 │       ├── configStore.store.test.ts
 │       ├── configStore.compile.test.ts
@@ -70,11 +75,20 @@
 │       ├── types.test.ts
 │       └── webviewView.test.ts
 ├── dist/                         # tsc 编译输出（CommonJS + source map）
+│   ├── *.js / *.js.map           # 各模块编译产物
+│   └── test/                     # 编译后的测试文件
 ├── docs/                         # 项目级技术文档
 │   └── roadmap-phase6-8.md       # 扩展功能开发路线图
-├── ArduFlux.json                 # 扩展直接读写的配置文件（运行时生成/更新）
-├── ArduFlux.template.json        # 配置文件模板
-├── upload_config.json            # 旧版上传配置（upload.ps1 兼容读取）
+├── rel/                          # 预构建发布包
+│   ├── arduflux-0.3.3.vsix
+│   └── arduflux-0.4.0.vsix
+├── test/                         # 测试用 Arduino 项目
+│   └── mus4/                     # 示例草图（含 .ino、.cpp、.h 文件）
+├── .trae/                        # TRAE IDE 相关配置
+│   ├── rules/
+│   └── skills/
+├── ArduFlux.json                 # 扩展直接读写的配置文件（运行时生成/更新，gitignored）
+├── ArduFlux.template.json        # 配置文件模板（含示例端口/目录数据）
 ├── install-vsix.ps1              # 自动卸载旧扩展并安装最新 VSIX（支持 TRAE / VS Code）
 ├── ArduFlux.ino                  # Arduino 示例草图
 ├── package.json                  # VS Code 扩展清单 + npm scripts
@@ -86,15 +100,17 @@
 
 | 文件 | 职责 |
 |------|------|
-| `extension.ts` | 扩展激活入口。注册所有命令、WebviewViewProvider、状态栏（含编译/上传/监视器快捷图标和动态 spinner）、定时刷新（5 秒间隔）。 |
+| `extension.ts` | 扩展激活入口。注册所有命令、WebviewViewProvider、状态栏（含编译/上传/监视器快捷图标和动态 spinner）、输出通道、定时刷新（5 秒间隔）。 |
 | `editorView.ts` | 实现 `vscode.WebviewViewProvider`，为侧边栏 `arduflux.editor` 视图提供 Webview。处理无工作区时的占位提示，以及视图显隐切换时的状态同步。 |
-| `webviewController.ts` | 核心控制器 `ConfigEditorController`。生成完整内联 HTML/CSS/JS（`getHtml`），处理前端 `postMessage`（save-config、compile-sketch、upload-sketch、refresh-ports、Profiles 操作等），调用 `terminal.ts` 执行实际任务。 |
+| `webviewController.ts` | 核心控制器 `ConfigEditorController`。生成完整内联 HTML/CSS/JS（`getHtml`），处理前端 `postMessage`（save-config、auto-save-config、compile-sketch、upload-sketch、refresh-ports、save-profile、apply-profile、delete-profile、export-profiles、import-profiles、open-config-file、open-monitor、select-sketch、toggle-compile-link、toggle-monitor-link 等），调用 `terminal.ts` 执行实际任务。 |
 | `panel.ts` | 浮动面板 `ArduFluxPanel`，作为侧边栏不可用时的 fallback。包装同一套 `ConfigEditorController`。 |
-| `configStore.ts` | 配置持久化核心。`ConfigStore` 类负责加载/保存 `ArduFlux.json`、配置迁移（`migrateConfig`）、校验（board/port/build/monitor）、串口枚举（带 5 秒缓存）、Profile 增删改查/导入导出。同时导出大量纯工具函数（`buildCompileArgs`、`buildUploadArgs`、`buildMonitorArgs`、`normalizePath`、`validateFqbn` 等）。 |
+| `configStore.ts` | 配置持久化核心。`ConfigStore` 类负责加载/保存 `ArduFlux.json`、配置迁移（`migrateConfig`）、校验（board/port/build/monitor）、串口枚举（带 5 秒缓存）、Profile 增删改查/导入导出。同时导出大量纯工具函数（`buildCompileArgs`、`buildUploadArgs`、`buildMonitorArgs`、`normalizePath`、`validateFqbn`、`deepClone`、`recommendSerialPort` 等）。 |
 | `types.ts` | 所有接口定义和默认配置工厂函数 `createDefaultConfig()`。预置板型目录 `DEFAULT_BOARD_CATALOG` 包含 ESP32-S3、ESP32 Dev Module、Arduino Uno、STM32 (Custom FQBN)。 |
-| `terminal.ts` | 提供 `runInTerminal`（直接运行 arduino-cli）和 `runUploadScript`（调用 upload.ps1）。均使用 VS Code `Pseudoterminal` 实现，支持进程树强制终止（Ctrl+C）。 |
+| `terminal.ts` | 提供 `runInTerminal`（直接运行 arduino-cli）和 `runUploadScript`（调用 upload.ps1）。均使用 VS Code `Pseudoterminal` 实现，支持进程树强制终止（Ctrl+C）。上传脚本执行成功后，非监视器模式下终端窗口会在 3 秒后自动关闭。 |
 | `statusBar.ts` | 仅含 `formatStatusBarText(boardName, portAddress)` 纯函数。 |
 | `configSidebar.ts` | 已实现 `ConfigSidebarProvider`（`TreeDataProvider`），但 `extension.ts` 的 `activate()` **未注册**该 Provider。如需启用，需手动调用 `vscode.window.registerTreeDataProvider()`。 |
+| `events.ts` | 导出全局 `onDidChangeArduFluxConfig` EventEmitter，用于配置变更时通知状态栏等订阅方刷新。 |
+| `viewIds.ts` | 单一常量 `ARDUFLUX_EDITOR_VIEW_ID = "arduflux.editor"`。 |
 
 ---
 
@@ -120,7 +136,7 @@ npm run watch
 ```bash
 npm test
 ```
-先执行 `npm run compile`，再用 Mocha 运行 `dist/test/**/*.test.js`。
+先执行 `npm run compile`，再用 Mocha 运行 `dist/test/**/*.test.js`。当前共 103 个测试用例全部通过。
 
 **测试监视模式：**
 ```bash
@@ -131,7 +147,7 @@ npm run test:watch
 ```bash
 npm run package
 ```
-生成 `arduflux-<version>.vsix`。`.vscodeignore` 会排除 `src/`、`node_modules/`、`dist/test/` 等。
+生成 `arduflux-<version>.vsix`。`.vscodeignore` 会排除 `src/`、`node_modules/`、`dist/test/`、`docs/`、`AGENTS.md` 等。
 
 **自动安装 VSIX（PowerShell）：**
 ```bash
@@ -140,6 +156,8 @@ npm run install:vsix:trae   # 强制使用 TRAE
 npm run install:vsix:code   # 强制使用 VS Code
 ```
 底层调用 `install-vsix.ps1`，会先卸载旧版本扩展再安装并提示重新加载窗口。
+
+> 注意：TRAE IDE 不支持 `--reload-window` CLI 参数，安装完成后需手动执行 `Developer: Reload Window` 命令重新加载窗口。
 
 **手动安装扩展：**
 在 VS Code / TRAE 扩展视图 → `...` → `Install from VSIX...` 选择生成的 `.vsix` 文件。
@@ -153,7 +171,7 @@ npm run install:vsix:code   # 强制使用 VS Code
 npm test
 ```
 
-当前测试覆盖（`src/test/`）共 7 个文件：
+当前测试覆盖（`src/test/`）共 7 个文件、103 个用例：
 
 | 测试文件 | 覆盖内容 |
 |----------|----------|
@@ -169,6 +187,7 @@ npm test
 - 所有纯逻辑（参数构造、路径拼接、校验）必须先写单元测试（红→绿）。
 - VS Code API 交互（Terminal、StatusBar、Webview）在单元测试通过后集成。
 - 快捷键为纯声明式配置，直接修改 `package.json`，无需代码测试。
+- 测试中使用 Sinon stub 拦截 `fs.promises` 等外部依赖，`webviewView.test.ts` 通过劫持 `module._load` 注入 fake `vscode` 模块。
 
 ---
 
@@ -178,10 +197,12 @@ npm test
 - 使用 **严格模式**（`strict: true`），禁止隐式 `any`。
 - 目标 `ES2020`，输出 `CommonJS`。
 - 源码放在 `src/`，编译输出到 `dist/`。
+- 深拷贝：工具函数 `deepClone` 使用 `JSON.parse(JSON.stringify(value))`；`createDefaultConfig()` 中使用 `structuredClone` 复制预置引脚定义。
 - 错误处理使用自定义 `ValidationError`，携带 `message` 和可选的 `suggestion`（建议）。
 - Webview 使用**内联 HTML**（非外部文件），通过 `nonce` 设置 CSP。所有 HTML、CSS、JavaScript 均在 `src/webviewController.ts` 的 `getHtml()` 方法中生成。
 - 所有需要在命令面板中可见的 VS Code 命令，必须在 `package.json` 的 `contributes.commands` 中注册。
-- `arduino-cli` 命令通过 `terminal.ts` 的 Pseudoterminal 运行，设置 `shell: false`，避免注入。
+- `arduino-cli` 命令通过 `terminal.ts` 的 Pseudoterminal 运行，设置 `shell: false`，参数以数组传递，避免注入。
+- 保存操作使用全局 `saveLock` 串行化（`ConfigStore.waitForSave()`），避免并发写文件。
 
 ### 文档约定
 - `docs/` 仅存放与项目直接相关的技术文档（配置说明、开发计划、路线图等）。
@@ -195,12 +216,13 @@ npm test
 - `profiles` 始终包含 `default: {}`。
 - `recentOutputDirs` 最多保留 5 条，去重且保留最新。
 - 引脚定义 `pinDefines` 必须是 JSON 对象（`dict`），不能是数组或标量。
+- 当前 `build` 额外包含 `compileBeforeUpload`（布尔）、`uploadThenMonitor`（布尔）、`sketchPath`（字符串）。
 
 ---
 
 ## 扩展命令清单
 
-以下命令在 `package.json` 的 `contributes.commands` 中注册，可在命令面板中调用：
+### package.json 中注册的命令（命令面板可见）
 
 | 命令 ID | 标题 | 快捷键 | 说明 |
 |---------|------|--------|------|
@@ -214,7 +236,7 @@ npm test
 | `arduflux.compileOnly` | 开发板配置: 仅编译（脚本） | — | 调用 upload.ps1 仅编译 |
 | `arduflux.uploadOnly` | 开发板配置: 仅上传+监视（脚本） | — | 调用 upload.ps1 仅上传并打开监视器 |
 
-以下命令**仅在代码中注册**，不在 `package.json` 声明，因此不会在命令面板中出现，专供内部调用：
+### 仅在代码中注册的内部命令（命令面板不可见）
 
 | 命令 ID | 说明 |
 |---------|------|
@@ -223,6 +245,12 @@ npm test
 | `arduflux.openMonitor` | 打开串口监视器终端（状态栏监视器按钮调用） |
 
 > 注：`compileSketch` / `uploadSketch` 会先聚焦侧边栏视图，再调用对应的 `Silent` 版本；若侧边栏不可用，则通过浮动面板执行。
+
+### 激活事件
+
+扩展在以下场景自动激活：
+- 执行任意 ArduFlux 命令（`onCommand:arduflux.*`）
+- 侧边栏视图 `arduflux.editor` 被展开（`onView:arduflux.editor`）
 
 ---
 
@@ -239,6 +267,9 @@ npm test
 - `arduino-cli` 路径默认为 `arduino-cli`，PowerShell 侧同样如此。
 - upload.ps1 额外功能：自动解析 `.ino` 文件中的 `#include <...>` 并尝试通过 `arduino-cli lib install` 安装所需外部库（内置系统库已排除）。
 - upload.ps1 的上传逻辑支持多端口候选重试（优先使用保存端口，失败时依次尝试其他 USB 端口）。
+- upload.ps1 的编译阶段使用后台 Job + 循环流动点动画提供进度反馈。
+- upload.ps1 的串口监视器使用 `arduino-cli monitor -p <port> -c baudrate=<rate>` 打开。
+- upload.ps1 保留对旧版 `upload_config.json` 的兼容读取逻辑（作为降级 fallback），但新项目应统一使用 `ArduFlux.json`。
 
 ---
 
@@ -259,7 +290,7 @@ npm test
 
 **新增配置字段**：
 - 在 `src/types.ts` 中扩展对应接口。
-- 在 `src/configStore.ts` 的 `validateAll` / `buildCurrentConfig` 中处理。
+- 在 `src/configStore.ts` 的 `validateAll` / `buildCurrentConfig` / `migrateConfig` 中处理。
 - 在 `src/webviewController.ts` 的 Webview HTML 中添加 UI 控件与消息处理。
 - 在 `src/scripts/upload.ps1` 的读取/保存段落中添加映射。
 
