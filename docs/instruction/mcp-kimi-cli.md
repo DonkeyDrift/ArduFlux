@@ -20,12 +20,21 @@ Kimi Code CLI 支持三种 MCP 传输方式：
 
 使用 `kimi mcp add` 命令直接注册 MCP 服务器：
 
+**Bash / zsh / cmd：**
+
 ```bash
-# stdio 模式（推荐）
-kimi mcp add --transport stdio arduflux -- \
-  node "C:/Dev/OPC/ArduFlux/dist/mcpServer.js" \
-  --stdio --workspace "C:/Dev/OPC/ArduFlux"
+kimi mcp add --transport stdio arduflux -- node "C:/Dev/OPC/ArduFlux/dist/mcpServer.js" "--stdio" "--workspace" "C:/Dev/OPC/ArduFlux"
 ```
+
+**PowerShell（单行，参数用引号包裹）：**
+
+```powershell
+kimi mcp add --transport stdio arduflux -- node "C:/Dev/OPC/ArduFlux/dist/mcpServer.js" "--stdio" "--workspace" "C:/Dev/OPC/ArduFlux"
+```
+
+> **⚠️ PowerShell 注意事项**：
+> - 必须使用**单行**命令，PowerShell 中 `\` 不是换行符（应使用 backtick `` ` `` 换行，但推荐直接写单行）
+> - `--` 后面的参数如果以 `--` 开头（如 `--stdio`），必须用**引号包裹**（`"--stdio"`），否则 PowerShell 会将其解析为运算符导致 `Missing expression after unary operator '--'` 错误
 
 参数说明：
 - `--transport stdio`：指定传输类型
@@ -50,8 +59,7 @@ kimi mcp add --transport http arduflux http://127.0.0.1:60503/mcp
 带请求头（如需要 API Key）：
 
 ```bash
-kimi mcp add --transport http arduflux http://127.0.0.1:60503/mcp \
-  --header "Authorization: Bearer your-token"
+kimi mcp add --transport http arduflux http://127.0.0.1:60503/mcp --header "Authorization: Bearer your-token"
 ```
 
 #### OAuth 授权模式

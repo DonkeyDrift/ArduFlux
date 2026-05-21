@@ -19,17 +19,21 @@ CodeBuddy CLI 支持两种 MCP 传输方式：
 
 使用 `codebuddy mcp add` 命令直接注册 MCP 服务器：
 
-```bash
-# 用户级作用域（全局可用）
-codebuddy mcp add arduflux -s user -- \
-  node "C:/Dev/OPC/ArduFlux/dist/mcpServer.js" \
-  --stdio --workspace "C:/Dev/OPC/ArduFlux"
+**Bash / zsh / cmd：**
 
-# 项目级作用域（仅当前项目可用）
-codebuddy mcp add arduflux -s project -- \
-  node "./dist/mcpServer.js" \
-  --stdio --workspace "."
+```bash
+codebuddy mcp add arduflux -s user -- node "C:/Dev/OPC/ArduFlux/dist/mcpServer.js" "--stdio" "--workspace" "C:/Dev/OPC/ArduFlux"
 ```
+
+**PowerShell（单行，参数用引号包裹）：**
+
+```powershell
+codebuddy mcp add arduflux -s user -- node "C:/Dev/OPC/ArduFlux/dist/mcpServer.js" "--stdio" "--workspace" "C:/Dev/OPC/ArduFlux"
+```
+
+> **⚠️ PowerShell 注意事项**：
+> - 必须使用**单行**命令，PowerShell 中 `\` 不是换行符（应使用 backtick `` ` `` 换行，但推荐直接写单行）
+> - `--` 后面的参数如果以 `--` 开头（如 `--stdio`），必须用**引号包裹**（`"--stdio"`），否则 PowerShell 会将其解析为运算符导致 `Missing expression after unary operator '--'` 错误
 
 参数说明：
 - `arduflux`：MCP 服务器名称，可自定义
