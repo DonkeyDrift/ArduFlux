@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, buildUploadArgs, recommendSerialPort } from "./configStore";
 import { onDidChangeArduFluxConfig } from "./events";
-import { runInTerminal, runUploadScript } from "./terminal";
+import { runInTerminal, runUploaderFlow } from "./terminal";
 import { BoardCatalogItem, DEFAULT_BOARD_CATALOG, ArduFluxConfig, ArduFluxCurrentConfig, SerialPortInfo } from "./types";
 
 export interface PanelStatePayload {
@@ -378,7 +378,7 @@ export class ConfigEditorController {
   private async openMonitor(): Promise<void> {
     await this.syncView("已打开串口监视器");
     const sketchPath = this.store.getData().current.build.sketchPath ?? "";
-    await runUploadScript(this.context.extensionPath, this.store.baseDir, { monitor: true, sketchPath });
+    await runUploaderFlow(this.store.baseDir, { monitor: true, sketchPath });
   }
 
   private async selectSketch(): Promise<void> {
@@ -453,7 +453,7 @@ export class ConfigEditorController {
     await this.postMessage({ type: "compiling", active: true });
     try {
       const sketchPath = this.store.getData().current.build.sketchPath ?? "";
-      await runUploadScript(this.context.extensionPath, this.store.baseDir, { compile: true, sketchPath });
+      await runUploaderFlow(this.store.baseDir, { compile: true, sketchPath });
       await this.syncView("编译完成");
       await this.postMessage({ type: "compiling", active: false });
     } catch (error) {
@@ -467,7 +467,7 @@ export class ConfigEditorController {
     await this.postMessage({ type: "uploading", active: true });
     try {
       const sketchPath = this.store.getData().current.build.sketchPath ?? "";
-      await runUploadScript(this.context.extensionPath, this.store.baseDir, { upload: true, sketchPath });
+      await runUploaderFlow(this.store.baseDir, { upload: true, sketchPath });
       await this.postMessage({ type: "uploading", active: false });
       await this.syncView("上传完成");
       const uploadThenMonitor = this.store.getData().current.build.uploadThenMonitor ?? false;
@@ -493,7 +493,7 @@ export class ConfigEditorController {
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>开发板配置</title>
+  <title>ArduFlux</title>
   <style>
     :root {
       color-scheme: light dark;

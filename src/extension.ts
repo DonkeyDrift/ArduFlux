@@ -3,7 +3,7 @@ import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, build
 import { ArduFluxEditorProvider } from "./editorView";
 import { ArduFluxPanel } from "./panel";
 import { onDidChangeArduFluxConfig } from "./events";
-import { runInTerminal, runUploadScript } from "./terminal";
+import { runInTerminal, runUploaderFlow } from "./terminal";
 import { formatStatusBarText } from "./statusBar";
 import { ARDUFLUX_EDITOR_VIEW_ID } from "./viewIds";
 import { startMcpSseServer } from "./mcp/extensionIntegration";
@@ -11,7 +11,7 @@ import { startMcpSseServer } from "./mcp/extensionIntegration";
 function getWorkspaceRoot(): string {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
-    throw new ValidationError("请先打开一个工作区文件夹，再使用 开发板配置");
+    throw new ValidationError("请先打开一个工作区文件夹，再使用 ArduFlux");
   }
   return folder.uri.fsPath;
 }
@@ -31,7 +31,7 @@ async function withStore<T>(run: (store: ConfigStore) => Promise<T>): Promise<T>
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  const outputChannel = vscode.window.createOutputChannel("开发板配置");
+  const outputChannel = vscode.window.createOutputChannel("ArduFlux");
   context.subscriptions.push(outputChannel);
   outputChannel.appendLine("[activate] Extension activating...");
 
@@ -49,10 +49,15 @@ export function activate(context: vscode.ExtensionContext): void {
       `[activate] WebviewViewProvider registered successfully (viewId=${ARDUFLUX_EDITOR_VIEW_ID}, disposable=${typeof registration.dispose === "function"})`
     );
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     outputChannel.appendLine(
-      `[activate] FAILED to register WebviewViewProvider (viewId=${ARDUFLUX_EDITOR_VIEW_ID}): ${err}`
+      `[activate] FAILED to register WebviewViewProvider (viewId=${ARDUFLUX_EDITOR_VIEW_ID}): ${msg}`
     );
-    void vscode.window.showErrorMessage(`开发板配置: WebviewView 注册失败: ${err}`);
+    // 热重载或窗口重新加载时，旧的 provider 可能尚未完全 dispose，
+    // 导致 "already registered" 错误。此情况属于良性竞争，仅记录日志即可。
+    if (!msg.includes("already registered")) {
+      void vscode.window.showErrorMessage(`ArduFlux: WebviewView 注册失败: ${msg}`);
+    }
   }
 
   context.subscriptions.push(
@@ -68,7 +73,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const store = new ConfigStore(root);
         await store.load();
         const sketchPath = store.getData().current.build.sketchPath ?? "";
-        await runUploadScript(context.extensionPath, root, { monitor: true, sketchPath });
+        await runUploaderFlow(root, { monitor: true, sketchPath });
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));
       }
@@ -148,7 +153,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const sketchPath = store.getData().current.build.sketchPath ?? "";
         startStatusSpinner("正在编译");
         try {
-          await runUploadScript(context.extensionPath, root, { compile: true, sketchPath });
+          await runUploaderFlow(root, { compile: true, sketchPath });
           void vscode.window.showInformationMessage("编译完成");
         } finally {
           stopStatusSpinner();
@@ -171,7 +176,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const sketchPath = store.getData().current.build.sketchPath ?? "";
         startStatusSpinner(compileBeforeUpload ? "正在编译并上传" : "正在上传");
         try {
-          await runUploadScript(context.extensionPath, root, { compile: compileBeforeUpload, upload: true, sketchPath });
+          await runUploaderFlow(root, { compile: compileBeforeUpload, upload: true, sketchPath });
           void vscode.window.showInformationMessage(compileBeforeUpload ? "编译并上传完成" : "上传完成");
         } finally {
           stopStatusSpinner();
@@ -194,7 +199,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const sketchPath = store.getData().current.build.sketchPath ?? "";
         startStatusSpinner("执行上传脚本");
         try {
-          await runUploadScript(context.extensionPath, root, { compile: true, upload: true, monitor: true, sketchPath });
+          await runUploaderFlow(root, { compile: true, upload: true, monitor: true, sketchPath });
           void vscode.window.showInformationMessage("上传脚本执行完成");
         } finally {
           stopStatusSpinner();
@@ -214,7 +219,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const sketchPath = store.getData().current.build.sketchPath ?? "";
         startStatusSpinner("编译中");
         try {
-          await runUploadScript(context.extensionPath, root, { compile: true, sketchPath });
+          await runUploaderFlow(root, { compile: true, sketchPath });
           void vscode.window.showInformationMessage("编译完成");
         } finally {
           stopStatusSpinner();
@@ -234,7 +239,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const sketchPath = store.getData().current.build.sketchPath ?? "";
         startStatusSpinner("上传中");
         try {
-          await runUploadScript(context.extensionPath, root, { upload: true, monitor: true, sketchPath });
+          await runUploaderFlow(root, { upload: true, monitor: true, sketchPath });
           void vscode.window.showInformationMessage("上传完成");
         } finally {
           stopStatusSpinner();
@@ -313,7 +318,7 @@ export function activate(context: vscode.ExtensionContext): void {
       btnMonitor.show();
     } catch {
       statusBarItem.text = "$(circuit-board) 嵌入式配置";
-      statusBarItem.tooltip = "点击打开 开发板配置 面板";
+      statusBarItem.tooltip = "点击打开 ArduFlux 面板";
       statusBarItem.show();
       btnCompile.hide();
       btnUpload.hide();
@@ -373,7 +378,7 @@ export function activate(context: vscode.ExtensionContext): void {
         };
 
         const providerDisposable = vscode.lm.registerMcpServerDefinitionProvider(
-          "ffedu.arduflux.mcp",
+          "DonkeyDrift.arduflux.mcp",
           provider
         );
         context.subscriptions.push(providerDisposable);

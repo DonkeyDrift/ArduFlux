@@ -3,7 +3,7 @@
 ## 前提条件
 
 - VS Code 1.99+（内置 MCP 客户端支持）
-- 已安装 VS Code 扩展 **开发板配置 (ArduFlux)** v0.4.0+
+- 已安装 VS Code 扩展 **ArduFlux** v0.4.2+
 
 ## 自动发现（推荐）
 
@@ -13,7 +13,7 @@ ArduFlux 扩展在激活时会自动向 VS Code 注册 MCP 服务器，无需手
 2. 扩展会自动启动内部 SSE 服务器
 3. VS Code 内置 AI（Copilot / Chat）在对话中自动发现 `arduflux_*` 工具
 
-你可以在 **输出面板**（`Ctrl+Shift+U`）→ 选择「开发板配置」通道中查看：
+你可以在 **输出面板**（`Ctrl+Shift+U`）→ 选择「ArduFlux」通道中查看：
 
 ```
 [activate] MCP SSE server listening on port XXXX
@@ -23,6 +23,28 @@ ArduFlux 扩展在激活时会自动向 VS Code 注册 MCP 服务器，无需手
 ## 手动配置（备用）
 
 如果自动发现不可用，可在工作区创建 `.vscode/mcp.json`：
+
+### npm 全局安装方式（推荐）
+
+如果你已通过 `npm install -g arduflux` 安装了 ArduFlux：
+
+```json
+{
+  "servers": {
+    "arduflux": {
+      "type": "stdio",
+      "command": "arduflux-mcp",
+      "args": [
+        "--stdio",
+        "--workspace",
+        "${workspaceFolder}"
+      ]
+    }
+  }
+}
+```
+
+### 本地源码方式
 
 ```json
 {
@@ -88,6 +110,6 @@ node dist/mcpServer.js --sse --workspace .
 
 ## 故障排查
 
-- **工具不显示**：确保 VS Code 版本 ≥ 1.99，并检查「开发板配置」输出面板是否有 MCP 启动日志
+- **工具不显示**：确保 VS Code 版本 ≥ 1.99，并检查「ArduFlux」输出面板是否有 MCP 启动日志
 - **自动注册失败**：扩展会在旧版 VS Code 中静默跳过 MCP 注册，不影响其他功能
 - **stdio 模式失败**：确保项目根目录已执行 `npm install && npm run compile`
