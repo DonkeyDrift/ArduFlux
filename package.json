@@ -3,7 +3,7 @@
   "displayName": "ArduFlux",
   "description": "Manage embedded board, serial port, build output, monitor and profiles from VS Code.",
   "version": "0.4.2",
-  "publisher": "ffedu",
+  "publisher": "FFEdu",
   "license": "MIT",
   "icon": "src/logo/ArduFlux-Logo-v1.5.png",
   "keywords": [
@@ -129,7 +129,7 @@
     ],
     "mcpServerDefinitionProviders": [
       {
-        "id": "ffedu.arduflux.mcp",
+        "id": "FFEdu.arduflux.mcp",
         "label": "ArduFlux MCP Server"
       }
     ]

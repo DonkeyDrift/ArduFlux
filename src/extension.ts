@@ -378,7 +378,7 @@ export function activate(context: vscode.ExtensionContext): void {
         };
 
         const providerDisposable = vscode.lm.registerMcpServerDefinitionProvider(
-          "ffedu.arduflux.mcp",
+          "FFEdu.arduflux.mcp",
           provider
         );
         context.subscriptions.push(providerDisposable);
