@@ -1,3 +1,13 @@
+## [0.4.2] - 2026-05-22
+
+### 文档与发布
+
+- README.md 新增 CLI 全局安装与 Kimi CLI MCP 配置指南
+- 更新命令清单描述，反映 Node.js 上传核心替代 PowerShell 脚本
+- 发布至 npm registry：`arduflux@0.4.2`
+
+---
+
 ## [0.4.1] - 2026-05-22
 
 ### 跨平台上传核心重构（方案 B / TDD）

@@ -75,7 +75,26 @@ npm run install:vsix:code
 
 3. 重新加载窗口使扩展生效
 
-### 方式三：本地开发模式
+### 方式三：CLI 全局安装（供 Kimi CLI / MCP 使用）
+
+```bash
+npm install -g arduflux
+```
+
+安装后全局可用 `arduflux-mcp` 命令，用于通过 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 与 AI 客户端（如 Kimi CLI、Claude Desktop、Cursor）交互。
+
+#### 配置 Kimi CLI
+
+```bash
+kimi mcp add --transport stdio arduflux -- arduflux-mcp "--stdio" "--workspace" "."
+kimi mcp test arduflux
+```
+
+启动 Kimi CLI 后输入 `/mcp` 即可看到 `arduflux` 及 14 个可用工具（如 `arduflux_get_state`、`arduflux_compile`、`arduflux_upload` 等）。
+
+> 如果不想全局安装，也可以直接 `npx arduflux-mcp --stdio --workspace .`
+
+### 方式四：本地开发模式
 
 详见【本地开发】章节。
 
@@ -122,13 +141,13 @@ npm run install:vsix:code
 - **编译**：`Ctrl+Shift+B` 或 命令 `开发板配置: 编译 Sketch`
 - **上传**：`Ctrl+Shift+U` 或 命令 `开发板配置: 上传 Sketch`
 
-#### 使用脚本（兼容旧流程）
+#### 使用上传核心（跨平台）
 
 - **完整流程（编译+上传+监视）**：`开发板配置: 完整编译+上传+监视（脚本）`
 - **仅编译**：`开发板配置: 仅编译（脚本）`
 - **仅上传+监视**：`开发板配置: 仅上传+监视（脚本）`
 
-这些命令调用项目原有的 PowerShell 脚本，确保与旧流程一致。
+这些命令调用 Node.js 实现的跨平台上传核心（`src/uploader/`），支持 Windows / macOS / Linux，具备库自动安装、多端口重试等功能。`upload.ps1` PowerShell 脚本仍保留为兼容方案。
 
 ### 4. Profiles 管理
 
@@ -163,9 +182,9 @@ Profiles 允许你保存多套配置方案：
 | `开发板配置: 编译 Sketch` | `Ctrl+Shift+B` | 编译当前 Sketch |
 | `开发板配置: 上传 Sketch` | `Ctrl+Shift+U` | 上传固件到开发板 |
 | `开发板配置: 刷新侧边栏` | - | 刷新视图状态 |
-| `开发板配置: 完整编译+上传+监视（脚本）` | - | 调用 upload.ps1 完整流程 |
-| `开发板配置: 仅编译（脚本）` | - | 调用脚本仅编译 |
-| `开发板配置: 仅上传+监视（脚本）` | - | 调用脚本仅上传 |
+| `开发板配置: 完整编译+上传+监视（脚本）` | - | 调用 Node.js 上传核心完整流程 |
+| `开发板配置: 仅编译（脚本）` | - | 调用 Node.js 上传核心仅编译 |
+| `开发板配置: 仅上传+监视（脚本）` | - | 调用 Node.js 上传核心仅上传 |
 
 ## 配置文件说明
 
@@ -224,7 +243,8 @@ Profiles 允许你保存多套配置方案：
 修改配置结构时需同步更新：
 1. `src/types.ts` - TypeScript 类型
 2. `src/configStore.ts` - 扩展读写逻辑
-3. `upload.ps1` - PowerShell 解析逻辑
+3. `src/uploader/` - Node.js 上传核心逻辑
+4. `upload.ps1` - PowerShell 解析逻辑（兼容保留）
 
 ## 本地开发
 

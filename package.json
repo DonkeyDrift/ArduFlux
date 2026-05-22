@@ -2,18 +2,35 @@
   "name": "arduflux",
   "displayName": "开发板配置",
   "description": "Manage embedded board, serial port, build output, monitor and profiles from VS Code.",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "publisher": "ffedu",
   "license": "MIT",
+  "keywords": [
+    "arduino",
+    "embedded",
+    "vscode-extension",
+    "mcp",
+    "model-context-protocol",
+    "serial-port",
+    "esp32"
+  ],
   "engines": {
+    "node": ">=18.0.0",
     "vscode": "^1.90.0"
   },
+  "files": [
+    "dist/",
+    "bin/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "categories": [
     "Other"
   ],
   "main": "./dist/extension.js",
   "bin": {
-    "arduflux-mcp": "./bin/arduflux-mcp"
+    "arduflux-mcp": "bin/arduflux-mcp"
   },
   "contributes": {
     "activationEvents": [
@@ -127,6 +144,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -w -p ./",
     "vscode:prepublish": "npm run compile",
+    "prepublishOnly": "npm run compile && npm test",
     "package": "vsce package --allow-missing-repository",
     "test": "npm run compile && mocha \"dist/test/**/*.test.js\"",
     "test:watch": "tsc -w -p ./ & mocha --watch \"dist/test/**/*.test.js\"",
