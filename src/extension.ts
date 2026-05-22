@@ -3,7 +3,7 @@ import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, build
 import { ArduFluxEditorProvider } from "./editorView";
 import { ArduFluxPanel } from "./panel";
 import { onDidChangeArduFluxConfig } from "./events";
-import { runInTerminal, runUploadScript } from "./terminal";
+import { runInTerminal, runUploaderFlow } from "./terminal";
 import { formatStatusBarText } from "./statusBar";
 import { ARDUFLUX_EDITOR_VIEW_ID } from "./viewIds";
 import { startMcpSseServer } from "./mcp/extensionIntegration";
@@ -73,7 +73,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const store = new ConfigStore(root);
         await store.load();
         const sketchPath = store.getData().current.build.sketchPath ?? "";
-        await runUploadScript(context.extensionPath, root, { monitor: true, sketchPath });
+        await runUploaderFlow(root, { monitor: true, sketchPath });
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));
       }
@@ -153,7 +153,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const sketchPath = store.getData().current.build.sketchPath ?? "";
         startStatusSpinner("正在编译");
         try {
-          await runUploadScript(context.extensionPath, root, { compile: true, sketchPath });
+          await runUploaderFlow(root, { compile: true, sketchPath });
           void vscode.window.showInformationMessage("编译完成");
         } finally {
           stopStatusSpinner();
@@ -176,7 +176,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const sketchPath = store.getData().current.build.sketchPath ?? "";
         startStatusSpinner(compileBeforeUpload ? "正在编译并上传" : "正在上传");
         try {
-          await runUploadScript(context.extensionPath, root, { compile: compileBeforeUpload, upload: true, sketchPath });
+          await runUploaderFlow(root, { compile: compileBeforeUpload, upload: true, sketchPath });
           void vscode.window.showInformationMessage(compileBeforeUpload ? "编译并上传完成" : "上传完成");
         } finally {
           stopStatusSpinner();
@@ -199,7 +199,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const sketchPath = store.getData().current.build.sketchPath ?? "";
         startStatusSpinner("执行上传脚本");
         try {
-          await runUploadScript(context.extensionPath, root, { compile: true, upload: true, monitor: true, sketchPath });
+          await runUploaderFlow(root, { compile: true, upload: true, monitor: true, sketchPath });
           void vscode.window.showInformationMessage("上传脚本执行完成");
         } finally {
           stopStatusSpinner();
@@ -219,7 +219,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const sketchPath = store.getData().current.build.sketchPath ?? "";
         startStatusSpinner("编译中");
         try {
-          await runUploadScript(context.extensionPath, root, { compile: true, sketchPath });
+          await runUploaderFlow(root, { compile: true, sketchPath });
           void vscode.window.showInformationMessage("编译完成");
         } finally {
           stopStatusSpinner();
@@ -239,7 +239,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const sketchPath = store.getData().current.build.sketchPath ?? "";
         startStatusSpinner("上传中");
         try {
-          await runUploadScript(context.extensionPath, root, { upload: true, monitor: true, sketchPath });
+          await runUploaderFlow(root, { upload: true, monitor: true, sketchPath });
           void vscode.window.showInformationMessage("上传完成");
         } finally {
           stopStatusSpinner();

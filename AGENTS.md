@@ -16,7 +16,7 @@
 - Sketch 路径选择（`.ino` 文件）
 - 链节开关：上传前自动编译、上传后自动打开串口监视器
 
-扩展的数据格式与项目自带的 `src/scripts/upload.ps1` PowerShell 上传脚本保持兼容，该脚本可直接读取同一配置文件并完成编译、上传、监视器打开等操作。
+扩展内部使用纯 Node.js 实现编译/上传/监视核心流程（`src/uploader/`），`src/scripts/upload.ps1` PowerShell 脚本保留为独立兼容脚本，可直接读取同一配置文件完成相同操作。
 
 本项目同时包含一个 Arduino 示例草图 `ArduFlux.ino`（ESP32-S3 触摸按键 + WS2812B LED 控制），以及一个测试用 Arduino 项目目录 `test/mus4/`，用于验证配置与上传流程。
 
@@ -32,7 +32,7 @@
 | 构建工具 | `tsc`（TypeScript 编译器）、`vsce`（VSIX 打包工具） |
 | 扩展测试 | Mocha + Chai + Sinon（TypeScript 侧单元测试） |
 | MCP 服务器 | `@modelcontextprotocol/sdk` + `zod`（Schema 校验） |
-| 上传脚本 | PowerShell (`src/scripts/upload.ps1`)，依赖 `arduino-cli` |
+| 上传核心 | Node.js `src/uploader/`（跨平台），原 PowerShell 脚本 `src/scripts/upload.ps1` 保留兼容 |
 | 嵌入式固件 | Arduino C++ (`ArduFlux.ino`、`test/mus4/*.ino`) |
 
 ### TypeScript 编译配置
@@ -71,8 +71,13 @@
 │   ├── mcp/
 │   │   ├── extensionIntegration.ts  # VS Code 扩展内启动 MCP SSE 子进程
 │   │   └── transports.ts            # SSE / StreamableHTTP / stdio 传输层实现
+│   ├── uploader/                 # 跨平台上传核心（替代 upload.ps1）
+│   │   ├── projectResolver.ts    # 项目根目录查找（ArduFlux.json / .ino）
+│   │   ├── libraryResolver.ts    # 库依赖解析、已安装库查询、缺失库安装
+│   │   ├── portManager.ts        # 串口释放（跨平台进程终止）、PowerShell 可执行文件检测
+│   │   └── uploader.ts           # Uploader 主控类：编译/上传/监视流程协调、多端口重试
 │   ├── scripts/                  # 项目级脚本
-│   │   └── upload.ps1            # PowerShell 上传脚本（读取 ArduFlux.json，兼容旧版 upload_config.json）
+│   │   └── upload.ps1            # PowerShell 上传脚本（保留兼容，扩展不再直接调用）
 │   └── test/                     # TypeScript 单元测试（Mocha/Chai/Sinon）
 │       ├── configStore.store.test.ts
 │       ├── configStore.compile.test.ts
@@ -81,6 +86,11 @@
 │       ├── statusBar.test.ts
 │       ├── types.test.ts
 │       ├── webviewView.test.ts
+│       ├── uploader/
+│       │   ├── projectResolver.test.ts
+│       │   ├── libraryResolver.test.ts
+│       │   ├── portManager.test.ts
+│       │   └── uploader.test.ts
 │       └── mcp/
 │           ├── mcpServer.test.ts
 │           ├── transports.test.ts
@@ -124,7 +134,7 @@
 | `panel.ts` | 浮动面板 `ArduFluxPanel`，作为侧边栏不可用时的 fallback。包装同一套 `ConfigEditorController`。 |
 | `configStore.ts` | 配置持久化核心。`ConfigStore` 类负责加载/保存 `ArduFlux.json`、配置迁移（`migrateConfig`）、校验（board/port/build/monitor）、串口枚举（带 5 秒缓存）、Profile 增删改查/导入导出、Sketch 自动发现（`discoverSketches`）。同时导出大量纯工具函数（`buildCompileArgs`、`buildUploadArgs`、`buildMonitorArgs`、`normalizePath`、`validateFqbn`、`validateCliArgs`、`validateSketchPath`、`deepClone`、`recommendSerialPort`、`isUsbPort`、`normalizeSerialAddress`、`mapJsonPortEntry` 等）。 |
 | `types.ts` | 所有接口定义和默认配置工厂函数 `createDefaultConfig()`。预置板型目录 `DEFAULT_BOARD_CATALOG` 包含 ESP32-S3、ESP32 Dev Module、Arduino Uno、STM32 (Custom FQBN)。 |
-| `terminal.ts` | 提供 `runInTerminal`（直接运行 arduino-cli）和 `runUploadScript`（调用 upload.ps1）。均使用 VS Code `Pseudoterminal` 实现，支持进程树强制终止（Ctrl+C）。上传脚本执行成功后，非监视器模式下终端窗口会在 3 秒后自动关闭。 |
+| `terminal.ts` | 提供 `runInTerminal`（直接运行 arduino-cli）和 `runUploaderFlow`（调用 Node.js Uploader 核心）。均使用 VS Code `Pseudoterminal` 实现，支持进程树强制终止（Ctrl+C）。上传执行成功后，非监视器模式下终端窗口会在 3 秒后自动关闭。 |
 | `statusBar.ts` | 仅含 `formatStatusBarText(boardName, portAddress)` 纯函数。 |
 | `configSidebar.ts` | 已实现 `ConfigSidebarProvider`（`TreeDataProvider`），但 `extension.ts` 的 `activate()` **未注册**该 Provider。如需启用，需手动调用 `vscode.window.registerTreeDataProvider()`。 |
 | `events.ts` | 导出全局 `onDidChangeArduFluxConfig` EventEmitter，用于配置变更时通知状态栏等订阅方刷新。 |
@@ -157,7 +167,7 @@ npm run watch
 ```bash
 npm test
 ```
-先执行 `npm run compile`，再用 Mocha 运行 `dist/test/**/*.test.js`。当前共 **135** 个测试用例全部通过（原有 103 个 + MCP 相关 32 个）。
+先执行 `npm run compile`，再用 Mocha 运行 `dist/test/**/*.test.js`。当前共 **175** 个测试用例全部通过（原有 103 个 + MCP 相关 32 个 + uploader 相关 40 个）。
 
 **测试监视模式：**
 ```bash
@@ -202,7 +212,7 @@ npm run mcp:sse
 npm test
 ```
 
-当前测试覆盖（`src/test/`）共 11 个文件、**135** 个用例：
+当前测试覆盖（`src/test/`）共 15 个文件、**175** 个用例：
 
 | 测试文件 | 覆盖内容 |
 |----------|----------|
@@ -217,6 +227,10 @@ npm test
 | `mcp/transports.test.ts` | SSE / StreamableHTTP / stdio 传输层单元测试 |
 | `mcp/extensionIntegration.test.ts` | `startMcpSseServer` 端口解析、进程终止、超时处理 |
 | `mcp/integration.test.ts` | stdio、SSE、StreamableHTTP 端到端集成测试（真实子进程 spawn） |
+| `uploader/projectResolver.test.ts` | 项目根目录查找（ArduFlux.json / .ino 向上遍历） |
+| `uploader/libraryResolver.test.ts` | `#include` 解析、系统库排除、库名映射、缺失库检测与安装 |
+| `uploader/portManager.test.ts` | 跨平台 PowerShell 检测、串口释放（taskkill / fuser） |
+| `uploader/uploader.test.ts` | `Uploader` 主控流程：编译、上传、监视、多端口重试、compile-before-upload 链节 |
 
 **测试原则：**
 - 所有纯逻辑（参数构造、路径拼接、校验）必须先写单元测试（红→绿）。
@@ -302,9 +316,9 @@ npm test
 | `arduflux.compileSketch` | 开发板配置: 编译 Sketch | `Ctrl+Shift+B` | 聚焦面板后执行静默编译 |
 | `arduflux.uploadSketch` | 开发板配置: 上传 Sketch | `Ctrl+Shift+U` | 聚焦面板后执行静默上传 |
 | `arduflux.refreshSidebar` | 开发板配置: 刷新侧边栏 | — | 手动刷新侧边栏视图状态 |
-| `arduflux.runUploadScript` | 开发板配置: 完整编译+上传+监视（脚本） | — | 调用 upload.ps1 执行完整流程 |
-| `arduflux.compileOnly` | 开发板配置: 仅编译（脚本） | — | 调用 upload.ps1 仅编译 |
-| `arduflux.uploadOnly` | 开发板配置: 仅上传+监视（脚本） | — | 调用 upload.ps1 仅上传并打开监视器 |
+| `arduflux.runUploadScript` | 开发板配置: 完整编译+上传+监视（脚本） | — | 调用 Node.js 上传核心执行完整流程 |
+| `arduflux.compileOnly` | 开发板配置: 仅编译（脚本） | — | 调用 Node.js 上传核心仅编译 |
+| `arduflux.uploadOnly` | 开发板配置: 仅上传+监视（脚本） | — | 调用 Node.js 上传核心仅上传并打开监视器 |
 
 ### 仅在代码中注册的内部命令（命令面板不可见）
 
@@ -330,17 +344,17 @@ npm test
 
 1. `src/types.ts`（TypeScript 类型定义）
 2. `src/configStore.ts`（扩展读写逻辑）
-3. `src/scripts/upload.ps1`（PowerShell 解析逻辑）
+3. `src/uploader/uploader.ts` 及相关模块（Node.js 上传核心逻辑）
+4. `src/scripts/upload.ps1`（PowerShell 解析逻辑，保留兼容）
 
 特别注意事项：
 - `schemaVersion` 用于配置迁移。新增版本时需在 `migrateConfig`（TS）和 PowerShell 侧同样处理旧版本升级逻辑。
 - `arduino-cli` 路径默认为 `arduino-cli`，PowerShell 侧同样如此。
-- upload.ps1 额外功能：自动解析 `.ino` 文件中的 `#include <...>` 并尝试通过 `arduino-cli lib install` 安装所需外部库（内置系统库已排除）。
-- upload.ps1 的上传逻辑支持多端口候选重试（优先使用保存端口，失败时依次尝试其他 USB 端口）。
-- upload.ps1 的编译阶段使用后台 Job + 循环流动点动画提供进度反馈。
-- upload.ps1 的串口监视器：ESP32 板型使用自定义 `Start-CustomMonitor`（通过 .NET SerialPort + ESC 键退出），非 ESP32 使用 `arduino-cli monitor -p <port> -c baudrate=<rate>`。
+- Node.js 上传核心（`src/uploader/`）和 upload.ps1 均支持：自动解析 `.ino` 文件中的 `#include <...>` 并尝试通过 `arduino-cli lib install` 安装所需外部库（内置系统库已排除）。
+- 上传逻辑支持多端口候选重试（优先使用保存端口，失败时依次尝试其他 USB 端口）。
+- 串口监视器统一使用 `arduino-cli monitor`（非 ESP32 使用标准参数；ESP32 通过 `--config dtr=off,rts=off` 保持端口稳定）。
 - upload.ps1 保留对旧版 `upload_config.json` 的兼容读取逻辑（作为降级 fallback），但新项目应统一使用 `ArduFlux.json`。
-- upload.ps1 的上传阶段包含 ESP32 特定 workaround：当 `UploadThenMonitor` 为 true 且板型匹配 `esp32` 时，注入自定义 `upload.pattern_args` 以确保上传后不复位，避免监视器丢失输出。
+- upload.ps1 的 ESP32 特定 workaround（自定义 `upload.pattern_args`）在 Node.js 核心中暂未移植，后续如需可扩展 `Uploader` 的 `runUpload` 方法。
 
 ---
 
@@ -353,7 +367,8 @@ npm test
 - **FQBN 严格校验**：`validateFqbn` 要求 3–4 段，每段仅允许 `a-zA-Z0-9_-=`，拒绝任何异常字符。
 - **CSP**：Webview 启用 `Content-Security-Policy`，脚本源限制为 `nonce-${nonce}`，禁止内联事件处理器以外的任意脚本注入。
 - **JSON 注入**：Webview 的初始状态通过 `JSON.stringify` 后替换 `<>&` 为 Unicode 转义序列，避免 HTML 注入。
-- **终端执行**：`terminal.ts` 使用 `spawn` 且 `shell: false`，参数以数组传递，降低命令注入风险。
+- **终端执行**：`terminal.ts` 使用 `spawn` 且 `shell: false`，参数以数组传递，降低命令注入风险。`Uploader` 内部同样遵循此原则。
+- **跨平台进程终止**：`killProcessTree` 在 Windows 上使用 `taskkill`，在 POSIX 上使用 `kill -9 -<pgid>`。
 - **MCP 工作区隔离**：`arduflux_set_config` 的 `sketch_path` 若指向工作区外，返回 `ValidationError`（`isError: true`）。
 
 ---
@@ -376,13 +391,20 @@ npm test
 - 新增消息类型时，需在 `handleMessage` switch 中添加分支，并在前端 `postMessage` 中发送对应类型。
 
 **修改 TypeScript 测试**：
-- 测试文件位于 `src/test/*.test.ts` 和 `src/test/mcp/*.test.ts`。
+- 测试文件位于 `src/test/*.test.ts`、`src/test/mcp/*.test.ts` 和 `src/test/uploader/*.test.ts`。
 - 使用 Chai (`expect`) + Sinon（stub/mock）。
 - 运行方式：`npm test`。
+- `uploader` 模块测试采用依赖注入（DI）策略：所有 I/O 操作（`fs`、`spawn`、`execFile`）通过构造函数传入，便于在测试中替换为 stub。
 
 **启用/禁用 configSidebar TreeDataProvider**：
 - `src/configSidebar.ts` 已实现 `ConfigSidebarProvider`，但当前 `extension.ts` **未注册**该 Provider。
 - 如需启用，在 `extension.ts` 的 `activate()` 中调用 `vscode.window.registerTreeDataProvider()` 并传入 `ConfigSidebarProvider` 实例。
+
+**修改上传核心逻辑**：
+- `src/uploader/uploader.ts` 是主控类，协调编译→上传→监视流程。
+- `src/uploader/libraryResolver.ts` 处理库依赖解析与安装。
+- `src/uploader/portManager.ts` 处理跨平台串口释放。
+- 修改时需确保 `src/test/uploader/*.test.ts` 中对应测试同步更新（TDD）。
 
 **新增 MCP Tool**：
 - 在 `src/mcpServer.ts` 的 `createMcpServer` 中调用 `server.registerTool()`，定义 `description` 和可选的 `inputSchema`（使用 `zod`）。

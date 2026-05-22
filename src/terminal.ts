@@ -2,11 +2,16 @@ import { spawn, exec } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
-import { ValidationError } from "./configStore";
+import { ConfigStore, ValidationError } from "./configStore";
+import { Uploader } from "./uploader/uploader";
 
 function killProcessTree(pid: number): void {
   try {
-    exec(`taskkill /T /F /PID ${pid}`, () => {});
+    if (process.platform === "win32") {
+      exec(`taskkill /T /F /PID ${pid}`, () => {});
+    } else {
+      exec(`kill -9 -${pid}`, () => {});
+    }
   } catch {
     // ignore
   }
@@ -90,6 +95,88 @@ export interface UploadScriptFlags {
   upload?: boolean;
   monitor?: boolean;
   sketchPath?: string;
+}
+
+export function runUploaderFlow(
+  workspaceRoot: string,
+  flags: UploadScriptFlags = {}
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const writeEmitter = new vscode.EventEmitter<string>();
+    let uploader: Uploader | null = null;
+    let resolved = false;
+    let killedByUser = false;
+
+    const pty: vscode.Pseudoterminal = {
+      onDidWrite: writeEmitter.event,
+      open: () => {
+        void (async () => {
+          try {
+            const store = new ConfigStore(workspaceRoot);
+            await store.load();
+            const config = store.getData().current;
+
+            uploader = new Uploader();
+            const result = await uploader.run({
+              workspaceRoot,
+              flags,
+              config,
+              write: (text) => writeEmitter.fire(text),
+            });
+
+            if (result.lastSuccessfulPort) {
+              store.getData().current.port.lastSuccessfulAddress = result.lastSuccessfulPort;
+              await store.save();
+            }
+
+            if (!resolved) {
+              resolved = true;
+              if (result.success || killedByUser) {
+                resolve();
+              } else {
+                reject(new ValidationError("上传流程执行失败"));
+              }
+            }
+
+            const isMonitorOnly = !flags.compile && !flags.upload && flags.monitor;
+            if (!isMonitorOnly && (result.success || killedByUser)) {
+              let countdown = 3;
+              const timer = setInterval(() => {
+                if (countdown > 0) {
+                  writeEmitter.fire(`[窗口将在 ${countdown} 秒后自动关闭]\r\n`);
+                  countdown--;
+                } else {
+                  clearInterval(timer);
+                  terminal.dispose();
+                }
+              }, 1000);
+            }
+          } catch (err) {
+            if (!resolved) {
+              resolved = true;
+              reject(err instanceof Error ? err : new ValidationError(String(err)));
+            }
+          }
+        })();
+      },
+      close: () => {
+        if (uploader) {
+          uploader.abort();
+        }
+      },
+      handleInput: (data: string) => {
+        if (data === "\u0003") {
+          killedByUser = true;
+          if (uploader) {
+            uploader.abort();
+          }
+        }
+      }
+    };
+
+    const terminal = vscode.window.createTerminal({ name: "ArduFlux Upload", pty });
+    terminal.show();
+  });
 }
 
 export function runUploadScript(
