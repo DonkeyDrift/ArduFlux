@@ -6,7 +6,7 @@
 - 已安装 Node.js ≥ 18（npx 依赖）
 - 以下任一安装方式：
   - **推荐**：`npm install -g arduflux`（直接从 npm 安装）
-  - 或已安装 VS Code 扩展 **开发板配置 (ArduFlux)**
+  - 或已安装 VS Code 扩展 **ArduFlux**
   - 或已克隆本项目并执行 `npm install && npm run compile`
 
 ## 支持的传输类型

@@ -6,7 +6,7 @@
 
 ## 项目概述
 
-本项目是一个 **VS Code 扩展**（显示名称为「开发板配置」，扩展 ID 为 `ffedu.arduflux`，版本 `0.4.2`），用于管理嵌入式开发板配置。扩展直接读写工作区根目录下的 `ArduFlux.json`，管理内容包括：
+本项目是一个 **VS Code 扩展**（显示名称为「ArduFlux」，扩展 ID 为 `ffedu.arduflux`，版本 `0.4.2`），用于管理嵌入式开发板配置。扩展直接读写工作区根目录下的 `ArduFlux.json`，管理内容包括：
 
 - 板子型号（名称、FQBN、编译参数、引脚定义）
 - 串口（枚举、自动选择、USB 优先）
@@ -310,15 +310,15 @@ npm test
 
 | 命令 ID | 标题 | 快捷键 | 说明 |
 |---------|------|--------|------|
-| `arduflux.openPanel` | 开发板配置: 打开面板 | `Ctrl+Alt+E` | 聚焦侧边栏 Webview 配置面板，若不可用则打开浮动面板 |
-| `arduflux.validateConfig` | 开发板配置: 校验当前配置 | `Ctrl+Alt+V` | 校验当前 ArduFlux.json |
-| `arduflux.openConfigFile` | 开发板配置: 打开配置文件 | — | 在编辑器中打开 JSON 配置文件 |
-| `arduflux.compileSketch` | 开发板配置: 编译 Sketch | `Ctrl+Shift+B` | 聚焦面板后执行静默编译 |
-| `arduflux.uploadSketch` | 开发板配置: 上传 Sketch | `Ctrl+Shift+U` | 聚焦面板后执行静默上传 |
-| `arduflux.refreshSidebar` | 开发板配置: 刷新侧边栏 | — | 手动刷新侧边栏视图状态 |
-| `arduflux.runUploadScript` | 开发板配置: 完整编译+上传+监视（脚本） | — | 调用 Node.js 上传核心执行完整流程 |
-| `arduflux.compileOnly` | 开发板配置: 仅编译（脚本） | — | 调用 Node.js 上传核心仅编译 |
-| `arduflux.uploadOnly` | 开发板配置: 仅上传+监视（脚本） | — | 调用 Node.js 上传核心仅上传并打开监视器 |
+| `arduflux.openPanel` | ArduFlux: 打开面板 | `Ctrl+Alt+E` | 聚焦侧边栏 Webview 配置面板，若不可用则打开浮动面板 |
+| `arduflux.validateConfig` | ArduFlux: 校验当前配置 | `Ctrl+Alt+V` | 校验当前 ArduFlux.json |
+| `arduflux.openConfigFile` | ArduFlux: 打开配置文件 | — | 在编辑器中打开 JSON 配置文件 |
+| `arduflux.compileSketch` | ArduFlux: 编译 Sketch | `Ctrl+Shift+B` | 聚焦面板后执行静默编译 |
+| `arduflux.uploadSketch` | ArduFlux: 上传 Sketch | `Ctrl+Shift+U` | 聚焦面板后执行静默上传 |
+| `arduflux.refreshSidebar` | ArduFlux: 刷新侧边栏 | — | 手动刷新侧边栏视图状态 |
+| `arduflux.runUploadScript` | ArduFlux: 完整编译+上传+监视（脚本） | — | 调用 Node.js 上传核心执行完整流程 |
+| `arduflux.compileOnly` | ArduFlux: 仅编译（脚本） | — | 调用 Node.js 上传核心仅编译 |
+| `arduflux.uploadOnly` | ArduFlux: 仅上传+监视（脚本） | — | 调用 Node.js 上传核心仅上传并打开监视器 |
 
 ### 仅在代码中注册的内部命令（命令面板不可见）
 

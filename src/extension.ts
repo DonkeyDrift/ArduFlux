@@ -11,7 +11,7 @@ import { startMcpSseServer } from "./mcp/extensionIntegration";
 function getWorkspaceRoot(): string {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
-    throw new ValidationError("请先打开一个工作区文件夹，再使用 开发板配置");
+    throw new ValidationError("请先打开一个工作区文件夹，再使用 ArduFlux");
   }
   return folder.uri.fsPath;
 }
@@ -31,7 +31,7 @@ async function withStore<T>(run: (store: ConfigStore) => Promise<T>): Promise<T>
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  const outputChannel = vscode.window.createOutputChannel("开发板配置");
+  const outputChannel = vscode.window.createOutputChannel("ArduFlux");
   context.subscriptions.push(outputChannel);
   outputChannel.appendLine("[activate] Extension activating...");
 
@@ -56,7 +56,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // 热重载或窗口重新加载时，旧的 provider 可能尚未完全 dispose，
     // 导致 "already registered" 错误。此情况属于良性竞争，仅记录日志即可。
     if (!msg.includes("already registered")) {
-      void vscode.window.showErrorMessage(`开发板配置: WebviewView 注册失败: ${msg}`);
+      void vscode.window.showErrorMessage(`ArduFlux: WebviewView 注册失败: ${msg}`);
     }
   }
 
@@ -318,7 +318,7 @@ export function activate(context: vscode.ExtensionContext): void {
       btnMonitor.show();
     } catch {
       statusBarItem.text = "$(circuit-board) 嵌入式配置";
-      statusBarItem.tooltip = "点击打开 开发板配置 面板";
+      statusBarItem.tooltip = "点击打开 ArduFlux 面板";
       statusBarItem.show();
       btnCompile.hide();
       btnUpload.hide();

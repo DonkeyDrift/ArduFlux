@@ -1,11 +1,11 @@
 {
   "name": "arduflux",
-  "displayName": "开发板配置",
+  "displayName": "ArduFlux",
   "description": "Manage embedded board, serial port, build output, monitor and profiles from VS Code.",
   "version": "0.4.2",
   "publisher": "ffedu",
   "license": "MIT",
-  "icon": "src/logo/ArduFlux-Logo-v1.4.png",
+  "icon": "src/logo/ArduFlux-Logo-v1.5.png",
   "keywords": [
     "arduino",
     "embedded",
@@ -38,47 +38,47 @@
     "commands": [
       {
         "command": "arduflux.openPanel",
-        "title": "开发板配置: 打开面板"
+        "title": "ArduFlux: 打开面板"
       },
       {
         "command": "arduflux.validateConfig",
-        "title": "开发板配置: 校验当前配置"
+        "title": "ArduFlux: 校验当前配置"
       },
       {
         "command": "arduflux.openConfigFile",
-        "title": "开发板配置: 打开配置文件"
+        "title": "ArduFlux: 打开配置文件"
       },
       {
         "command": "arduflux.compileSketch",
-        "title": "开发板配置: 编译 Sketch"
+        "title": "ArduFlux: 编译 Sketch"
       },
       {
         "command": "arduflux.uploadSketch",
-        "title": "开发板配置: 上传 Sketch"
+        "title": "ArduFlux: 上传 Sketch"
       },
       {
         "command": "arduflux.refreshSidebar",
-        "title": "开发板配置: 刷新侧边栏",
+        "title": "ArduFlux: 刷新侧边栏",
         "icon": "$(refresh)"
       },
       {
         "command": "arduflux.runUploadScript",
-        "title": "开发板配置: 完整编译+上传+监视（脚本）"
+        "title": "ArduFlux: 完整编译+上传+监视（脚本）"
       },
       {
         "command": "arduflux.compileOnly",
-        "title": "开发板配置: 仅编译（脚本）"
+        "title": "ArduFlux: 仅编译（脚本）"
       },
       {
         "command": "arduflux.uploadOnly",
-        "title": "开发板配置: 仅上传+监视（脚本）"
+        "title": "ArduFlux: 仅上传+监视（脚本）"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "arduflux",
-          "title": "开发板配置",
+          "title": "ArduFlux",
           "icon": "$(circuit-board)"
         }
       ]
