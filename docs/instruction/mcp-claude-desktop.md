@@ -3,7 +3,11 @@
 ## 前提条件
 
 - 已安装 [Claude Desktop](https://claude.ai/download)
-- 已安装 VS Code 扩展 **开发板配置 (ArduFlux)**，或已克隆本项目并执行 `npm install && npm run compile`
+- 已安装 Node.js ≥ 18
+- 以下任一安装方式：
+  - **推荐**：`npm install -g arduflux`（直接从 npm 安装）
+  - 或已安装 VS Code 扩展 **开发板配置 (ArduFlux)**
+  - 或已克隆本项目并执行 `npm install && npm run compile`
 
 ## 配置方式（stdio 模式）
 
@@ -13,6 +17,27 @@ Claude Desktop 通过 stdio 与 MCP 服务器通信。你需要编辑 Claude Des
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ## 配置示例
+
+### 方式一：npm 全局安装（推荐）
+
+如果你已通过 `npm install -g arduflux` 安装了 ArduFlux：
+
+```json
+{
+  "mcpServers": {
+    "arduflux": {
+      "command": "arduflux-mcp",
+      "args": [
+        "--stdio",
+        "--workspace",
+        "C:\\Dev\\OPC\\ArduFlux"
+      ]
+    }
+  }
+}
+```
+
+### 方式二：本地源码 / VSIX 扩展
 
 ```json
 {

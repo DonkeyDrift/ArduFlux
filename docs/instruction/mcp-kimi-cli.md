@@ -4,8 +4,9 @@
 
 - Kimi Code CLI 已安装（`kimi --version` 可查看版本，建议 ≥ 1.8.0）
 - 已安装 Node.js ≥ 18
-- 已执行 `npm install && npm run compile`
 - **路径选择**：根据你的安装方式选择对应的命令（见下文「安装方式与路径」）
+
+> **注意**：ArduFlux 已发布至 npm（`arduflux`），现在可以直接 `npm install -g arduflux` 全局安装，无需克隆源码。
 
 ## 支持的传输类型
 
@@ -23,19 +24,19 @@ Kimi Code CLI 支持三种 MCP 传输方式：
 
 | 安装方式 | 命令 | 说明 |
 |----------|------|------|
-| **全局 npm 安装**（推荐） | `arduflux-mcp` | 执行 `npm install -g .` 后全局可用，跨电脑兼容 |
-| **本地源码开发** | `node ./dist/mcpServer.js` | 在项目根目录执行，适合开发调试 |
+| **npm 全局安装**（推荐） | `arduflux-mcp` | 执行 `npm install -g arduflux` 后全局可用，跨电脑兼容 |
+| **本地源码开发** | `node ./dist/mcpServer.js` | 克隆源码后在项目根目录执行，适合开发调试 |
 | **VSIX 扩展安装** | 见下方查找脚本 | 路径含版本号，需动态获取 |
 
-### 全局 npm 安装（推荐，跨电脑兼容）
+### npm 全局安装（推荐，跨电脑兼容）
 
-在项目根目录执行：
+直接从 npm registry 安装：
 
 ```bash
-npm install -g .
+npm install -g arduflux
 ```
 
-这会注册全局命令 `arduflux-mcp`（来自 `package.json` 的 `bin` 字段）。
+这会注册全局命令 `arduflux-mcp`。
 
 验证：
 
@@ -45,7 +46,14 @@ arduflux-mcp --help
 
 ### 本地源码开发
 
-无需全局安装，直接在项目根目录使用相对路径：
+如需从源码运行（开发调试），先克隆项目并编译：
+
+```bash
+git clone <repo-url> && cd ArduFlux
+npm install && npm run compile
+```
+
+然后使用相对路径：
 
 ```bash
 node ./dist/mcpServer.js --stdio --workspace .
@@ -134,7 +142,7 @@ kimi mcp auth arduflux
 
 编辑 Kimi CLI 的 MCP 配置文件 `~/.kimi/mcp.json`：
 
-**全局 npm 安装方式（推荐，跨电脑兼容）：**
+**npm 全局安装方式（推荐，跨电脑兼容）：**
 
 ```json
 {
@@ -236,7 +244,7 @@ Kimi 应自动调用 `arduflux_get_state` 并返回当前 FQBN、串口等信息
 
 - **`/mcp` 不显示 arduflux**：执行 `kimi mcp list` 查看状态；若显示未连接，执行 `kimi mcp test arduflux` 查看详细错误
 - **"Server is already initialized" 错误**：某些版本（如 1.8.0）在 ACP/Wire 模式下可能重复初始化同一服务器，升级 Kimi CLI 到最新版
-- **stdio 模式无响应**：确认 `dist/mcpServer.js` 存在（需先执行 `npm run compile`）；检查 Node.js 版本 ≥ 18
+- **stdio 模式无响应**：确认 `arduflux-mcp` 命令可执行（全局安装时）或 `dist/mcpServer.js` 存在（本地开发时）；检查 Node.js 版本 ≥ 18
 - **HTTP 模式连接超时**：确认服务器已启动且端口正确；检查防火墙是否拦截；尝试使用 `127.0.0.1` 而非 `localhost`
 - **OAuth 授权失败**：OAuth token 存储在 `~/.kimi/mcp-oauth/`；如升级后 token 失效，重新执行 `kimi mcp auth arduflux`
 - **工具调用无结果**：Kimi CLI 的 MCP 工具异步初始化，启动后稍等几秒再试；状态栏会显示连接进度

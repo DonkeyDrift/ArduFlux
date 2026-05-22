@@ -5,7 +5,9 @@
 - CodeBuddy IDE（最新版）或 CodeBuddy CLI
 - 通义灵码 v2.5+（MCP 功能在智能体模式下可用）
 - 已安装 Node.js ≥ 18.15.0
-- 项目已执行 `npm install && npm run compile`
+- 以下任一安装方式：
+  - **推荐**：`npm install -g arduflux`（直接从 npm 安装）
+  - 或已克隆本项目并执行 `npm install && npm run compile`
 
 ## 支持的传输类型
 

@@ -4,8 +4,9 @@
 
 - Claude Code CLI 已安装（`claude --version` 可查看版本）
 - 已安装 Node.js ≥ 18
-- 已执行 `npm install && npm run compile`
 - **路径选择**：根据你的安装方式选择对应的命令（见下文「安装方式与路径」）
+
+> **注意**：ArduFlux 已发布至 npm（`arduflux`），现在可以直接 `npm install -g arduflux` 全局安装，无需克隆源码。
 
 ## 支持的传输类型
 
@@ -22,19 +23,19 @@ Claude Code CLI 支持两种 MCP 传输方式：
 
 | 安装方式 | 命令 | 说明 |
 |----------|------|------|
-| **全局 npm 安装**（推荐） | `arduflux-mcp` | 执行 `npm install -g .` 后全局可用，跨电脑兼容 |
-| **本地源码开发** | `node ./dist/mcpServer.js` | 在项目根目录执行，适合开发调试 |
+| **npm 全局安装**（推荐） | `arduflux-mcp` | 执行 `npm install -g arduflux` 后全局可用，跨电脑兼容 |
+| **本地源码开发** | `node ./dist/mcpServer.js` | 克隆源码后在项目根目录执行，适合开发调试 |
 | **VSIX 扩展安装** | 见下方查找脚本 | 路径含版本号，需动态获取 |
 
-### 全局 npm 安装（推荐，跨电脑兼容）
+### npm 全局安装（推荐，跨电脑兼容）
 
-在项目根目录执行：
+直接从 npm registry 安装：
 
 ```bash
-npm install -g .
+npm install -g arduflux
 ```
 
-这会注册全局命令 `arduflux-mcp`（来自 `package.json` 的 `bin` 字段）。
+这会注册全局命令 `arduflux-mcp`。
 
 验证：
 
@@ -44,7 +45,14 @@ arduflux-mcp --help
 
 ### 本地源码开发
 
-无需全局安装，直接在项目根目录使用相对路径：
+如需从源码运行（开发调试），先克隆项目并编译：
+
+```bash
+git clone <repo-url> && cd ArduFlux
+npm install && npm run compile
+```
+
+然后使用相对路径：
 
 ```bash
 node ./dist/mcpServer.js --stdio --workspace .
@@ -124,7 +132,7 @@ claude mcp reconnect arduflux
 - **Windows**: `%APPDATA%\claude-code\mcp.json`
 - **Linux**: `~/.config/claude-code/mcp.json`
 
-**全局 npm 安装方式（推荐，跨电脑兼容）：**
+**npm 全局安装方式（推荐，跨电脑兼容）：**
 
 ```json
 {
@@ -276,7 +284,7 @@ Claude 应自动调用 `arduflux_get_state` 并返回配置信息。
 
 ## 故障排查
 
-- **`/mcp` 不显示 arduflux**：执行 `claude mcp list` 查看注册状态；若显示 `Failed to connect`，检查 `dist/mcpServer.js` 是否存在
+- **`/mcp` 不显示 arduflux**：执行 `claude mcp list` 查看注册状态；若显示 `Failed to connect`，检查 `arduflux-mcp` 命令是否可用（全局安装）或 `dist/mcpServer.js` 是否存在（本地开发）
 - **工具调用报错 "No such tool available"**：检查 `~/.claude/settings.json` 权限配置；确保 MCP 服务器已成功初始化（查看服务器日志）
 - **多个 MCP 服务器只有一个能连接**：Claude Code CLI 某些版本存在多 stdio 服务器竞争问题，尝试单独使用 `arduflux`
 - **HTTP 模式返回 406**：确认服务器端点 URL 正确（`/mcp` 而非 `/sse`）；Claude Code CLI 对 Streamable HTTP 的支持可能要求特定版本

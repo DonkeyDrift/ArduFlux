@@ -24,6 +24,28 @@ ArduFlux 扩展在激活时会自动向 VS Code 注册 MCP 服务器，无需手
 
 如果自动发现不可用，可在工作区创建 `.vscode/mcp.json`：
 
+### npm 全局安装方式（推荐）
+
+如果你已通过 `npm install -g arduflux` 安装了 ArduFlux：
+
+```json
+{
+  "servers": {
+    "arduflux": {
+      "type": "stdio",
+      "command": "arduflux-mcp",
+      "args": [
+        "--stdio",
+        "--workspace",
+        "${workspaceFolder}"
+      ]
+    }
+  }
+}
+```
+
+### 本地源码方式
+
 ```json
 {
   "servers": {
