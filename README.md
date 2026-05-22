@@ -75,22 +75,31 @@ npm run install:vsix:code
 
 3. 重新加载窗口使扩展生效
 
-### 方式三：CLI 全局安装（供 Kimi CLI / MCP 使用）
+### 方式三：CLI 全局安装（供 Kimi Code / Claude Code / MCP 使用）
 
 ```bash
 npm install -g arduflux
 ```
 
-安装后全局可用 `arduflux-mcp` 命令，用于通过 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 与 AI 客户端（如 Kimi CLI、Claude Desktop、Cursor）交互。
+安装后全局可用 `arduflux-mcp` 命令，用于通过 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 与 AI 客户端（如 Kimi Code、Claude Desktop、Cursor）交互。
 
-#### 配置 Kimi CLI
+#### 配置 Kimi Code
 
 ```bash
 kimi mcp add --transport stdio arduflux -- arduflux-mcp "--stdio" "--workspace" "."
 kimi mcp test arduflux
 ```
 
-启动 Kimi CLI 后输入 `/mcp` 即可看到 `arduflux` 及 14 个可用工具（如 `arduflux_get_state`、`arduflux_compile`、`arduflux_upload` 等）。
+启动 Kimi Code 后输入 `/mcp` 即可看到 `arduflux` 及 14 个可用工具（如 `arduflux_get_state`、`arduflux_compile`、`arduflux_upload` 等）。
+
+#### 配置 Claude Code
+
+```bash
+claude mcp add --transport stdio --scope user arduflux -- arduflux-mcp "--stdio" "--workspace" "."
+claude mcp get arduflux
+```
+
+启动 `claude` 后输入 `/mcp` 即可看到 `arduflux` 及 14 个可用工具。
 
 > 如果不想全局安装，也可以直接 `npx arduflux-mcp --stdio --workspace .`
 
