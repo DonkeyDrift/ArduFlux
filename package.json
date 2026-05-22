@@ -5,6 +5,7 @@
   "version": "0.4.2",
   "publisher": "ffedu",
   "license": "MIT",
+  "icon": "src/logo/ArduFlux-Logo-v1.3.png",
   "keywords": [
     "arduino",
     "embedded",
