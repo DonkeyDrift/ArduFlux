@@ -18,13 +18,6 @@
     "node": ">=18.0.0",
     "vscode": "^1.90.0"
   },
-  "files": [
-    "dist/",
-    "bin/",
-    "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
-  ],
   "categories": [
     "Other"
   ],
