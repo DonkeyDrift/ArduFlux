@@ -4,7 +4,10 @@
 
 - TRAE IDE v1.3.0+（MCP 支持从该版本开始）
 - 已安装 Node.js ≥ 18（npx 依赖）
-- 项目已执行 `npm install && npm run compile`
+- 以下任一安装方式：
+  - **推荐**：`npm install -g arduflux`（直接从 npm 安装）
+  - 或已安装 VS Code 扩展 **ArduFlux**
+  - 或已克隆本项目并执行 `npm install && npm run compile`
 
 ## 支持的传输类型
 
@@ -22,7 +25,26 @@ TRAE IDE 支持两种 MCP 传输方式：
 3. 选择 **手动配置**
 4. 在配置输入框中粘贴以下 JSON 内容：
 
-#### stdio 模式（推荐）
+#### stdio 模式 — npm 全局安装（推荐）
+
+如果你已通过 `npm install -g arduflux` 安装了 ArduFlux：
+
+```json
+{
+  "mcpServers": {
+    "arduflux": {
+      "command": "arduflux-mcp",
+      "args": [
+        "--stdio",
+        "--workspace",
+        "${workspaceFolder}"
+      ]
+    }
+  }
+}
+```
+
+#### stdio 模式 — 本地源码
 
 ```json
 {

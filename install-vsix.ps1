@@ -32,7 +32,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ExtensionId = "ffedu.arduflux"
+$ExtensionId = "DonkeyDrift.arduflux"
 $VsixPattern = "arduflux-*.vsix"
 
 function Get-IdeCli {

@@ -197,7 +197,7 @@ describe("webview view registration", () => {
       await capturedProvider?.provider.resolveWebviewView(fakeWebviewView, {}, {});
 
       expect(fakeWebview.options.enableScripts).to.equal(true);
-      expect(fakeWebview.html).to.contain("开发板配置");
+      expect(fakeWebview.html).to.contain("ArduFlux");
       expect(postedMessages.some((message) => message.type === "state")).to.equal(true);
 
       const firstStateMessage = postedMessages.find((message) => message.type === "state");

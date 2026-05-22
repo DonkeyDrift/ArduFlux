@@ -16,7 +16,7 @@ export class ArduFluxPanel {
 
     const panel = vscode.window.createWebviewPanel(
       "arduflux",
-      "开发板配置",
+      "ArduFlux",
       column,
       {
         enableScripts: true,

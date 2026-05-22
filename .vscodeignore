@@ -8,6 +8,9 @@ src/**/*.map
 tests/**
 docs/**
 embedded_config/**
+design/**
+*.pptx
+~$*
 TouchButton.ino
 TEST_REPORT.txt
 upload_config.json
