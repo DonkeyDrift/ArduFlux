@@ -191,21 +191,49 @@ export class Uploader {
     }
 
     if (doMonitor) {
-      const port = lastSuccessfulPort ?? config.port.address;
-      if (!port) {
+      const preferredPort = lastSuccessfulPort ?? config.port.address;
+      const ports = await this.deps.listSerialPorts("arduino-cli");
+      const monitorCandidates = getUploadCandidates(ports, preferredPort, config.port.auto);
+
+      if (monitorCandidates.length === 0) {
         write("No serial port selected, skipping monitor.\r\n");
       } else {
+        let monitorSuccess = false;
+        let monitorRetryCount = 0;
         write(`\n=== Opening serial monitor ===\r\n`);
         write("Press Ctrl+C to exit monitor\r\n");
-        const monitorArgs = buildMonitorArgs({
-          port,
-          fqbn: config.board.fqbn,
-          baudRate: config.monitor.baudRate,
-          dataBits: config.monitor.dataBits,
-          stopBits: config.monitor.stopBits,
-          parity: config.monitor.parity,
-        });
-        await this.spawnWithOutput("arduino-cli", monitorArgs, workspaceRoot, write);
+
+        for (const candidatePort of monitorCandidates) {
+          if (candidatePort !== preferredPort && monitorRetryCount > 0) {
+            write(`Trying alternate port: ${candidatePort}\r\n`);
+          }
+          const monitorArgs = buildMonitorArgs({
+            port: candidatePort,
+            fqbn: config.board.fqbn,
+            baudRate: config.monitor.baudRate,
+            dataBits: config.monitor.dataBits,
+            stopBits: config.monitor.stopBits,
+            parity: config.monitor.parity,
+          });
+          try {
+            await this.spawnWithOutput("arduino-cli", monitorArgs, workspaceRoot, write);
+            monitorSuccess = true;
+            lastSuccessfulPort = candidatePort;
+            break;
+          } catch {
+            monitorRetryCount++;
+            if (monitorRetryCount < monitorCandidates.length) {
+              write(`Monitor failed on ${candidatePort}, retrying (${monitorRetryCount}/${monitorCandidates.length})...\r\n`);
+            }
+          }
+        }
+
+        if (!monitorSuccess) {
+          write(`Monitor failed after ${monitorCandidates.length} attempts\r\n`);
+          if (!doUpload) {
+            return { success: false };
+          }
+        }
       }
     }
 
