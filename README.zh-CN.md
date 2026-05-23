@@ -4,6 +4,11 @@
 
 VS Code 扩展，针对 Arduino 系列主板（UNO、Nano、ESP32、ESP8266 等）提供全流程开发支持，管理开发板配置（板型、串口、编译参数、串口监视器、Profiles）。
 
+## 项目仓库
+
+- **官方主仓库（GitHub）**：[DonkeyDrift/ArduFlux](https://github.com/DonkeyDrift/ArduFlux) — 项目主仓库，接受 Issue、Fork、Pull Request 等所有协作功能，所有贡献请提交到这里。
+- **镜像仓库（Gitee）**：[donkeydrift/ArduFlux](https://gitee.com/donkeydrift/ArduFlux) — 仅为国内用户提供访问加速的只读镜像，只提供下载功能，不接受 Issue、Fork、Pull Request 等其他功能。
+
 ## 功能特性
 
 - **配置管理**：可视化编辑 `ArduFlux.json` 配置文件

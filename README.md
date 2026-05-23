@@ -4,6 +4,11 @@ English | [中文](README.zh-CN.md)
 
 VS Code extension that provides end-to-end development support for Arduino family boards (UNO, Nano, ESP32, ESP8266, etc.), managing board configuration including board type, serial port, compile parameters, serial monitor, and profiles.
 
+## Project Repositories
+
+- **Official Repository (GitHub)**: [DonkeyDrift/ArduFlux](https://github.com/DonkeyDrift/ArduFlux) — Primary repository, accepts Issues, Forks, and Pull Requests. All contributions should be submitted here.
+- **Mirror Repository (Gitee)**: [donkeydrift/ArduFlux](https://gitee.com/donkeydrift/ArduFlux) — Read-only mirror for faster access in mainland China, only for downloading. Does not accept Issues, Forks, or Pull Requests.
+
 ## Features
 
 - **Configuration Management**: Visually edit the `ArduFlux.json` configuration file
