@@ -125,7 +125,9 @@ export function runUploaderFlow(
             });
 
             if (result.lastSuccessfulPort) {
-              store.getData().current.port.lastSuccessfulAddress = result.lastSuccessfulPort;
+              const portState = store.getData().current.port;
+              portState.lastSuccessfulAddress = result.lastSuccessfulPort;
+              portState.address = result.lastSuccessfulPort;
               await store.save();
             }
 

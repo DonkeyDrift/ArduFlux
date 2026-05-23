@@ -100,7 +100,7 @@ export function createMcpServer(
 
   const server = new McpServer({
     name: "arduflux",
-    version: "0.4.2",
+    version: "0.4.3",
   });
 
   server.registerTool(

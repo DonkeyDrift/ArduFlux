@@ -3,7 +3,7 @@
 ## 前提条件
 
 - VS Code 1.99+（内置 MCP 客户端支持）
-- 已安装 VS Code 扩展 **ArduFlux** v0.4.2+
+- 已安装 VS Code 扩展 **ArduFlux** v0.4.3+
 
 ## 自动发现（推荐）
 
