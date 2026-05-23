@@ -40,7 +40,19 @@ arduino-cli version
 
 ## Installation
 
-### Method 1: Automatic Installation (Recommended)
+### Method 1: Install from Extension Marketplace (Recommended)
+
+Install directly from your IDE's extension marketplace:
+
+- **VS Code Marketplace**: [DonkeyDrift.arduflux](https://marketplace.visualstudio.com/items?itemName=DonkeyDrift.arduflux)
+- **Open VSX Registry**: [DonkeyDrift.arduflux](https://open-vsx.org/extension/DonkeyDrift/arduflux)
+
+Steps:
+1. Open the Extensions view (`Ctrl+Shift+X`)
+2. Search for `ArduFlux`
+3. Click **Install**
+
+### Method 2: Automatic Script Installation
 
 Run the PowerShell script from the project root:
 
@@ -60,7 +72,7 @@ The script will automatically:
 2. Install the latest VSIX package
 3. Prompt to reload the window
 
-### Method 2: Manual VSIX Installation
+### Method 3: Manual VSIX Installation
 
 1. First package the VSIX file:
    ```bash
@@ -76,7 +88,7 @@ The script will automatically:
 
 3. Reload the window for the extension to take effect
 
-### Method 3: Global CLI Installation (for Kimi Code / Claude Code / MCP)
+### Method 4: Global CLI Installation (for Kimi Code / Claude Code / MCP)
 
 ```bash
 npm install -g arduflux
@@ -104,7 +116,7 @@ After launching `claude`, type `/mcp` to see `arduflux` with 14 available tools.
 
 > If you prefer not to install globally, you can also run `npx arduflux-mcp --stdio --workspace .` directly.
 
-### Method 4: Local Development Mode
+### Method 5: Local Development Mode
 
 See the [Local Development](#local-development) section.
 

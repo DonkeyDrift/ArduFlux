@@ -40,7 +40,19 @@ arduino-cli version
 
 ## 安装扩展
 
-### 方式一：自动安装（推荐）
+### 方式一：扩展市场安装（推荐）
+
+直接从 IDE 的扩展市场安装：
+
+- **VS Code Marketplace**：[DonkeyDrift.arduflux](https://marketplace.visualstudio.com/items?itemName=DonkeyDrift.arduflux)
+- **Open VSX Registry**：[DonkeyDrift.arduflux](https://open-vsx.org/extension/DonkeyDrift/arduflux)
+
+安装步骤：
+1. 打开扩展视图（`Ctrl+Shift+X`）
+2. 搜索 `ArduFlux`
+3. 点击**安装**即可
+
+### 方式二：自动脚本安装
 
 在项目根目录执行 PowerShell 脚本：
 
@@ -60,7 +72,7 @@ npm run install:vsix:code
 2. 安装最新 VSIX 包
 3. 提示重新加载窗口
 
-### 方式二：手动安装 VSIX
+### 方式三：手动安装 VSIX
 
 1. 先打包生成 VSIX 文件：
    ```bash
@@ -76,7 +88,7 @@ npm run install:vsix:code
 
 3. 重新加载窗口使扩展生效
 
-### 方式三：CLI 全局安装（供 Kimi Code / Claude Code / MCP 使用）
+### 方式四：CLI 全局安装（供 Kimi Code / Claude Code / MCP 使用）
 
 ```bash
 npm install -g arduflux
@@ -104,7 +116,7 @@ claude mcp get arduflux
 
 > 如果不想全局安装，也可以直接 `npx arduflux-mcp --stdio --workspace .`
 
-### 方式四：本地开发模式
+### 方式五：本地开发模式
 
 详见【本地开发】章节。
 
