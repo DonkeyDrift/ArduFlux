@@ -5,6 +5,10 @@
   "version": "0.4.2",
   "publisher": "DonkeyDrift",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/DonkeyDrift/ArduFlux.git"
+  },
   "icon": "src/logo/ArduFlux-Logo-v1.5.png",
   "keywords": [
     "arduino",

@@ -1,203 +1,221 @@
+English | [中文](README.zh-CN.md)
+
 # ArduFlux
 
-VS Code 扩展，用于管理嵌入式开发板配置（板型、串口、编译参数、串口监视器、Profiles），与 `upload.ps1` 脚本完全兼容。
+VS Code extension that provides end-to-end development support for Arduino family boards (UNO, Nano, ESP32, ESP8266, etc.), managing board configuration including board type, serial port, compile parameters, serial monitor, and profiles.
 
-## 功能特性
+## Project Repositories
 
-- **配置管理**：可视化编辑 `ArduFlux.json` 配置文件
-- **板型配置**：选择预置板型，自定义 FQBN、编译参数、引脚定义
-- **串口管理**：自动枚举串口，优先推荐 USB 端口，检测端口占用
-- **编译上传**：集成 arduino-cli 编译、上传功能
-- **串口监视器**：配置波特率、数据位、停止位、校验位、换行符
-- **Profiles**：保存、应用、删除、导入、导出配置方案
-- **状态显示**：VS Code 状态栏实时显示当前配置
-- **脚本兼容**：与项目原有 `upload.ps1` 数据格式完全一致
+- **Official Repository (GitHub)**: [DonkeyDrift/ArduFlux](https://github.com/DonkeyDrift/ArduFlux) — Primary repository, accepts Issues, Forks, and Pull Requests. All contributions should be submitted here.
+- **Mirror Repository (Gitee)**: [donkeydrift/ArduFlux](https://gitee.com/donkeydrift/ArduFlux) — Read-only mirror for faster access in mainland China, only for downloading. Does not accept Issues, Forks, or Pull Requests.
 
-## 前置要求
+## Features
 
-使用前请确保已安装：
+- **Configuration Management**: Visually edit the `ArduFlux.json` configuration file
+- **Board Configuration**: Select from preset board types (Arduino UNO, Nano, ESP32-S3, ESP32-C3, ESP8266, etc.), customize FQBN, compile arguments, and pin definitions
+- **Serial Port Management**: Automatically enumerate serial ports, prioritize USB ports, and detect port occupancy
+- **Compile & Upload**: Integrated arduino-cli compile and upload functionality
+- **Serial Monitor**: Configure baud rate, data bits, stop bits, parity, and line ending
+- **Profiles**: Save, apply, delete, import, and export configuration schemes
+- **Status Display**: Real-time current configuration display in the VS Code status bar
 
-1. **VS Code 或 TRAE IDE** - 版本 ≥ 1.90.0
-2. **arduino-cli** - 用于编译和上传 Arduino 固件
-3. **Node.js** - 用于本地开发（仅开发时需要）
+## Prerequisites
 
-### 安装 arduino-cli
+Before using, please ensure the following are installed:
 
-Windows 用户可通过以下方式安装：
+1. **VS Code or TRAE IDE** - version ≥ 1.90.0
+2. **arduino-cli** - for compiling and uploading Arduino firmware
+3. **Node.js** - for local development (only required when contributing)
+
+### Installing arduino-cli
+
+Windows users can install via:
 
 ```powershell
-# 使用 scoop 安装
+# Install using scoop
 scoop install arduino-cli
 
-# 或手动下载：https://arduino.github.io/arduino-cli/latest/installation/
+# Or download manually: https://arduino.github.io/arduino-cli/latest/installation/
 ```
 
-安装后验证：
+Verify installation:
 ```bash
 arduino-cli version
 ```
 
-## 安装扩展
+## Installation
 
-### 方式一：自动安装（推荐）
+### Method 1: Install from Extension Marketplace (Recommended)
 
-在项目根目录执行 PowerShell 脚本：
+Install directly from your IDE's extension marketplace:
+
+- **VS Code Marketplace**: [DonkeyDrift.arduflux](https://marketplace.visualstudio.com/items?itemName=DonkeyDrift.arduflux)
+- **Open VSX Registry**: [DonkeyDrift.arduflux](https://open-vsx.org/extension/DonkeyDrift/arduflux)
+
+Steps:
+1. Open the Extensions view (`Ctrl+Shift+X`)
+2. Search for `ArduFlux`
+3. Click **Install**
+
+### Method 2: Automatic Script Installation
+
+Run the PowerShell script from the project root:
 
 ```powershell
-# 自动检测 IDE（TRAE 优先）
+# Auto-detect IDE (TRAE preferred)
 npm run install:vsix
 
-# 强制使用 TRAE
+# Force TRAE
 npm run install:vsix:trae
 
-# 强制使用 VS Code
+# Force VS Code
 npm run install:vsix:code
 ```
 
-脚本会自动：
-1. 卸载旧版本扩展（如果存在）
-2. 安装最新 VSIX 包
-3. 提示重新加载窗口
+The script will automatically:
+1. Uninstall any previous version of the extension (if present)
+2. Install the latest VSIX package
+3. Prompt to reload the window
 
-### 方式二：手动安装 VSIX
+### Method 3: Manual VSIX Installation
 
-1. 先打包生成 VSIX 文件：
+1. First package the VSIX file:
    ```bash
    npm run package
    ```
-   生成文件类似 `arduflux-0.3.3.vsix`
+   This generates a file like `arduflux-0.3.3.vsix`
 
-2. 在 VS Code / TRAE 中安装：
-   - 打开扩展视图（`Ctrl+Shift+X`）
-   - 点击右上角 `...`
-   - 选择 `Install from VSIX...`
-   - 选择生成的 `.vsix` 文件
+2. Install in VS Code / TRAE:
+   - Open the Extensions view (`Ctrl+Shift+X`)
+   - Click the `...` menu in the top right corner
+   - Select `Install from VSIX...`
+   - Choose the generated `.vsix` file
 
-3. 重新加载窗口使扩展生效
+3. Reload the window for the extension to take effect
 
-### 方式三：CLI 全局安装（供 Kimi Code / Claude Code / MCP 使用）
+### Method 4: Global CLI Installation (for Kimi Code / Claude Code / MCP)
 
 ```bash
 npm install -g arduflux
 ```
 
-安装后全局可用 `arduflux-mcp` 命令，用于通过 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 与 AI 客户端（如 Kimi Code、Claude Desktop、Cursor）交互。
+After installation, the `arduflux-mcp` command is globally available for interacting with AI clients (Kimi Code, Claude Desktop, Cursor, etc.) via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/).
 
-#### 配置 Kimi Code
+#### Configuring Kimi Code
 
 ```bash
 kimi mcp add --transport stdio arduflux -- arduflux-mcp "--stdio" "--workspace" "."
 kimi mcp test arduflux
 ```
 
-启动 Kimi Code 后输入 `/mcp` 即可看到 `arduflux` 及 14 个可用工具（如 `arduflux_get_state`、`arduflux_compile`、`arduflux_upload` 等）。
+After launching Kimi Code, type `/mcp` to see `arduflux` with 14 available tools (such as `arduflux_get_state`, `arduflux_compile`, `arduflux_upload`, etc.).
 
-#### 配置 Claude Code
+#### Configuring Claude Code
 
 ```bash
 claude mcp add --transport stdio --scope user arduflux -- arduflux-mcp "--stdio" "--workspace" "."
 claude mcp get arduflux
 ```
 
-启动 `claude` 后输入 `/mcp` 即可看到 `arduflux` 及 14 个可用工具。
+After launching `claude`, type `/mcp` to see `arduflux` with 14 available tools.
 
-> 如果不想全局安装，也可以直接 `npx arduflux-mcp --stdio --workspace .`
+> If you prefer not to install globally, you can also run `npx arduflux-mcp --stdio --workspace .` directly.
 
-### 方式四：本地开发模式
+### Method 5: Local Development Mode
 
-详见【本地开发】章节。
+See the [Local Development](#local-development) section.
 
-## 使用方法
+## Usage
 
-### 1. 打开配置面板
+### 1. Opening the Configuration Panel
 
-有三种方式打开配置面板：
+There are three ways to open the configuration panel:
 
-- **快捷键**：`Ctrl+Alt+E`（Mac: `Cmd+Alt+E`）
-- **命令面板**：按 `F1` 或 `Ctrl+Shift+P`，输入 `ArduFlux: 打开面板`
-- **活动栏**：点击左侧边栏「ArduFlux」图标（电路板图标）
+- **Keyboard Shortcut**: `Ctrl+Alt+E` (Mac: `Cmd+Alt+E`)
+- **Command Palette**: Press `F1` or `Ctrl+Shift+P`, type `ArduFlux: Open Panel`
+- **Activity Bar**: Click the ArduFlux icon (circuit board icon) in the left sidebar
 
-### 2. 基本配置流程
+### 2. Basic Configuration Flow
 
-配置面板分为以下几个区域：
+The configuration panel is divided into the following sections:
 
-#### 板型配置
-- **选择板型**：从下拉列表选择预置板型（如 ESP32-S3、ESP32-C3 等）
-- **自定义 FQBN**：手动输入完全限定板名（如 `esp32:esp32:esp32s3`）
-- **编译参数**：添加额外的编译参数（如 `-DDEBUG=1`）
-- **引脚定义**：JSON 格式配置引脚映射
+#### Board Configuration
+- **Select Board Type**: Choose from preset board types in the dropdown (e.g., ESP32-S3, ESP32-C3, etc.)
+- **Custom FQBN**: Manually enter a fully qualified board name (e.g., `esp32:esp32:esp32s3`)
+- **Compile Arguments**: Add additional compile arguments (e.g., `-DDEBUG=1`)
+- **Pin Definitions**: Configure pin mapping in JSON format
 
-#### 串口配置
-- **自动选择**：勾选「自动选择」后，扩展会扫描并推荐 USB 串口
-- **手动选择**：从下拉列表选择可用串口
-- **端口检测**：自动检测端口是否被占用
+#### Serial Port Configuration
+- **Auto-select**: When enabled, the extension scans and recommends USB serial ports
+- **Manual Select**: Choose from available serial ports in the dropdown
+- **Port Detection**: Automatically detects whether a port is occupied
 
-#### 编译配置
-- **输出目录**：设置编译输出目录（默认 `build`）
-- **最近使用**：快速选择最近使用的输出目录（最多保留 5 条）
+#### Build Configuration
+- **Output Directory**: Set the build output directory (default: `build`)
+- **Recent**: Quickly select from recent output directories (up to 5 entries)
 
-#### 串口监视器
-- **波特率**：常见选项（9600、19200、38400、57600、115200、230400、460800、921600）
-- **数据位**：5-8 位（默认 8）
-- **停止位**：1、1.5、2（默认 1）
-- **校验位**：无、奇、偶、标记、空格（默认无）
-- **换行符**：CR、LF、CRLF、无（默认 CRLF）
+#### Serial Monitor
+- **Baud Rate**: Common options (9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600)
+- **Data Bits**: 5-8 bits (default: 8)
+- **Stop Bits**: 1, 1.5, 2 (default: 1)
+- **Parity**: None, Odd, Even, Mark, Space (default: None)
+- **Line Ending**: CR, LF, CRLF, None (default: CRLF)
 
-### 3. 编译和上传
+### 3. Compile and Upload
 
-#### 使用扩展命令
+#### Using Extension Commands
 
-- **编译**：`Ctrl+Shift+B` 或 命令 `ArduFlux: 编译 Sketch`
-- **上传**：`Ctrl+Shift+U` 或 命令 `ArduFlux: 上传 Sketch`
+- **Compile**: `Ctrl+Shift+B` or command `ArduFlux: Compile Sketch`
+- **Upload**: `Ctrl+Shift+U` or command `ArduFlux: Upload Sketch`
 
-#### 使用上传核心（跨平台）
+#### Using the Cross-Platform Upload Core
 
-- **完整流程（编译+上传+监视）**：`ArduFlux: 完整编译+上传+监视（脚本）`
-- **仅编译**：`ArduFlux: 仅编译（脚本）`
-- **仅上传+监视**：`ArduFlux: 仅上传+监视（脚本）`
+- **Full workflow (Compile + Upload + Monitor)**: `ArduFlux: Full Compile+Upload+Monitor (Script)`
+- **Compile only**: `ArduFlux: Compile Only (Script)`
+- **Upload + Monitor only**: `ArduFlux: Upload+Monitor Only (Script)`
 
-这些命令调用 Node.js 实现的跨平台上传核心（`src/uploader/`），支持 Windows / macOS / Linux，具备库自动安装、多端口重试等功能。`upload.ps1` PowerShell 脚本仍保留为兼容方案。
+These commands invoke the cross-platform Node.js upload core (`src/uploader/`), supporting Windows / macOS / Linux, with automatic library installation, multi-port retry, and other features.
 
-### 4. Profiles 管理
+### 4. Profiles Management
 
-Profiles 允许你保存多套配置方案：
+Profiles allow you to save multiple configuration schemes:
 
-- **保存当前为 Profile**：输入名称保存当前配置
-- **应用 Profile**：从列表选择，一键切换配置
-- **删除 Profile**：删除不再需要的配置方案
-- **导出 Profile**：将配置导出为 JSON 文件，便于分享
-- **导入 Profile**：从 JSON 文件导入配置
+- **Save Current as Profile**: Enter a name to save the current configuration
+- **Apply Profile**: Select from the list to switch configurations with one click
+- **Delete Profile**: Remove configuration schemes no longer needed
+- **Export Profile**: Export configurations to JSON files for easy sharing
+- **Import Profile**: Import configurations from JSON files
 
-### 5. 其他功能
+### 5. Other Features
 
-#### 校验配置
-命令：`ArduFlux: 校验当前配置`
-检查配置是否完整有效，输出错误和建议。
+#### Validate Configuration
+Command: `ArduFlux: Validate Current Configuration`
+Checks whether the configuration is complete and valid, outputting errors and suggestions.
 
-#### 打开配置文件
-命令：`ArduFlux: 打开配置文件`
-在编辑器中直接打开 `ArduFlux.json` 进行手动编辑。
+#### Open Configuration File
+Command: `ArduFlux: Open Configuration File`
+Directly opens `ArduFlux.json` in the editor for manual editing.
 
-#### 刷新视图
-点击面板标题栏的刷新图标，重新加载配置状态。
+#### Refresh View
+Click the refresh icon in the panel title bar to reload the configuration state.
 
-## 命令清单
+## Command Reference
 
-| 命令 | 快捷键 | 说明 |
-|------|--------|------|
-| `ArduFlux: 打开面板` | `Ctrl+Alt+E` | 打开侧边栏配置面板 |
-| `ArduFlux: 校验当前配置` | `Ctrl+Alt+V` | 校验配置有效性 |
-| `ArduFlux: 打开配置文件` | - | 在编辑器中打开 JSON 配置 |
-| `ArduFlux: 编译 Sketch` | `Ctrl+Shift+B` | 编译当前 Sketch |
-| `ArduFlux: 上传 Sketch` | `Ctrl+Shift+U` | 上传固件到开发板 |
-| `ArduFlux: 刷新侧边栏` | - | 刷新视图状态 |
-| `ArduFlux: 完整编译+上传+监视（脚本）` | - | 调用 Node.js 上传核心完整流程 |
-| `ArduFlux: 仅编译（脚本）` | - | 调用 Node.js 上传核心仅编译 |
-| `ArduFlux: 仅上传+监视（脚本）` | - | 调用 Node.js 上传核心仅上传 |
+| Command | Shortcut | Description |
+|---------|----------|-------------|
+| `ArduFlux: Open Panel` | `Ctrl+Alt+E` | Open the sidebar configuration panel |
+| `ArduFlux: Validate Current Configuration` | `Ctrl+Alt+V` | Validate configuration validity |
+| `ArduFlux: Open Configuration File` | - | Open the JSON configuration in the editor |
+| `ArduFlux: Compile Sketch` | `Ctrl+Shift+B` | Compile the current sketch |
+| `ArduFlux: Upload Sketch` | `Ctrl+Shift+U` | Upload firmware to the development board |
+| `ArduFlux: Refresh Sidebar` | - | Refresh the view state |
+| `ArduFlux: Full Compile+Upload+Monitor (Script)` | - | Invoke the Node.js upload core for the full workflow |
+| `ArduFlux: Compile Only (Script)` | - | Invoke the Node.js upload core for compilation only |
+| `ArduFlux: Upload+Monitor Only (Script)` | - | Invoke the Node.js upload core for upload only |
 
-## 配置文件说明
+## Configuration File
 
-扩展使用 `ArduFlux.json` 作为配置文件，位于工作区根目录：
+The extension uses `ArduFlux.json` as its configuration file, located in the workspace root:
 
 ```json
 {
@@ -234,110 +252,100 @@ Profiles 允许你保存多套配置方案：
 }
 ```
 
-### 重要说明
+### Important Notes
 
-- `schemaVersion` 用于配置迁移，请勿手动修改
-- `profiles` 始终包含 `default` 配置
-- `recentOutputDirs` 自动去重并保留最近 5 条
-- `pinDefines` 必须是 JSON 对象格式
+- `schemaVersion` is used for configuration migration, do not modify manually
+- `profiles` always contains the `default` configuration
+- `recentOutputDirs` is automatically deduplicated and keeps the most recent 5 entries
+- `pinDefines` must be a valid JSON object
 
-## 与 upload.ps1 兼容性
+## Local Development
 
-扩展与项目原有的 `upload.ps1` 脚本：
-
-- **共享同一配置文件**：两者都读写 `ArduFlux.json`
-- **数据格式一致**：JSON 结构和字段名完全相同
-- **可混合使用**：既可以用扩展 UI 配置，也可以用脚本上传
-
-修改配置结构时需同步更新：
-1. `src/types.ts` - TypeScript 类型
-2. `src/configStore.ts` - 扩展读写逻辑
-3. `src/uploader/` - Node.js 上传核心逻辑
-4. `upload.ps1` - PowerShell 解析逻辑（兼容保留）
-
-## 本地开发
-
-### 环境搭建
+### Environment Setup
 
 ```bash
-# 安装依赖
+# Install dependencies
 npm install
 
-# 编译 TypeScript
+# Compile TypeScript
 npm run compile
 
-# 监视模式（自动重新编译）
+# Watch mode (auto-recompile on changes)
 npm run watch
 ```
 
-### 调试扩展
+### Debugging the Extension
 
-1. 在 VS Code 中打开项目
-2. 按 `F5` 启动扩展开发宿主
-3. 在新窗口中测试扩展功能
+1. Open the project in VS Code
+2. Press `F5` to launch the extension development host
+3. Test extension features in the new window
 
-### 运行测试
+### Running Tests
 
 ```bash
-# TypeScript 单元测试
+# TypeScript unit tests
 npm test
 
-# 测试监视模式
+# Test watch mode
 npm run test:watch
 
-# Python 单元测试（遗留工具）
+# Python unit tests (legacy tools)
 python -m unittest discover -s tests -v
 ```
 
-### 打包 VSIX
+### Packaging the VSIX
 
 ```bash
 npm run package
 ```
 
-生成文件位于项目根目录，命名格式 `arduflux-<version>.vsix`。
+The generated file is located in the project root, named in the format `arduflux-<version>.vsix`.
 
-## 项目结构
+## Project Structure
 
 ```
 .
-├── src/                          # VS Code 扩展源码（TypeScript）
-│   ├── extension.ts              # 扩展入口：注册命令、状态栏等
-│   ├── editorView.ts             # 侧边栏 Webview 视图提供者
-│   ├── webviewController.ts      # Webview 控制器：UI、消息路由
-│   ├── configStore.ts            # 配置读写、校验、串口枚举
-│   ├── types.ts                  # 类型定义、预置板型
-│   ├── terminal.ts               # Pseudoterminal 封装
-│   ├── statusBar.ts              # 状态栏文本格式化
-│   └── test/                     # TypeScript 单元测试
-├── dist/                         # 编译输出（CommonJS）
-├── embedded_config/              # Python 遗留配置工具（维护中）
-├── tests/                        # Python 单元测试
-├── docs/                         # 技术文档
-├── ArduFlux.json                 # 运行时配置文件
-├── ArduFlux.template.json        # 配置文件模板
-├── install-vsix.ps1              # 自动安装脚本
-├── package.json                  # 扩展清单 + npm scripts
-└── tsconfig.json                 # TypeScript 编译配置
+├── src/                          # VS Code extension source (TypeScript)
+│   ├── extension.ts              # Extension entry: register commands, status bar, etc.
+│   ├── editorView.ts             # Sidebar Webview view provider
+│   ├── webviewController.ts      # Webview controller: UI, message routing
+│   ├── configStore.ts            # Configuration read/write, validation, serial port enumeration
+│   ├── types.ts                  # Type definitions, preset boards
+│   ├── terminal.ts               # Pseudoterminal wrapper
+│   ├── statusBar.ts              # Status bar text formatting
+│   └── test/                     # TypeScript unit tests
+├── dist/                         # Compiled output (CommonJS)
+├── embedded_config/              # Python legacy configuration tools (maintenance mode)
+├── tests/                        # Python unit tests
+├── docs/                         # Technical documentation
+├── ArduFlux.json                 # Runtime configuration file
+├── ArduFlux.template.json        # Configuration file template
+├── install-vsix.ps1              # Automatic installation script
+├── package.json                  # Extension manifest + npm scripts
+└── tsconfig.json                 # TypeScript compilation configuration
 ```
 
-## 常见问题
+## FAQ
 
-### Q: 扩展安装后找不到命令？
-A: 请重新加载窗口（`Ctrl+Shift+P` → `Reload Window`）。
+### Q: Commands not found after installing the extension?
+A: Please reload the window (`Ctrl+Shift+P` → `Reload Window`).
 
-### Q: 串口列表为空？
-A: 检查设备是否连接，驱动是否安装正确，然后点击刷新。
+### Q: Serial port list is empty?
+A: Check that the device is connected and the driver is properly installed, then click refresh.
 
-### Q: 编译提示 arduino-cli 未找到？
-A: 确保 arduino-cli 已安装并在系统 PATH 中，或重启 IDE。
+### Q: Compilation says arduino-cli not found?
+A: Ensure arduino-cli is installed and in your system PATH, or restart the IDE.
 
-### Q: 修改 ArduFlux.json 后面板没更新？
-A: 点击面板标题栏的刷新图标，或重新打开面板。
+### Q: Panel not updating after modifying ArduFlux.json?
+A: Click the refresh icon in the panel title bar, or reopen the panel.
 
-### Q: 如何回滚到默认配置？
-A: 应用 `default` Profile 即可恢复。
+### Q: How to revert to default configuration?
+A: Apply the `default` Profile to restore.
 
-## 许可证
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+## License
 
 MIT
