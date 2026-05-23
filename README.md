@@ -1,17 +1,16 @@
 # ArduFlux
 
-VS Code 扩展，用于管理嵌入式开发板配置（板型、串口、编译参数、串口监视器、Profiles），与 `upload.ps1` 脚本完全兼容。
+VS Code 扩展，针对 Arduino 系列主板（UNO、Nano、ESP32、ESP8266 等）提供全流程开发支持，管理开发板配置（板型、串口、编译参数、串口监视器、Profiles）。
 
 ## 功能特性
 
 - **配置管理**：可视化编辑 `ArduFlux.json` 配置文件
-- **板型配置**：选择预置板型，自定义 FQBN、编译参数、引脚定义
+- **板型配置**：选择预置板型（Arduino UNO、Nano、ESP32-S3、ESP32-C3、ESP8266 等），自定义 FQBN、编译参数、引脚定义
 - **串口管理**：自动枚举串口，优先推荐 USB 端口，检测端口占用
 - **编译上传**：集成 arduino-cli 编译、上传功能
 - **串口监视器**：配置波特率、数据位、停止位、校验位、换行符
 - **Profiles**：保存、应用、删除、导入、导出配置方案
 - **状态显示**：VS Code 状态栏实时显示当前配置
-- **脚本兼容**：与项目原有 `upload.ps1` 数据格式完全一致
 
 ## 前置要求
 
@@ -156,7 +155,7 @@ claude mcp get arduflux
 - **仅编译**：`ArduFlux: 仅编译（脚本）`
 - **仅上传+监视**：`ArduFlux: 仅上传+监视（脚本）`
 
-这些命令调用 Node.js 实现的跨平台上传核心（`src/uploader/`），支持 Windows / macOS / Linux，具备库自动安装、多端口重试等功能。`upload.ps1` PowerShell 脚本仍保留为兼容方案。
+这些命令调用 Node.js 实现的跨平台上传核心（`src/uploader/`），支持 Windows / macOS / Linux，具备库自动安装、多端口重试等功能。
 
 ### 4. Profiles 管理
 
@@ -240,20 +239,6 @@ Profiles 允许你保存多套配置方案：
 - `profiles` 始终包含 `default` 配置
 - `recentOutputDirs` 自动去重并保留最近 5 条
 - `pinDefines` 必须是 JSON 对象格式
-
-## 与 upload.ps1 兼容性
-
-扩展与项目原有的 `upload.ps1` 脚本：
-
-- **共享同一配置文件**：两者都读写 `ArduFlux.json`
-- **数据格式一致**：JSON 结构和字段名完全相同
-- **可混合使用**：既可以用扩展 UI 配置，也可以用脚本上传
-
-修改配置结构时需同步更新：
-1. `src/types.ts` - TypeScript 类型
-2. `src/configStore.ts` - 扩展读写逻辑
-3. `src/uploader/` - Node.js 上传核心逻辑
-4. `upload.ps1` - PowerShell 解析逻辑（兼容保留）
 
 ## 本地开发
 
