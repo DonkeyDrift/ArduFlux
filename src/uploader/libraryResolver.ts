@@ -22,6 +22,7 @@ export const SYSTEM_HEADERS = new Set([
   "WebServer.h",
   "Update.h",
   "ESPmDNS.h",
+  "DNSServer.h",
   "ArduinoOTA.h",
   "BluetoothSerial.h",
   "BLEDevice.h",
@@ -54,6 +55,84 @@ export const SYSTEM_HEADERS = new Set([
   "hal/touch_sensor_types.h",
   "Ticker.h",
   "assert.h",
+  "stdlib.h",
+  "stdint.h",
+  "stddef.h",
+  "stdbool.h",
+  "string.h",
+  "stdio.h",
+  "math.h",
+  "limits.h",
+  "ctype.h",
+  "time.h",
+  "errno.h",
+  "stdarg.h",
+  "cstdlib",
+  "cstdint",
+  "cstddef",
+  "cstdbool",
+  "cstring",
+  "cstdio",
+  "cmath",
+  "climits",
+  "cctype",
+  "ctime",
+  "cerrno",
+  "cstdarg",
+  "cassert",
+  "new",
+  "typeinfo",
+  "exception",
+  "initializer_list",
+  "utility",
+  "tuple",
+  "type_traits",
+  "functional",
+  "algorithm",
+  "iterator",
+  "vector",
+  "array",
+  "deque",
+  "list",
+  "forward_list",
+  "set",
+  "map",
+  "unordered_set",
+  "unordered_map",
+  "stack",
+  "queue",
+  "string",
+  "string_view",
+  "memory",
+  "memory_resource",
+  "atomic",
+  "mutex",
+  "thread",
+  "condition_variable",
+  "future",
+  "chrono",
+  "ratio",
+  "complex",
+  "valarray",
+  "numeric",
+  "limits",
+  "locale",
+  "codecvt",
+  "regex",
+  "filesystem",
+  "optional",
+  "variant",
+  "any",
+  "bitset",
+  "iosfwd",
+  "ios",
+  "istream",
+  "ostream",
+  "iostream",
+  "sstream",
+  "fstream",
+  "iomanip",
+  "streambuf",
 ]);
 
 export const LIBRARY_NAME_OVERRIDES: Record<string, string> = {
@@ -139,42 +218,52 @@ export async function installLibraries(
   libs: string[],
   arduinoCliPath: string,
   _cwd: string,
-  spawnImpl: typeof nodeSpawn = nodeSpawn,
-  onOutput?: (line: string) => void
+  onOutput?: (line: string) => void,
+  spawnImpl: typeof nodeSpawn = nodeSpawn
 ): Promise<void> {
   for (const lib of libs) {
-    await new Promise<void>((resolve, reject) => {
-      const proc = spawnImpl(arduinoCliPath, ["lib", "install", lib], { shell: false });
-      proc.stdout?.on("data", (data: Buffer) => {
-        const text = data.toString();
-        if (onOutput) {
-          for (const line of text.split(/\r?\n/)) {
-            if (line) {
-              onOutput(line);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const proc = spawnImpl(arduinoCliPath, ["lib", "install", lib], { shell: false });
+        proc?.stdout?.on("data", (data: Buffer) => {
+          const text = data.toString();
+          if (onOutput) {
+            for (const line of text.split(/\r?\n/)) {
+              if (line) {
+                onOutput(line);
+              }
             }
           }
-        }
-      });
-      proc.stderr?.on("data", (data: Buffer) => {
-        const text = data.toString();
-        if (onOutput) {
-          for (const line of text.split(/\r?\n/)) {
-            if (line) {
-              onOutput(line);
+        });
+        proc?.stderr?.on("data", (data: Buffer) => {
+          const text = data.toString();
+          if (onOutput) {
+            for (const line of text.split(/\r?\n/)) {
+              if (line) {
+                onOutput(line);
+              }
             }
           }
+        });
+        proc?.on("close", (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Failed to install library "${lib}" (exit code: ${code ?? "unknown"})`));
+          }
+        });
+        proc?.on("error", (err) => {
+          reject(new Error(`Failed to install library "${lib}": ${err.message}`));
+        });
+        if (!proc) {
+          reject(new Error(`Failed to spawn arduino-cli for library "${lib}"`));
         }
       });
-      proc.on("close", (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`Failed to install library "${lib}" (exit code: ${code ?? "unknown"})`));
-        }
-      });
-      proc.on("error", (err) => {
-        reject(new Error(`Failed to install library "${lib}": ${err.message}`));
-      });
-    });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (onOutput) {
+        onOutput(`Warning: ${message} — skipping, will try to compile anyway`);
+      }
+    }
   }
 }
