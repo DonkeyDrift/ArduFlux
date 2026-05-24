@@ -196,10 +196,6 @@ export function buildMonitorArgs(opts: {
   if (opts.parity && opts.parity.toLowerCase() !== "none") {
     configs.push(`parity=${opts.parity.toLowerCase()}`);
   }
-  if (opts.fqbn && opts.fqbn.toLowerCase().includes("esp32")) {
-    configs.push("dtr=off");
-    configs.push("rts=off");
-  }
   for (const cfg of configs) {
     args.push("--config", cfg);
   }

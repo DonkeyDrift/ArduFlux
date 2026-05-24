@@ -295,13 +295,44 @@ export class Uploader {
       }
       const proc = this.deps.spawn(command, args, { cwd, shell: false });
       this.currentProc = proc;
+
+      let lastOutputTime = Date.now();
+      let dotsOnLine = 0;
+      const heartbeatInterval = setInterval(() => {
+        const now = Date.now();
+        if (now - lastOutputTime >= 1000) {
+          if (dotsOnLine >= 60) {
+            write("\r\n");
+            dotsOnLine = 0;
+          }
+          write(".");
+          dotsOnLine++;
+          lastOutputTime = now;
+        }
+      }, 500);
+
+      const resetHeartbeat = () => {
+        lastOutputTime = Date.now();
+        if (dotsOnLine > 0) {
+          write("\r\n");
+          dotsOnLine = 0;
+        }
+      };
+
       proc?.stdout?.on("data", (data: Buffer) => {
+        resetHeartbeat();
         write(data.toString().replace(/\n/g, "\r\n"));
       });
       proc?.stderr?.on("data", (data: Buffer) => {
+        resetHeartbeat();
         write(data.toString().replace(/\n/g, "\r\n"));
       });
       proc?.on("close", (code) => {
+        clearInterval(heartbeatInterval);
+        if (dotsOnLine > 0) {
+          write("\r\n");
+          dotsOnLine = 0;
+        }
         this.currentProc = null;
         if (this.aborted) {
           reject(new Error("Uploader aborted"));
@@ -314,10 +345,12 @@ export class Uploader {
         }
       });
       proc?.on("error", (err) => {
+        clearInterval(heartbeatInterval);
         this.currentProc = null;
         reject(err);
       });
       if (!proc) {
+        clearInterval(heartbeatInterval);
         this.currentProc = null;
         reject(new Error(`Failed to spawn command: ${command}`));
       }
