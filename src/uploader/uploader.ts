@@ -34,7 +34,7 @@ export interface UploaderDeps {
   releaseSerialPort(port: string): Promise<void>;
   listSerialPorts(arduinoCliPath?: string): Promise<SerialPortInfo[]>;
   getInstalledLibraries(arduinoCliPath: string): Promise<string[]>;
-  installLibraries(libs: string[], arduinoCliPath: string, cwd: string, onOutput?: (line: string) => void): Promise<void>;
+  installLibraries(libs: string[], arduinoCliPath: string, cwd: string, onOutput?: (line: string) => void, spawnImpl?: typeof import("child_process").spawn): Promise<void>;
 }
 
 export function getUploadCandidates(
@@ -129,6 +129,7 @@ export class Uploader {
       await this.installRequiredLibraries(sketchPath, config, write);
 
       write(`\n=== Compiling sketch ===\r\n`);
+      write("Compiling, this may take a minute...\r\n");
       const compileArgs = buildCompileArgs(
         {
           fqbn: config.board.fqbn,
@@ -156,6 +157,7 @@ export class Uploader {
       }
 
       write(`\n=== Uploading sketch ===\r\n`);
+      write("Uploading to board...\r\n");
       let uploadSuccess = false;
       let retryCount = 0;
 
@@ -293,13 +295,13 @@ export class Uploader {
       }
       const proc = this.deps.spawn(command, args, { cwd, shell: false });
       this.currentProc = proc;
-      proc.stdout?.on("data", (data: Buffer) => {
+      proc?.stdout?.on("data", (data: Buffer) => {
         write(data.toString().replace(/\n/g, "\r\n"));
       });
-      proc.stderr?.on("data", (data: Buffer) => {
+      proc?.stderr?.on("data", (data: Buffer) => {
         write(data.toString().replace(/\n/g, "\r\n"));
       });
-      proc.on("close", (code) => {
+      proc?.on("close", (code) => {
         this.currentProc = null;
         if (this.aborted) {
           reject(new Error("Uploader aborted"));
@@ -311,10 +313,14 @@ export class Uploader {
           reject(new Error(`Command exited with code ${code ?? "unknown"}`));
         }
       });
-      proc.on("error", (err) => {
+      proc?.on("error", (err) => {
         this.currentProc = null;
         reject(err);
       });
+      if (!proc) {
+        this.currentProc = null;
+        reject(new Error(`Failed to spawn command: ${command}`));
+      }
     });
   }
 }
