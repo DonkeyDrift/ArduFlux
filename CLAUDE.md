@@ -11,6 +11,18 @@ ArduFlux 是一个 VS Code / TRAE IDE 扩展，用于嵌入式开发（Arduino/E
 
 全局配置文件为工作区根目录的 `ArduFlux.json`，与遗留的 `upload.ps1` 数据格式完全兼容。
 
+- **官方仓库**：[DonkeyDrift/ArduFlux](https://github.com/DonkeyDrift/ArduFlux)
+- **镜像仓库**：[donkeydrift/ArduFlux](https://gitee.com/donkeydrift/ArduFlux)（只读）
+
+### 常用快捷键
+
+| 命令 | 快捷键 |
+|------|--------|
+| 打开侧边栏配置面板 | `Ctrl+Alt+E` |
+| 校验当前配置 | `Ctrl+Alt+V` |
+| 编译 Sketch | `Ctrl+Shift+B` |
+| 上传 Sketch | `Ctrl+Shift+U` |
+
 ## 常用命令
 
 | 操作 | 命令 |
