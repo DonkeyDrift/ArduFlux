@@ -218,7 +218,7 @@ export class Uploader {
             parity: config.monitor.parity,
           });
           try {
-            await this.spawnWithOutput("arduino-cli", monitorArgs, workspaceRoot, write);
+            await this.spawnWithOutput("arduino-cli", monitorArgs, workspaceRoot, write, false);
             monitorSuccess = true;
             lastSuccessfulPort = candidatePort;
             break;
@@ -286,7 +286,8 @@ export class Uploader {
     command: string,
     args: string[],
     cwd: string,
-    write: (text: string) => void
+    write: (text: string) => void,
+    enableHeartbeat = true
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.aborted) {
@@ -298,22 +299,26 @@ export class Uploader {
 
       let lastOutputTime = Date.now();
       let dotsOnLine = 0;
-      const heartbeatInterval = setInterval(() => {
-        const now = Date.now();
-        if (now - lastOutputTime >= 1000) {
-          if (dotsOnLine >= 60) {
-            write("\r\n");
-            dotsOnLine = 0;
+      let heartbeatInterval: NodeJS.Timeout | null = null;
+
+      if (enableHeartbeat) {
+        heartbeatInterval = setInterval(() => {
+          const now = Date.now();
+          if (now - lastOutputTime >= 1000) {
+            if (dotsOnLine >= 60) {
+              write("\r\n");
+              dotsOnLine = 0;
+            }
+            write(".");
+            dotsOnLine++;
+            lastOutputTime = now;
           }
-          write(".");
-          dotsOnLine++;
-          lastOutputTime = now;
-        }
-      }, 500);
+        }, 500);
+      }
 
       const resetHeartbeat = () => {
         lastOutputTime = Date.now();
-        if (dotsOnLine > 0) {
+        if (enableHeartbeat && dotsOnLine > 0) {
           write("\r\n");
           dotsOnLine = 0;
         }
@@ -328,8 +333,10 @@ export class Uploader {
         write(data.toString().replace(/\n/g, "\r\n"));
       });
       proc?.on("close", (code) => {
-        clearInterval(heartbeatInterval);
-        if (dotsOnLine > 0) {
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
+        if (enableHeartbeat && dotsOnLine > 0) {
           write("\r\n");
           dotsOnLine = 0;
         }
@@ -345,12 +352,16 @@ export class Uploader {
         }
       });
       proc?.on("error", (err) => {
-        clearInterval(heartbeatInterval);
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
         this.currentProc = null;
         reject(err);
       });
       if (!proc) {
-        clearInterval(heartbeatInterval);
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+        }
         this.currentProc = null;
         reject(new Error(`Failed to spawn command: ${command}`));
       }
