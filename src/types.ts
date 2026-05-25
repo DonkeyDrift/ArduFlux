@@ -43,11 +43,22 @@ export interface ArduFluxMonitorState {
   resetOnConnect?: boolean;
 }
 
+export interface ArduFluxWslState {
+  enabled: boolean;
+  distro: string;
+  workspaceRoot: string;
+  arduinoCliPath: string;
+  syncProject: {
+    excludes: string[];
+  };
+}
+
 export interface ArduFluxCurrentConfig {
   board: ArduFluxBoardState;
   port: ArduFluxPortState;
   build: ArduFluxBuildState;
   monitor: ArduFluxMonitorState;
+  wsl: ArduFluxWslState;
 }
 
 export interface ArduFluxConfig {
@@ -148,6 +159,15 @@ export function createDefaultConfig(): ArduFluxConfig {
         parity: "none",
         newline: "CRLF",
         resetOnConnect: true
+      },
+      wsl: {
+        enabled: false,
+        distro: "",
+        workspaceRoot: "",
+        arduinoCliPath: "arduino-cli",
+        syncProject: {
+          excludes: [".git", "node_modules", ".vscode", ".trae"]
+        }
       }
     },
     profiles: {

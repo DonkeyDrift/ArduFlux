@@ -27,6 +27,11 @@ export interface FormPayload {
   monitorStopBits: string;
   monitorParity: string;
   monitorNewline: string;
+  wslEnabled?: boolean;
+  wslDistro?: string;
+  wslWorkspaceRoot?: string;
+  wslArduinoCliPath?: string;
+  wslSyncExcludes?: string;
 }
 
 function createNonce(): string {
@@ -92,6 +97,17 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
       parity: form.monitorParity.trim(),
       newline: form.monitorNewline.trim(),
       resetOnConnect: baseConfig.current.monitor.resetOnConnect ?? true
+    },
+    wsl: {
+      enabled: form.wslEnabled !== undefined ? Boolean(form.wslEnabled) : Boolean(baseConfig.current.wsl.enabled),
+      distro: form.wslDistro !== undefined ? form.wslDistro.trim() : baseConfig.current.wsl.distro,
+      workspaceRoot: form.wslWorkspaceRoot !== undefined ? form.wslWorkspaceRoot.trim() : baseConfig.current.wsl.workspaceRoot,
+      arduinoCliPath: form.wslArduinoCliPath !== undefined ? form.wslArduinoCliPath.trim() : baseConfig.current.wsl.arduinoCliPath,
+      syncProject: {
+        excludes: form.wslSyncExcludes !== undefined
+          ? form.wslSyncExcludes.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
+          : [...baseConfig.current.wsl.syncProject.excludes]
+      }
     }
   };
 }
@@ -723,6 +739,22 @@ export class ConfigEditorController {
   </div>
 
   <div class="advanced-item">
+    <h2>WSL 编译</h2>
+    <div class="grid">
+      <label for="wslEnabled">启用 WSL 编译</label>
+      <input id="wslEnabled" type="checkbox" style="width:auto" />
+      <label for="wslDistro">发行版</label>
+      <input id="wslDistro" placeholder="留空使用默认 WSL" />
+      <label for="wslWorkspaceRoot">WSL 工作目录</label>
+      <input id="wslWorkspaceRoot" placeholder="留空使用 WSL HOME 下的 arduino-build" />
+      <label for="wslArduinoCliPath">arduino-cli 路径</label>
+      <input id="wslArduinoCliPath" />
+      <label for="wslSyncExcludes">同步排除项</label>
+      <textarea id="wslSyncExcludes" placeholder="每行或逗号分隔"></textarea>
+    </div>
+  </div>
+
+  <div class="advanced-item">
     <h2>Profiles</h2>
     <div class="row">
       <select id="profileSelect"></select>
@@ -754,7 +786,8 @@ export class ConfigEditorController {
       "boardPreset", "boardName", "boardFqbn", "boardCompileArgs", "boardPinDefines",
       "portAddress", "portAuto", "buildOutputDir", "recentOutputDirs",
       "monitorBaudRate", "monitorDataBits", "monitorStopBits", "monitorParity",
-      "monitorNewline", "profileSelect", "profileName", "status", "recommendedPort",
+      "monitorNewline", "wslEnabled", "wslDistro", "wslWorkspaceRoot",
+      "wslArduinoCliPath", "wslSyncExcludes", "profileSelect", "profileName", "status", "recommendedPort",
       "sketchPath", "selectSketchButton"
     ];
     const el = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
@@ -883,6 +916,12 @@ export class ConfigEditorController {
       el.monitorParity.value = current.monitor.parity || "none";
       el.monitorNewline.value = current.monitor.newline || "CRLF";
 
+      el.wslEnabled.checked = !!current.wsl.enabled;
+      el.wslDistro.value = current.wsl.distro || "";
+      el.wslWorkspaceRoot.value = current.wsl.workspaceRoot || "";
+      el.wslArduinoCliPath.value = current.wsl.arduinoCliPath || "arduino-cli";
+      el.wslSyncExcludes.value = (current.wsl.syncProject?.excludes || []).join("\n");
+
       fillSelect(
         el.profileSelect,
         Object.keys(config.profiles || {}).sort(),
@@ -935,7 +974,12 @@ export class ConfigEditorController {
         monitorDataBits: el.monitorDataBits.value,
         monitorStopBits: el.monitorStopBits.value,
         monitorParity: el.monitorParity.value,
-        monitorNewline: el.monitorNewline.value
+        monitorNewline: el.monitorNewline.value,
+        wslEnabled: el.wslEnabled.checked,
+        wslDistro: el.wslDistro.value,
+        wslWorkspaceRoot: el.wslWorkspaceRoot.value,
+        wslArduinoCliPath: el.wslArduinoCliPath.value,
+        wslSyncExcludes: el.wslSyncExcludes.value
       };
     }
 

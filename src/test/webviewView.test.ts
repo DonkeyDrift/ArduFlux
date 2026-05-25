@@ -198,6 +198,7 @@ describe("webview view registration", () => {
 
       expect(fakeWebview.options.enableScripts).to.equal(true);
       expect(fakeWebview.html).to.contain("ArduFlux");
+      expect(fakeWebview.html).to.contain("WSL 编译");
       expect(postedMessages.some((message) => message.type === "state")).to.equal(true);
 
       const firstStateMessage = postedMessages.find((message) => message.type === "state");
@@ -213,6 +214,37 @@ describe("webview view registration", () => {
       expect(stateMessages[1]?.statusMessage).to.equal("配置编辑器已就绪");
       expect(outputLines.some((line) => line.includes(`viewId=${ARDUFLUX_EDITOR_VIEW_ID}`))).to.equal(true);
       expect(outputLines.some((line) => line.includes("Posting state message"))).to.equal(true);
+
+      await onDidReceiveMessageHandler?.({
+        type: "save-config",
+        payload: {
+          boardName: "ESP32-S3",
+          boardFqbn: "esp32:esp32:esp32s3",
+          boardCompileArgs: "",
+          boardPinDefines: "{}",
+          portAddress: "COM36",
+          portAuto: true,
+          buildOutputDir: "build",
+          sketchPath: "",
+          compileBeforeUpload: false,
+          uploadThenMonitor: false,
+          monitorBaudRate: "115200",
+          monitorDataBits: "8",
+          monitorStopBits: "1",
+          monitorParity: "none",
+          monitorNewline: "CRLF",
+          wslEnabled: true,
+          wslDistro: "Ubuntu",
+          wslWorkspaceRoot: "/home/me/arduino-build/demo",
+          wslArduinoCliPath: "~/bin/arduino-cli",
+          wslSyncExcludes: ".git\nnode_modules"
+        }
+      });
+
+      const savedConfig = JSON.parse(await fs.readFile(path.join(tempDir, "ArduFlux.json"), "utf8"));
+      expect(savedConfig.current.wsl.enabled).to.equal(true);
+      expect(savedConfig.current.wsl.distro).to.equal("Ubuntu");
+      expect(savedConfig.current.wsl.syncProject.excludes).to.deep.equal([".git", "node_modules"]);
 
       disposeAll(context.subscriptions);
     } finally {

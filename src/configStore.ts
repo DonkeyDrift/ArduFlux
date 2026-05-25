@@ -352,6 +352,7 @@ function migrateConfig(data: unknown): ArduFluxConfig {
   if (!pinDefines || (typeof pinDefines === "object" && !Array.isArray(pinDefines) && Object.keys(pinDefines).length === 0)) {
     board.pinDefines = defaults.current.board.pinDefines;
   }
+  const wsl = (current.wsl ?? {}) as Partial<ArduFluxCurrentConfig["wsl"]>;
 
   return {
     schemaVersion: 1,
@@ -368,6 +369,14 @@ function migrateConfig(data: unknown): ArduFluxConfig {
       monitor: {
         ...defaults.current.monitor,
         ...(current.monitor ?? {})
+      },
+      wsl: {
+        ...defaults.current.wsl,
+        ...wsl,
+        syncProject: {
+          ...defaults.current.wsl.syncProject,
+          ...(wsl.syncProject ?? {})
+        }
       }
     },
     profiles: {

@@ -62,6 +62,19 @@ describe("types.ts", () => {
       expect(monitor.newline).to.equal("CRLF");
     });
 
+    it("默认 WSL 编译后端应关闭", () => {
+      const config = createDefaultConfig();
+      expect(config.current.wsl).to.deep.equal({
+        enabled: false,
+        distro: "",
+        workspaceRoot: "",
+        arduinoCliPath: "arduino-cli",
+        syncProject: {
+          excludes: [".git", "node_modules", ".vscode", ".trae"]
+        }
+      });
+    });
+
     it("应返回深拷贝，修改不影响默认值", () => {
       const a = createDefaultConfig();
       const b = createDefaultConfig();

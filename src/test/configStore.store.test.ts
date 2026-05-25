@@ -50,7 +50,37 @@ describe("ConfigStore", () => {
       const data = await store.load();
       expect(data.current.board.name).to.equal("Custom");
       expect(data.current.port.address).to.equal("COM36");
+      expect(data.current.wsl.enabled).to.be.false;
+      expect(data.current.wsl.arduinoCliPath).to.equal("arduino-cli");
       expect(data.profiles).to.have.property("dev");
+    });
+
+    it("应加载并补齐 WSL 配置", async () => {
+      const config = createDefaultConfig();
+      config.current.wsl = {
+        enabled: true,
+        distro: "Ubuntu",
+        workspaceRoot: "/home/me/arduino-build/demo",
+        arduinoCliPath: "~/bin/arduino-cli",
+        syncProject: { excludes: [".git"] }
+      };
+      readFileStub.resolves(JSON.stringify(config));
+
+      const data = await store.load();
+      expect(data.current.wsl.enabled).to.be.true;
+      expect(data.current.wsl.distro).to.equal("Ubuntu");
+      expect(data.current.wsl.syncProject.excludes).to.deep.equal([".git"]);
+    });
+
+    it("缺失 WSL 子字段时应补齐默认值", async () => {
+      const config = createDefaultConfig() as unknown as { current: { wsl: Partial<ReturnType<typeof createDefaultConfig>["current"]["wsl"]> } };
+      config.current.wsl = { enabled: true };
+      readFileStub.resolves(JSON.stringify(config));
+
+      const data = await store.load();
+      expect(data.current.wsl.enabled).to.be.true;
+      expect(data.current.wsl.arduinoCliPath).to.equal("arduino-cli");
+      expect(data.current.wsl.syncProject.excludes).to.deep.equal([".git", "node_modules", ".vscode", ".trae"]);
     });
 
     it("应保留配置中的 cache 字段", async () => {
