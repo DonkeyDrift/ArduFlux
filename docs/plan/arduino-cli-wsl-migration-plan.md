@@ -2,15 +2,18 @@
 
 ## 1. 摘要结论
 
-**结论：移植可行，但不应照搬 PowerShell 脚本。**
+**结论：MVP 高度可行，全量移植可行但复杂度较高，不能照搬 PowerShell 脚本。**
 
-推荐将 `arduino-cli-wsl.ps1` 的核心能力迁移为 ArduFlux 的 **Node.js 原生 "WSL 编译后端"**：
+推荐将 `arduino-cli-wsl.ps1` 的核心能力收敛迁移为 ArduFlux 的 **Node.js 原生 "WSL 编译后端"**，首版只实现编译闭环：
 
 - 编译阶段：通过 WSL 在 Linux 原生文件系统上执行 `arduino-cli compile`，获得更稳定/更快的编译体验。
-- 上传与串口监视：继续复用 ArduFlux 现有 Windows 本地流程，不做改动。
-- 库同步：作为默认关闭的可选增强功能。
+- 上传与串口监视：继续复用 ArduFlux 现有 Windows 本地流程，不接管 WSL 串口。
+- 项目同步：首版固定使用 WSL 内 `rsync`，暂不抽象多 provider。
+- 库依赖：首版不做库同步；WSL 编译时不要继续使用 Windows 本地库安装结果作为依赖判断。
 - UI 呈现：WSL 编译配置归入现有"显示高级选项"区域，默认不展示、不激活。
 - 持久化：修改后通过现有 `collectForm()` → `saveConfig()` → `ConfigStore.save()` 链路写入 `ArduFlux.json`。
+
+库同步、同步策略抽象、overwrite/mirror、备份、WSL 侧库自动安装等能力应作为后续增强，不进入第一版 MVP。
 
 ---
 
@@ -36,7 +39,7 @@
 | `$OverwriteLibs` | — | `$true` | 是否覆盖已有库 | 转为同步策略（copy-missing / overwrite / mirror） |
 | `$BackupLibs` | — | `$false` | 同步前备份 WSL 已有库 | 可作为高级选项 |
 | `$ExcludeLibs` | — | `@("^\.", "^tmp$")` | 排除库列表（正则） | 转为配置项或 CLI 参数 |
-| `$SyncMode` | — | `rsync` | 同步方式：rsync 或 robocopy | Node.js 中抽象为 sync provider |
+| `$SyncMode` | — | `rsync` | 同步方式：rsync 或 robocopy | MVP 固定使用 WSL 内 `rsync`；多 provider 抽象后置 |
 | `$ExtraArgs` | — | `""` | 传给同步命令的额外参数 | 对接现有 compile args |
 | `$Serial` | `-s` | `$false` | 打开串口监视 | 复用 ArduFlux monitor |
 | `$Compile` | `-c` | `$false` | 执行编译 | 对接 WSL compile backend |
@@ -47,7 +50,8 @@
 ### 2.3 默认行为
 
 - **未指定 `-c`、`-u`、`-s` 任何参数时，默认执行编译 + 上传**。
-- 这与 ArduFlux 当前默认行为（无 flag 时执行 upload + monitor）有差异，移植时需保持 ArduFlux 自身默认行为不变，WSL 只影响编译后端选择。
+- ArduFlux 需要区分两层默认行为：`Uploader.run()` 无 flag 时当前会执行 compile + upload + monitor；扩展命令层通常会显式传入 flag，例如上传命令根据 `compileBeforeUpload` 决定是否先编译。
+- 移植时必须保持现有扩展命令语义不变，WSL 只影响"需要编译时使用哪个 backend"，不能改变 upload/monitor 的触发条件。
 
 ### 2.4 硬编码项（移植时必须配置化）
 
@@ -133,7 +137,7 @@
 - 命令：`~/bin/arduino-cli compile --fqbn $FQBN --build-path "$WSLBuildDir" --output-dir "$WSLBuildDir" "$WSLSketchPath"`
 - 在 WSL 原生文件系统上执行，获得接近原生 Linux 的编译性能。
 
-**移植映射**：复用 `buildCompileArgs()` 构造参数，但将其中 Windows 路径替换为 WSL 路径；通过 `wsl.exe -d <distro> -- arduino-cli compile ...` 执行。
+**移植映射**：复用现有参数校验思路，但不要简单把 `buildCompileArgs()` 的 Windows 路径结果替换为 WSL 路径。应先用 Windows 路径完成 sketch 合法性校验，再为 WSL workspace 构造专用 compile args，并通过 `wsl.exe -d <distro> -- arduino-cli compile ...` 执行。
 
 ### 3.5 Windows 侧上传/监视委托
 
@@ -153,8 +157,8 @@
 **文件**：`src/uploader/uploader.ts`
 
 当前 `Uploader.run()` 已串联 compile → upload → monitor 完整流程：
-- 默认无 flag 时执行 upload + monitor。
-- `compileBeforeUpload` 联动：上传前可自动编译。
+- `Uploader.run()` 无 flag 时当前会执行 compile + upload + monitor。
+- 扩展命令层通常显式传入 flag；上传命令通过 `compileBeforeUpload` 决定是否先编译。
 - 编译阶段通过 `buildCompileArgs()` 构造参数，`spawnWithOutput("arduino-cli", compileArgs, ...)` 执行。
 
 **插入点**：在编译阶段，根据配置选择 `local` 或 `wsl` 后端。WSL 后端不改变 upload/monitor 流程。
@@ -208,13 +212,19 @@ interface ArduFluxCurrentConfig {
 - `installLibraries(libs, arduinoCliPath, cwd, onOutput, spawnImpl)`：安装缺失依赖。
 - `resolveMissingLibraries(required, installed)`：计算缺失库集合。
 
-**建议**：库同步不应替代现有依赖解析/安装能力，而应作为补充：在 WSL 环境下检测库可用性，缺失时可选择同步 Windows libraries 或在 WSL 中安装。
+**建议**：WSL backend 首版不要复用 Windows 本地 `installRequiredLibraries()` 的结果作为依赖判断，因为实际编译发生在 WSL 内。MVP 可先让 WSL `arduino-cli compile` 暴露缺库错误，并在错误信息中提示用户在 WSL 内安装库；后续再扩展 WSL library resolver 或库同步能力。
 
 ### 4.6 MCP 集成
 
 **文件**：`src/mcpServer.ts`、`src/mcp/extensionIntegration.ts`
 
-现有 MCP 工具已暴露 compile/upload 等能力。WSL 编译后端应通过统一流程继承，不建议新增完全独立的 `arduino-cli-wsl` 工具。
+现有 MCP 工具已暴露 compile/upload 等能力，但需要注意当前独立 MCP 服务 `src/mcpServer.ts` 并未复用 `Uploader.run()`，而是直接构造 `buildCompileArgs()` / `buildUploadArgs()` 后调用 `arduino-cli`。因此只修改 `src/uploader/uploader.ts` 会导致扩展命令支持 WSL、独立 MCP CLI 仍走本地编译，形成行为分裂。
+
+推荐做法：
+- 不新增独立的 `arduino-cli-wsl` MCP 工具。
+- 抽出共享 compile backend 模块，让扩展上传流程和独立 MCP 服务都调用同一套 local / wsl 编译能力。
+- `src/mcpServer.ts` 的 `arduflux_compile` 和 `arduflux_upload` 中的 `compileBeforeUpload` 都必须接入 backend 选择。
+- `src/mcp/extensionIntegration.ts` 如委托扩展流程，则随扩展继承；如存在独立编译路径，也需同步检查。
 
 MCP 响应中应明确返回：
 - 使用的后端：`local` 或 `wsl`
@@ -259,7 +269,7 @@ MCP 响应中应明确返回：
 
 ### 5.2 高级选项区域规划
 
-在现有高级选项区域（编译输出、串口高级配置之后）新增 **"WSL 编译"** 区块，包含以下字段：
+在现有高级选项区域（编译输出、串口高级配置之后）新增 **"WSL 编译"** 区块。MVP 只包含编译后端必需字段：
 
 | 字段 | 控件类型 | 默认值 | 说明 |
 |------|----------|--------|------|
@@ -267,12 +277,9 @@ MCP 响应中应明确返回：
 | WSL 发行版 | input | `""` | 留空时自动探测默认发行版，不能写死 `DKC` |
 | WSL 工作目录 | input | `""` | 留空时使用 `$HOME/arduino-build/<project>`，不能写死 `mus4` |
 | arduino-cli 路径 | input | `arduino-cli` | WSL 内 arduino-cli 可执行文件路径，不能强依赖 `~/bin/arduino-cli` |
-| 项目同步排除项 | input | `.git,node_modules` | 逗号分隔的排除列表 |
-| 库同步 | checkbox | `false` | 独立于总开关，默认关闭 |
-| Windows 库路径 | input | `""` | 库同步源路径，启用库同步时显示 |
-| WSL 库路径 | input | `~/Arduino/libraries` | 库同步目标路径 |
-| 库同步模式 | select | `copy-missing` | copy-missing / overwrite / mirror |
-| 同步前备份 | checkbox | `false` | 仅 overwrite/mirror 模式下生效 |
+| 项目同步排除项 | input | `.git,node_modules,.vscode,.trae` | 逗号分隔的排除列表 |
+
+库同步相关字段不进入 MVP。后续增强阶段如确有需求，再增加：库同步开关、Windows 库路径、WSL 库路径、同步模式、同步前备份和库排除列表。
 
 ### 5.3 持久化保障
 
@@ -285,30 +292,33 @@ MCP 响应中应明确返回：
 
 ## 6. 可行性评估
 
-### 6.1 高度可行
+### 6.1 MVP 高度可行
 
 | 能力 | 说明 |
 |------|------|
-| WSL 中运行 `arduino-cli compile` | `wsl.exe -d <distro> -- arduino-cli compile ...` 即可实现 |
-| 项目同步到 WSL native filesystem | 通过 `wsl.exe` 执行 `rsync` 或 Node.js 文件操作 |
-| 编译产物回传到 Windows | 通过 `wsl.exe` 执行 `cp` 或使用 `\\wsl.localhost` 网络路径 |
-| 保留 Windows 本地上传和监视 | 不需要任何改动 |
-| 将脚本参数迁移为配置项 | 现有 `types.ts` + `configStore.ts` 完全支持 |
+| WSL 中运行 `arduino-cli compile` | `wsl.exe -d <distro> -- arduino-cli compile ...` 可实现，需先检测 `wsl.exe`、distro 和 WSL 内 `arduino-cli` |
+| 项目同步到 WSL native filesystem | MVP 建议固定通过 WSL 内 `rsync` 同步，暂不实现 Node.js 文件同步和多 provider 抽象 |
+| 编译产物回传到 Windows | 可通过 `wsl.exe` 执行 `cp` 到 `/mnt/<drive>/...` 对应路径，优先避免依赖 `\\wsl.localhost` |
+| 保留 Windows 本地上传和监视 | 扩展上传/监视代码基本不需要改动，但要保证 WSL 编译产物回传后 Windows 上传能找到 sketch/产物 |
+| 将脚本参数迁移为配置项 | 现有 `types.ts` + `configStore.ts` 支持扩展，但需要补齐默认值、迁移和测试 |
 | 高级选项 UI 展示 | 现有 `.advanced-item` 机制直接复用 |
-| 配置持久化 | 现有 `collectForm()` → `saveConfig()` → `ConfigStore.save()` 链路直接复用 |
+| 配置持久化 | 现有 `collectForm()` → `saveConfig()` → `ConfigStore.save()` 链路可复用 |
+| 独立 MCP CLI 支持 | 需要额外改造 `src/mcpServer.ts`，不能仅依赖 `Uploader.run()` 修改 |
 
 ### 6.2 需要改造
 
 | 项目 | 说明 |
 |------|------|
 | 路径转换 | Windows ↔ WSL 路径双向转换，需专门工具函数和单元测试 |
-| 命令转义 | WSL 命令拼接需正确处理 shell quoting，避免命令注入 |
-| 同步策略抽象 | rsync/robocopy 差异需要抽象为 sync provider，不应让业务流程直接依赖某个同步命令 |
+| 命令参数 | WSL 命令必须使用 `spawn` 参数数组传递，避免 shell 字符串拼接和命令注入 |
+| 同步策略 | MVP 固定使用 WSL 内 `rsync`，后续有真实第二种同步需求时再抽象 sync provider |
 | 结构化日志 | PowerShell 动画输出需改为 VS Code output channel / MCP 友好的日志和进度模型 |
-| 配置 schema | `ArduFluxCurrentConfig` 需新增 `wsl` 字段和 Zod 校验 |
+| 配置 schema | `ArduFluxCurrentConfig` 需新增 `wsl` 字段、默认值、迁移逻辑和测试 |
 | 测试注入 | WSL 命令执行需可注入 mock executor，避免测试依赖真实 WSL 环境 |
 | `buildCurrentConfig()` | 需扩展以合并 WSL 表单字段 |
 | `collectForm()` | 需扩展以收集 WSL 相关字段 |
+| MCP 独立服务 | `src/mcpServer.ts` 当前直接调用本地 `arduino-cli`，需显式接入共享 compile backend |
+| 库依赖处理 | WSL 编译时不能沿用 Windows 本地 `installRequiredLibraries()` 的判断结果 |
 
 ### 6.3 不建议直接迁移
 
@@ -325,50 +335,67 @@ MCP 响应中应明确返回：
 
 ## 7. 推荐移植路线
 
-### Phase 1：compile backend 概念
+### Phase 1：配置与 UI，默认关闭
 
-- 在 `src/uploader/uploader.ts` 的编译阶段引入 backend 概念。
-- 默认 backend 为 `local`（现有行为），`wsl` 为可选。
-- `wsl` backend 关闭时，所有现有行为完全不变。
+- 在 `ArduFluxCurrentConfig` 中新增 `wsl?: ArduFluxWslState`。
+- `createDefaultConfig()` 和 `migrateConfig()` 补齐默认值，旧配置缺失 `wsl` 时等同 `enabled=false`。
+- 在 Webview 高级选项中新增 WSL 编译区块，只包含 MVP 必需字段。
+- 扩展 `collectForm()` 和 `buildCurrentConfig()`，确保 WSL 配置通过现有保存链路持久化。
+- `wsl.enabled=false` 时所有现有编译、上传、监视行为不变。
 
-### Phase 2：WSL 命令执行器与路径转换
+### Phase 2：共享 compile backend 模块
 
-- 新增 WSL 命令执行器：封装 `wsl.exe -d <distro> -- <command>` 调用。
+- 抽出 local / wsl 编译后端，而不是把 WSL 逻辑直接写死在 `Uploader.run()` 中。
+- local backend 封装现有 `buildCompileArgs()` + `arduino-cli compile` 行为。
+- wsl backend 封装环境检测、项目同步、WSL 编译、产物回传。
+- `Uploader.run()` 和 `src/mcpServer.ts` 都调用共享 backend，避免扩展命令和独立 MCP CLI 行为分裂。
+
+### Phase 3：WSL 命令执行器与路径转换
+
+- 新增 WSL 命令执行器：封装 `wsl.exe -d <distro> -- <command> <args...>` 调用，参数以数组形式传递，禁止拼接 shell 字符串。
 - 新增路径转换工具：
   - `winToWslMount(winPath)` → `/mnt/c/...`
   - `winToWslWorkspace(winPath, wslWorkspaceRoot)` → `$HOME/arduino-build/<project>`
-  - `wslToWinPath(wslPath, distro)` → `\\wsl.localhost\<distro>\...`
-- 检查 WSL 可用性、distro 存在性、arduino-cli 可用性。
+  - `wslToWinMount(wslMountPath)` → Windows 本地路径（用于产物回传校验）
+  - `wslToUncPath(wslPath, distro)` → `\\wsl.localhost\<distro>\...`（仅作为兼容备用方案）
+- 检查 WSL 可用性、distro 存在性、`rsync` 可用性、WSL 内 `arduino-cli` 可用性。
 
-### Phase 3：项目同步到 WSL native workspace
+### Phase 4：项目同步到 WSL native workspace
 
-- 使用 `wsl.exe` 执行 `rsync` 或 Node.js `fs` 操作同步项目。
-- 排除列表可配置（`.git`、`node_modules`、`.vscode`、`.trae`、build 输出目录等）。
+- MVP 固定使用 WSL 内 `rsync` 同步项目，不实现 Node.js 文件同步和 robocopy provider。
+- 排除列表可配置，默认包含 `.git`、`node_modules`、`.vscode`、`.trae`、当前 build 输出目录等。
 - 同步前确保 WSL 工作目录存在。
+- MVP 默认不使用 `--delete`，避免误删 WSL 工作目录中的用户文件。
 
-### Phase 4：WSL 中执行 compile，同步产物回 Windows
+### Phase 5：WSL 编译与产物回传
 
-- 复用 `buildCompileArgs()` 构造参数，将 Windows 路径替换为 WSL 路径。
+- 先使用 Windows 路径完成 sketch 合法性校验，再构造 WSL 专用 compile args。
+- 不要把 WSL 路径直接传入带 Windows `baseDir` 的 `buildCompileArgs()`，避免路径校验误判。
 - 通过 WSL 命令执行器运行 `arduino-cli compile`。
-- 同步 `.bin` / `.elf` 产物回 Windows output 目录。
+- 编译完成后将 `.bin` / `.elf` 等产物回传到 Windows `outputDir`，并校验 Windows 侧文件存在。
+- WSL 编译时跳过 Windows 本地 `installRequiredLibraries()`；库缺失先由 WSL 编译错误暴露，后续再做 WSL library resolver。
 
-### Phase 5：上传/监视走现有 Windows 本地逻辑
+### Phase 6：上传/监视继续走 Windows 本地逻辑
 
 - 编译完成后，上传和串口监视仍走现有 `buildUploadArgs()` / `buildMonitorArgs()` + Windows 本地 `arduino-cli` 流程。
-- 无需修改任何上传/监视代码。
+- 不在 MVP 中处理 WSL 串口映射。
+- 不改变扩展命令层 `compileBeforeUpload`、`uploadThenMonitor` 和显式 flags 的既有语义。
 
-### Phase 6：库同步作为默认关闭的增强功能
+### Phase 7：MCP 与输出增强
+
+- `src/mcpServer.ts` 的 `arduflux_compile` 接入共享 compile backend。
+- `src/mcpServer.ts` 的 `arduflux_upload` 在 `compileBeforeUpload` 为 true 时也使用共享 compile backend。
+- 现有 MCP compile/upload 工具返回值中补充 backend 信息。
+- 不新增独立的 WSL 工具。
+- 返回值中包含：backend 类型、distro、workspace、编译命令摘要、产物路径、耗时。
+
+### 后续增强：库同步与同步策略扩展
 
 - 检测 WSL libraries 可用性。
 - 支持 `copy-missing`（只补缺）、`overwrite`（覆盖）、`mirror`（镜像+删除）三种模式。
 - `mirror` 和 `overwrite` 模式默认关闭，需显式启用。
 - 可选同步前备份。
-
-### Phase 7：MCP 与扩展输出增强
-
-- 现有 MCP compile/upload 工具的返回值中补充 backend 信息。
-- 不新增独立的 WSL 工具。
-- 返回值中包含：backend 类型、distro、workspace、编译命令摘要、产物路径、耗时。
+- 如未来确实需要 robocopy 或 Node.js 同步，再抽象 sync provider。
 
 ---
 
@@ -388,23 +415,8 @@ interface ArduFluxWslState {
   arduinoCliPath: string;
   /** 项目同步配置 */
   syncProject: {
-    /** 排除列表（逗号分隔或数组） */
-    excludes: string[];
-  };
-  /** 库同步配置 */
-  syncLibraries: {
-    /** 是否启用库同步，默认 false */
-    enabled: boolean;
-    /** Windows Arduino libraries 源路径 */
-    windowsPath: string;
-    /** WSL Arduino libraries 目标路径 */
-    wslPath: string;
-    /** 同步模式：copy-missing / overwrite / mirror */
-    mode: "copy-missing" | "overwrite" | "mirror";
-    /** 同步前是否备份 WSL 已有库 */
-    backup: boolean;
     /** 排除列表 */
-    exclude: string[];
+    excludes: string[];
   };
 }
 ```
@@ -432,23 +444,20 @@ const DEFAULT_WSL_STATE: ArduFluxWslState = {
   syncProject: {
     excludes: [".git", "node_modules", ".vscode", ".trae"],
   },
-  syncLibraries: {
-    enabled: false,
-    windowsPath: "",
-    wslPath: "~/Arduino/libraries",
-    mode: "copy-missing",
-    backup: false,
-    exclude: ["^\\.", "^tmp$"],
-  },
 };
 ```
 
+后续增强如加入库同步，可再扩展 `syncLibraries`，但不建议进入首版配置模型。
+
 **需同步更新的文件**（按 CLAUDE.md 联动要求）：
 
-1. `src/types.ts` — TypeScript 类型 + Zod 校验 schema
-2. `src/configStore.ts` — 读写逻辑、迁移逻辑、默认值
-3. `src/uploader/uploader.ts` — 编译后端选择逻辑
-4. `src/webviewController.ts` — 表单字段、`collectForm()`、`buildCurrentConfig()`
+1. `src/types.ts` — TypeScript 类型、默认值、配置结构
+2. `src/configStore.ts` — 读写逻辑、迁移逻辑、默认值合并
+3. `src/uploader/uploader.ts` — 编译阶段选择共享 backend
+4. `src/uploader/` — 新增 WSL 路径转换、命令执行、编译 backend 模块
+5. `src/mcpServer.ts` — 独立 MCP compile/upload 接入共享 backend
+6. `src/mcp/extensionIntegration.ts` — 核查扩展内 MCP 是否存在独立编译路径
+7. `src/webviewController.ts` — 表单字段、`collectForm()`、`buildCurrentConfig()`
 
 ---
 
@@ -460,10 +469,11 @@ const DEFAULT_WSL_STATE: ArduFluxWslState = {
 | 指定的 distro 不存在 | 编译无法启动 | 检测已安装发行版列表，校验用户配置 |
 | WSL 内未安装 arduino-cli | 编译失败 | 执行前检查 `which arduino-cli`，缺失时提示安装 |
 | Windows/WSL 路径转换错误 | 找不到 sketch 或产物 | 建立路径转换单元测试，覆盖中文路径、空格路径 |
-| shell quoting 错误 | 命令失败或命令注入 | 使用参数数组、严格转义、复用现有 `validateCliArgs` |
-| `rsync --delete` 误删文件 | 数据丢失 | 默认不使用 `--delete`；如需 mirror 行为，必须显式配置并在 UI 中标注风险 |
-| 库同步覆盖用户修改 | 库丢失或版本错乱 | 默认 `copy-missing`；overwrite/mirror 前提示风险 |
+| shell quoting 错误 | 命令失败或命令注入 | 使用 `spawn` 参数数组，禁止拼接 shell 字符串；WSL 路径参数使用专用校验，不直接套用 Windows 路径校验 |
+| `rsync --delete` 误删文件 | 数据丢失 | MVP 默认不使用 `--delete`；如后续支持 mirror 行为，必须显式配置并在 UI 中标注风险 |
+| 库同步覆盖用户修改 | 库丢失或版本错乱 | 不进入 MVP；后续增强默认 `copy-missing`，overwrite/mirror 前提示风险 |
 | WSL 编译产物与 Windows 上传输入不匹配 | 上传失败 | 明确 artifact 回传目录和 upload 输入路径，产物回传后校验文件存在性 |
+| WSL 缺少 Arduino 库 | 编译失败 | WSL backend 跳过 Windows 本地库安装判断，错误信息中提示用户在 WSL 内安装库；库同步作为后续增强 |
 | 多项目并发构建冲突 | 构建目录污染 | workspace 按项目名/路径隔离 |
 | local 和 WSL arduino-cli 版本不一致 | 编译行为差异 | 在结果中输出 local/wsl arduino-cli 版本，供用户排查 |
 | `src/scripts/upload.ps1` 未找到 | 文档依据不稳 | 标记为待核实项，不作为核心设计依赖 |
@@ -474,10 +484,11 @@ const DEFAULT_WSL_STATE: ArduFluxWslState = {
 
 ### 10.1 静态验证
 
-- 配置 schema 校验通过（Zod）。
+- TypeScript 类型检查通过。
+- 默认配置和 `migrateConfig()` 能补齐 WSL 默认值。
 - 默认配置不改变现有本地编译上传行为。
 - `wsl` 字段缺失或 `enabled: false` 时，所有现有测试保持通过。
-- WSL 配置缺失时错误信息清晰。
+- WSL 环境或配置缺失时错误信息清晰。
 
 ### 10.2 单元测试
 
@@ -486,9 +497,9 @@ const DEFAULT_WSL_STATE: ArduFluxWslState = {
 | Windows path → WSL mount path | `C:\Dev\OPC\ArduFlux` → `/mnt/c/Dev/OPC/ArduFlux` |
 | Windows path → WSL workspace path | `C:\Dev\OPC\ArduFlux` → `$HOME/arduino-build/ArduFlux` |
 | WSL path → Windows UNC path | `/home/user/arduino-build` → `\\wsl.localhost\DKC\home\user\arduino-build` |
-| compile args 路径替换 | 将 `buildCompileArgs()` 结果中的 Windows 路径替换为 WSL 路径 |
+| WSL compile args 构造 | 先校验 Windows sketch，再生成 WSL workspace 内 sketch/output 路径 |
 | sync excludes 生成 | 默认排除 `.git`、`node_modules` 等 |
-| WSL command builder | `wsl.exe -d <distro> -- arduino-cli compile ...` |
+| WSL command builder | `wsl.exe -d <distro> -- arduino-cli compile ...`，参数以数组传递 |
 | WSL 执行结果解析 | 结构化返回 exitCode、stdout、stderr、elapsedMs |
 | 配置默认值 | `wsl.enabled` 默认为 `false` |
 | 配置迁移 | 旧版配置文件无 `wsl` 字段时正常加载 |
@@ -503,6 +514,8 @@ const DEFAULT_WSL_STATE: ArduFluxWslState = {
 | compile 成功后 upload | 仍调用现有 Windows 上传逻辑 |
 | compile 失败 | 不执行 upload |
 | monitor | 不依赖 WSL |
+| 独立 MCP compile | `arduflux_compile` 根据配置选择 local / wsl backend |
+| 独立 MCP upload | `compileBeforeUpload=true` 时先使用共享 compile backend，再执行 Windows 上传 |
 
 ### 10.4 手工验证
 
@@ -510,16 +523,18 @@ const DEFAULT_WSL_STATE: ArduFluxWslState = {
 
 1. 未安装 WSL 时的错误提示。
 2. WSL 存在但 distro 配错时的错误提示。
-3. WSL 存在但无 arduino-cli 时的错误提示。
-4. 正常同步小型 Arduino sketch 到 WSL。
-5. WSL 中正常编译。
-6. 编译产物回传到 Windows。
-7. 使用 Windows 本地端口上传。
-8. 上传后启动串口监视。
-9. 启用库同步 copy-missing 模式。
+3. WSL 存在但无 rsync 时的错误提示。
+4. WSL 存在但无 arduino-cli 时的错误提示。
+5. 正常同步小型 Arduino sketch 到 WSL。
+6. WSL 中正常编译。
+7. 编译产物回传到 Windows。
+8. 使用 Windows 本地端口上传。
+9. 上传后启动串口监视。
 10. 启用 exclude list。
 11. 含空格路径的项目。
 12. 含中文字符路径的项目。
+13. 独立 MCP `arduflux_compile` 使用 WSL backend。
+14. 独立 MCP `arduflux_upload` 在 `compileBeforeUpload=true` 时使用 WSL backend 后继续 Windows 上传。
 
 ### 10.5 项目验证命令
 
