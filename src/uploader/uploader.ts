@@ -192,7 +192,7 @@ export class Uploader {
         }
       }
 
-      if (!uploadSuccess) {
+      if (!uploadSuccess && !this.aborted) {
         write(`Upload failed after ${candidates.length} attempts\r\n`);
         return { success: false };
       }
@@ -248,7 +248,7 @@ export class Uploader {
           }
         }
 
-        if (!monitorSuccess) {
+        if (!monitorSuccess && !this.aborted) {
           write(`Monitor failed after ${monitorCandidates.length} attempts\r\n`);
           if (!doUpload) {
             return { success: false };
