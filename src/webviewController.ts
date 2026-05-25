@@ -1234,7 +1234,12 @@ export class ConfigEditorController {
     });
 
     document.body.addEventListener("input", debouncedAutoSave);
-    document.body.addEventListener("change", debouncedAutoSave);
+    document.body.addEventListener("change", (event) => {
+      if (event.target === showAdvancedEl) {
+        return;
+      }
+      debouncedAutoSave();
+    });
 
     render();
 
