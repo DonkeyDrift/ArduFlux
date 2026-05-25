@@ -43,8 +43,10 @@ ArduFlux 是一个 VS Code / TRAE IDE 扩展，用于嵌入式开发（Arduino/E
 
 运行单个测试文件：
 ```bash
-npm run compile && npx mocha dist/test/<具体文件名>.test.js
+npm run compile && npx mocha "dist/test/<具体文件名>.test.js"
 ```
+
+按测试源文件定位编译产物：`src/test/uploader/projectResolver.test.ts` 对应 `dist/test/uploader/projectResolver.test.js`。
 
 ## 架构概览
 

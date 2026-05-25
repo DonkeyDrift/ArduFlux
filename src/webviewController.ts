@@ -851,7 +851,10 @@ export class ConfigEditorController {
       "profileSelect", "profileName", "status", "recommendedPort",
       "sketchPath", "selectSketchButton"
     ];
-    const el = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
+    const el = {};
+    ids.forEach((id) => {
+      el[id] = document.getElementById(id);
+    });
 
     const LINK_SVG_CONNECTED = '<svg width="20" height="10" viewBox="0 0 20 10" style="vertical-align:middle;display:block"><circle cx="4" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="7" y1="5" x2="13" y2="5" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
     const LINK_SVG_DISCONNECTED = '<svg width="20" height="10" viewBox="0 0 20 10" style="vertical-align:middle;display:block"><circle cx="4" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
@@ -971,9 +974,9 @@ export class ConfigEditorController {
         true
       );
 
-      el.monitorBaudRate.value = String(current.monitor.baudRate ?? 115200);
-      el.monitorDataBits.value = String(current.monitor.dataBits ?? 8);
-      el.monitorStopBits.value = String(current.monitor.stopBits ?? 1);
+      el.monitorBaudRate.value = String(current.monitor.baudRate == null ? 115200 : current.monitor.baudRate);
+      el.monitorDataBits.value = String(current.monitor.dataBits == null ? 8 : current.monitor.dataBits);
+      el.monitorStopBits.value = String(current.monitor.stopBits == null ? 1 : current.monitor.stopBits);
       el.monitorParity.value = current.monitor.parity || "none";
       el.monitorNewline.value = current.monitor.newline || "CRLF";
 
@@ -1160,15 +1163,15 @@ export class ConfigEditorController {
     });
 
     window.addEventListener("message", (event) => {
-      if (event.data?.type === "state" && event.data.payload) {
+      if (event.data && event.data.type === "state" && event.data.payload) {
         state = event.data.payload;
         render();
         setStatus(event.data.statusMessage || "就绪");
       }
-      if (event.data?.type === "error") {
+      if (event.data && event.data.type === "error") {
         setStatus(event.data.message || "发生错误");
       }
-      if (event.data?.type === "compiling") {
+      if (event.data && event.data.type === "compiling") {
         if (event.data.active) {
           startSpinner("编译中");
         } else {
@@ -1176,7 +1179,7 @@ export class ConfigEditorController {
           setStatus(event.data.error || "编译完成");
         }
       }
-      if (event.data?.type === "uploading") {
+      if (event.data && event.data.type === "uploading") {
         if (event.data.active) {
           startSpinner("上传中");
         } else {
@@ -1184,7 +1187,7 @@ export class ConfigEditorController {
           setStatus(event.data.error || "上传完成");
         }
       }
-      if (event.data?.type === "saving") {
+      if (event.data && event.data.type === "saving") {
         if (event.data.active) {
           startSpinner("保存中");
         } else {
@@ -1192,7 +1195,7 @@ export class ConfigEditorController {
           setStatus(event.data.error || "配置已保存");
         }
       }
-      if (event.data?.type === "validating") {
+      if (event.data && event.data.type === "validating") {
         if (event.data.active) {
           startSpinner("校验中");
         } else {
@@ -1200,7 +1203,7 @@ export class ConfigEditorController {
           setStatus(event.data.error || "校验通过");
         }
       }
-      if (event.data?.type === "link-toggled") {
+      if (event.data && event.data.type === "link-toggled") {
         const linkBtn = document.getElementById("linkButton");
         if (event.data.linked) {
           linkBtn.innerHTML = LINK_SVG_CONNECTED;
@@ -1214,10 +1217,10 @@ export class ConfigEditorController {
           linkBtn.title = "已断开：直接上传，不自动编译（点击联通）";
         }
       }
-      if (event.data?.type === "sketch-selected") {
+      if (event.data && event.data.type === "sketch-selected") {
         document.getElementById("sketchPath").value = event.data.path || "";
       }
-      if (event.data?.type === "monitor-link-toggled") {
+      if (event.data && event.data.type === "monitor-link-toggled") {
         const linkBtn2 = document.getElementById("linkButton2");
         if (event.data.linked) {
           linkBtn2.innerHTML = LINK_SVG_CONNECTED;
