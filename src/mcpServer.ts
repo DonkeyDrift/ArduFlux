@@ -13,8 +13,9 @@ import {
   buildMonitorArgs,
   discoverSketches,
 } from "./configStore";
-import { ArduFluxConfig, DEFAULT_BOARD_CATALOG } from "./types";
+import { ArduFluxConfig, ArduFluxCurrentConfig, DEFAULT_BOARD_CATALOG } from "./types";
 import { startSseServer, startStdioServer } from "./mcp/transports";
+import { createDefaultWslWorkspace } from "./uploader/wslBackend";
 
 export interface McpServerDeps {
   spawn?: typeof cpSpawn;
@@ -27,6 +28,8 @@ interface TaskRecord {
   exitCode: number | null;
   logs: string[];
   startTime: number;
+  endTime: number | null;
+  metadata: Record<string, unknown>;
 }
 
 export function createMcpServer(
@@ -42,7 +45,8 @@ export function createMcpServer(
     command: string,
     args: string[],
     cwd: string,
-    sessionId?: string
+    sessionId?: string,
+    metadata: Record<string, unknown> = {}
   ): string {
     const id = randomUUID();
     const task: TaskRecord = {
@@ -52,6 +56,8 @@ export function createMcpServer(
       exitCode: null,
       logs: [],
       startTime: Date.now(),
+      endTime: null,
+      metadata,
     };
     tasks.set(id, task);
 
@@ -74,6 +80,7 @@ export function createMcpServer(
         pushLog(data.toString());
       });
       proc.on("close", (code, signal) => {
+        task.endTime = Date.now();
         if (code === 0) {
           task.status = "completed";
         } else if (signal) {
@@ -85,17 +92,35 @@ export function createMcpServer(
         task.exitCode = code ?? -1;
       });
       proc.on("error", (err) => {
+        task.endTime = Date.now();
         task.status = "failed";
         task.exitCode = -1;
         pushLog(`[error] ${err.message}`);
       });
     } catch (err) {
+      task.endTime = Date.now();
       task.status = "failed";
       task.exitCode = -1;
       pushLog(`[error] ${err instanceof Error ? err.message : String(err)}`);
     }
 
     return id;
+  }
+
+  function buildCompileMetadata(config: ArduFluxCurrentConfig): Record<string, unknown> {
+    const compileBackend = config.wsl.enabled || config.wsl.compileBackend === "wsl" ? "wsl" : "local";
+    if (compileBackend === "local") {
+      return { compile_backend: "local" };
+    }
+    const workspace = config.wsl.workspaceRoot.trim() || createDefaultWslWorkspace(workspaceRoot);
+    const artifactPath = path.join(workspaceRoot, config.build.outputDir.trim() || "build");
+    return {
+      compile_backend: "wsl",
+      wsl_distro: config.wsl.distro,
+      wsl_workspace: workspace,
+      artifact_path: artifactPath,
+      command_summary: `${config.wsl.arduinoCliPath || "arduino-cli"} compile --fqbn ${config.board.fqbn}`
+    };
   }
 
   const server = new McpServer({
@@ -494,12 +519,13 @@ export function createMcpServer(
           extraArgs: config.current.board.compileArgs,
         }, workspaceRoot);
 
-        const taskId = startTask("compile", "arduino-cli", cliArgs, workspaceRoot, extra.sessionId);
+        const metadata = buildCompileMetadata(config.current);
+        const taskId = startTask("compile", "arduino-cli", cliArgs, workspaceRoot, extra.sessionId, metadata);
         return {
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify({ task_id: taskId, status: "running", sketch_path: sketchPath }),
+              text: JSON.stringify({ task_id: taskId, status: "running", sketch_path: sketchPath, ...metadata }),
             },
           ],
         };
@@ -546,7 +572,7 @@ export function createMcpServer(
             outputDir: config.current.build.outputDir,
             extraArgs: config.current.board.compileArgs,
           }, workspaceRoot);
-          startTask("compile", "arduino-cli", compileArgs, workspaceRoot, extra.sessionId);
+          startTask("compile", "arduino-cli", compileArgs, workspaceRoot, extra.sessionId, buildCompileMetadata(config.current));
         }
 
         const uploadArgs = buildUploadArgs({
@@ -614,6 +640,8 @@ export function createMcpServer(
               status: task.status,
               exit_code: task.exitCode,
               logs: task.logs,
+              elapsed_ms: (task.endTime ?? Date.now()) - task.startTime,
+              ...task.metadata,
             }),
           },
         ],

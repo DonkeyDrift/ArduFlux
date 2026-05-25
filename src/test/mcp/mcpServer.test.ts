@@ -642,6 +642,45 @@ describe("MCP Server", () => {
       expect(parsed.task_id).to.be.a("string");
     });
 
+    it("arduflux_compile 启用 WSL 时应返回编译后端元数据", async () => {
+      const config = createDefaultConfig();
+      config.current.build.outputDir = "build";
+      config.current.wsl.enabled = true;
+      config.current.wsl.distro = "DKC";
+      config.current.wsl.workspaceRoot = "$HOME/arduino-build/ArduFlux";
+      config.current.wsl.arduinoCliPath = "~/bin/arduino-cli";
+      readFileStub.resolves(JSON.stringify(config));
+
+      const mockProc = {
+        stdout: { on: sinon.stub() },
+        stderr: { on: sinon.stub() },
+        on: sinon.stub(),
+        kill: sinon.stub(),
+        killed: false,
+      };
+      const mockSpawn = sinon.stub().returns(mockProc as unknown as cp.ChildProcess);
+      const server = createMcpServer("C:\\Dev\\OPC\\ArduFlux", { spawn: mockSpawn });
+      const client = await initClient(server);
+
+      const result = await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: "arduflux_compile",
+            arguments: { sketch_path: "sketch.ino" },
+          },
+        },
+        CallToolResultSchema
+      );
+
+      const parsed = JSON.parse((result.content[0] as { text: string }).text);
+      expect(parsed.compile_backend).to.equal("wsl");
+      expect(parsed.wsl_distro).to.equal("DKC");
+      expect(parsed.wsl_workspace).to.equal("$HOME/arduino-build/ArduFlux");
+      expect(parsed.artifact_path).to.equal("C:\\Dev\\OPC\\ArduFlux\\build");
+      expect(parsed.command_summary).to.include("~/bin/arduino-cli compile");
+    });
+
     it("arduflux_monitor 在 reset_on_connect=true 时应直接启动 monitor 且不禁用 DTR/RTS", async () => {
       const config = createDefaultConfig();
       config.current.port.address = "COM3";
@@ -811,6 +850,8 @@ describe("MCP Server", () => {
       expect(parsed.status).to.equal("completed");
       expect(parsed.exit_code).to.equal(0);
       expect(parsed.logs).to.be.an("array");
+      expect(parsed.elapsed_ms).to.be.a("number");
+      expect(parsed.elapsed_ms).to.be.greaterThanOrEqual(0);
     });
 
     it("arduflux_health 应返回运行时长、内存和活跃任务数", async () => {
