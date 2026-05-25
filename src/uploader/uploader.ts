@@ -19,6 +19,13 @@ import {
   resolveMissingLibraries,
 } from "./libraryResolver";
 import { ArduFluxCurrentConfig, SerialPortInfo } from "../types";
+import {
+  buildRsyncLibrariesArgs,
+  buildRsyncProjectArgs,
+  buildWslCommandArgs,
+  createDefaultWslWorkspace,
+  toWslMountPath,
+} from "./wslBackend";
 
 export interface UploaderFlags {
   compile?: boolean;
@@ -130,17 +137,22 @@ export class Uploader {
 
       write(`\n=== Compiling sketch ===\r\n`);
       write("Compiling, this may take a minute...\r\n");
-      const compileArgs = buildCompileArgs(
-        {
-          fqbn: config.board.fqbn,
-          sketchPath,
-          outputDir: config.build.outputDir,
-          extraArgs: config.board.compileArgs,
-        },
-        workspaceRoot
-      );
-      await this.spawnWithOutput("arduino-cli", compileArgs, workspaceRoot, write);
-      write(`Compilation completed.\r\n`);
+      if (config.wsl.enabled) {
+        await this.compileWithWsl(workspaceRoot, sketchPath, config, write);
+      } else {
+        write("Compile backend: local\r\n");
+        const compileArgs = buildCompileArgs(
+          {
+            fqbn: config.board.fqbn,
+            sketchPath,
+            outputDir: config.build.outputDir,
+            extraArgs: config.board.compileArgs,
+          },
+          workspaceRoot
+        );
+        await this.spawnWithOutput("arduino-cli", compileArgs, workspaceRoot, write);
+        write(`Compilation completed.\r\n`);
+      }
     }
 
     let lastSuccessfulPort: string | undefined;
@@ -257,6 +269,62 @@ export class Uploader {
     }
 
     return { success: true, lastSuccessfulPort };
+  }
+
+  private async compileWithWsl(
+    workspaceRoot: string,
+    sketchPath: string,
+    config: ArduFluxCurrentConfig,
+    write: (text: string) => void
+  ): Promise<void> {
+    write("Compile backend: wsl\r\n");
+    const workspaceRootInWsl = config.wsl.workspaceRoot.trim() || createDefaultWslWorkspace(workspaceRoot);
+    const relativeSketchPath = path.relative(workspaceRoot, sketchPath).replace(/\\/g, "/");
+    const sketchPathInWsl = `${workspaceRootInWsl}/${relativeSketchPath}`;
+
+    if (config.wsl.syncLibraries.enabled && config.wsl.syncLibraries.windowsPath.trim()) {
+      write("Syncing Arduino libraries to WSL...\r\n");
+      const libraryArgs = buildRsyncLibrariesArgs({
+        distro: config.wsl.distro,
+        sourceWindowsPath: config.wsl.syncLibraries.windowsPath,
+        targetWslPath: config.wsl.syncLibraries.wslPath,
+        mode: config.wsl.syncLibraries.mode,
+        backup: config.wsl.syncLibraries.backup,
+        excludes: config.wsl.syncLibraries.excludes,
+      });
+      await this.deps.execFileText("wsl.exe", libraryArgs);
+    }
+
+    const projectArgs = buildRsyncProjectArgs({
+      distro: config.wsl.distro,
+      sourceWindowsPath: workspaceRoot,
+      targetWslPath: workspaceRootInWsl,
+      excludes: [".git", "node_modules", "dist", "out", ".vscode-test"],
+    });
+    await this.deps.execFileText("wsl.exe", projectArgs);
+
+    const compileArgs = ["arduino-cli", "compile", "--fqbn", config.board.fqbn];
+    if (config.build.outputDir.trim()) {
+      compileArgs.push("--output-dir", `${workspaceRootInWsl}/${config.build.outputDir.trim().replace(/\\/g, "/")}`);
+    }
+    compileArgs.push(...config.board.compileArgs, sketchPathInWsl);
+    const compileResult = await this.deps.execFileText("wsl.exe", buildWslCommandArgs(config.wsl.distro, compileArgs), 0);
+    if (compileResult.stdout) {
+      write(compileResult.stdout.replace(/\n/g, "\r\n"));
+    }
+    if (compileResult.stderr) {
+      write(compileResult.stderr.replace(/\n/g, "\r\n"));
+    }
+    if (compileResult.exitCode !== 0) {
+      throw new Error(`WSL compilation failed with code ${compileResult.exitCode}`);
+    }
+
+    const outputDir = config.build.outputDir.trim();
+    const copySource = outputDir ? `${workspaceRootInWsl}/${outputDir}` : `${path.posix.dirname(sketchPathInWsl)}/build`;
+    const copyTarget = toWslMountPath(outputDir ? path.resolve(workspaceRoot, outputDir) : path.resolve(workspaceRoot, "build"));
+    const copyArgs = buildWslCommandArgs(config.wsl.distro, ["bash", "-lc", `mkdir -p '${copyTarget}' && cp -r '${copySource}/.' '${copyTarget}/'`]);
+    await this.deps.execFileText("wsl.exe", copyArgs);
+    write("WSL compilation completed.\r\n");
   }
 
   private async installRequiredLibraries(

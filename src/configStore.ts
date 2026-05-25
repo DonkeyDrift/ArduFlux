@@ -368,6 +368,14 @@ function migrateConfig(data: unknown): ArduFluxConfig {
       monitor: {
         ...defaults.current.monitor,
         ...(current.monitor ?? {})
+      },
+      wsl: {
+        ...defaults.current.wsl,
+        ...(current.wsl ?? {}),
+        syncLibraries: {
+          ...defaults.current.wsl.syncLibraries,
+          ...(current.wsl?.syncLibraries ?? {})
+        }
       }
     },
     profiles: {

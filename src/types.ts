@@ -43,11 +43,28 @@ export interface ArduFluxMonitorState {
   resetOnConnect?: boolean;
 }
 
+export interface ArduFluxWslSyncLibrariesState {
+  enabled: boolean;
+  windowsPath: string;
+  wslPath: string;
+  mode: "copy-missing" | "mirror";
+  backup: boolean;
+  excludes: string[];
+}
+
+export interface ArduFluxWslState {
+  enabled: boolean;
+  distro: string;
+  workspaceRoot: string;
+  syncLibraries: ArduFluxWslSyncLibrariesState;
+}
+
 export interface ArduFluxCurrentConfig {
   board: ArduFluxBoardState;
   port: ArduFluxPortState;
   build: ArduFluxBuildState;
   monitor: ArduFluxMonitorState;
+  wsl: ArduFluxWslState;
 }
 
 export interface ArduFluxConfig {
@@ -82,6 +99,22 @@ export interface ValidationErrorLike {
 }
 
 export const CONFIG_FILE_NAME = "ArduFlux.json";
+
+export function createDefaultWslState(): ArduFluxWslState {
+  return {
+    enabled: false,
+    distro: "",
+    workspaceRoot: "",
+    syncLibraries: {
+      enabled: false,
+      windowsPath: "",
+      wslPath: "~/Arduino/libraries",
+      mode: "copy-missing",
+      backup: false,
+      excludes: []
+    }
+  };
+}
 
 export const DEFAULT_BOARD_CATALOG: BoardCatalogItem[] = [
   {
@@ -148,7 +181,8 @@ export function createDefaultConfig(): ArduFluxConfig {
         parity: "none",
         newline: "CRLF",
         resetOnConnect: true
-      }
+      },
+      wsl: createDefaultWslState()
     },
     profiles: {
       default: {}
