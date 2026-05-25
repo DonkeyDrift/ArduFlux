@@ -51,6 +51,17 @@ describe("types.ts", () => {
       expect(config.current.build.sketchPath).to.equal("");
     });
 
+    it("默认应关闭 WSL 编译后端", () => {
+      const config = createDefaultConfig();
+      expect(config.current.wsl.enabled).to.be.false;
+      expect(config.current.wsl.compileBackend).to.equal("local");
+    });
+
+    it("默认 WSL 库同步应关闭", () => {
+      const config = createDefaultConfig();
+      expect(config.current.wsl.syncLibraries.enabled).to.be.false;
+    });
+
     it("默认监视器参数应正确", () => {
       const config = createDefaultConfig();
       const monitor = config.current.monitor;

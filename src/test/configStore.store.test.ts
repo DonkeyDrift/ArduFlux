@@ -50,6 +50,7 @@ describe("ConfigStore", () => {
       const data = await store.load();
       expect(data.current.board.name).to.equal("Custom");
       expect(data.current.port.address).to.equal("COM36");
+      expect(data.current.wsl.enabled).to.be.false;
       expect(data.profiles).to.have.property("dev");
     });
 
