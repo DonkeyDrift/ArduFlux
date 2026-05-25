@@ -61,6 +61,32 @@ describe("configStore.ts - 串口监视器功能", () => {
       expect(args).to.include.members(["--fqbn", "esp32:esp32:esp32s3"]);
       expect(args).to.include.members(["--config", "baudrate=115200"]);
     });
+
+    it("默认 resetOnConnect=true 时，不应禁用 DTR/RTS", () => {
+      const args = buildMonitorArgs({ port: "COM36" });
+      const configValues = args.filter((a: string, i: number) => args[i - 1] === "--config");
+      expect(configValues).to.not.include("dtr=off");
+      expect(configValues).to.not.include("rts=off");
+    });
+
+    it("resetOnConnect=false 时，应禁用 DTR/RTS 防止连接时复位", () => {
+      const args = buildMonitorArgs({ port: "COM36", resetOnConnect: false });
+      const configValues = args.filter((a: string, i: number) => args[i - 1] === "--config");
+      expect(configValues).to.include("dtr=off");
+      expect(configValues).to.include("rts=off");
+    });
+
+    it("resetOnConnect=false 时，其他配置仍正常生成", () => {
+      const args = buildMonitorArgs({
+        port: "COM36",
+        baudRate: 115200,
+        resetOnConnect: false
+      });
+      const configValues = args.filter((a: string, i: number) => args[i - 1] === "--config");
+      expect(configValues).to.include("baudrate=115200");
+      expect(configValues).to.include("dtr=off");
+      expect(configValues).to.include("rts=off");
+    });
   });
 
   describe("execFileText", () => {

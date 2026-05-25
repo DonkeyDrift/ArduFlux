@@ -15,6 +15,7 @@ import {
 } from "./configStore";
 import { ArduFluxConfig, DEFAULT_BOARD_CATALOG } from "./types";
 import { startSseServer, startStdioServer } from "./mcp/transports";
+import { resetBoard } from "./uploader/portManager";
 
 export interface McpServerDeps {
   spawn?: typeof cpSpawn;
@@ -217,6 +218,7 @@ export function createMcpServer(
     monitor_stop_bits: z.number().optional(),
     monitor_parity: z.string().optional(),
     monitor_newline: z.string().optional(),
+    monitor_reset_on_connect: z.boolean().optional(),
   });
 
   server.registerTool(
@@ -286,6 +288,9 @@ export function createMcpServer(
       }
       if (args.monitor_newline !== undefined) {
         next.current.monitor.newline = args.monitor_newline;
+      }
+      if (args.monitor_reset_on_connect !== undefined) {
+        next.current.monitor.resetOnConnect = args.monitor_reset_on_connect;
       }
 
       store.setData(next);
@@ -617,12 +622,17 @@ export function createMcpServer(
     }
   );
 
+  const MonitorSchema = z.object({
+    reset_on_connect: z.boolean().optional(),
+  });
+
   server.registerTool(
     "arduflux_monitor",
     {
       description: "打开串口监视器。由于监视器是阻塞式终端操作，仅负责启动并返回终端信息",
+      inputSchema: MonitorSchema,
     },
-    async (extra) => {
+    async (args, extra) => {
       const store = new ConfigStore(workspaceRoot);
       const config = await store.load();
       const port = config.current.port.address;
@@ -638,16 +648,23 @@ export function createMcpServer(
         };
       }
 
-      const args = buildMonitorArgs({
+      const resetOnConnect = args.reset_on_connect ?? config.current.monitor.resetOnConnect;
+      if (resetOnConnect !== false) {
+        await resetBoard(port);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      const monitorArgs = buildMonitorArgs({
         port,
         fqbn: config.current.board.fqbn,
         baudRate: config.current.monitor.baudRate,
         dataBits: config.current.monitor.dataBits,
         stopBits: config.current.monitor.stopBits,
         parity: config.current.monitor.parity,
+        resetOnConnect,
       });
 
-      startTask("monitor", "arduino-cli", args, workspaceRoot, extra.sessionId);
+      startTask("monitor", "arduino-cli", monitorArgs, workspaceRoot, extra.sessionId);
 
       return {
         content: [

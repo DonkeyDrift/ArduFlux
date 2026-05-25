@@ -11,7 +11,7 @@ import {
   discoverSketches,
   ValidationError,
 } from "../configStore";
-import { releaseSerialPort } from "./portManager";
+import { releaseSerialPort, resetBoard } from "./portManager";
 import {
   parseRequiredLibraries,
   getInstalledLibraries,
@@ -209,6 +209,11 @@ export class Uploader {
           if (candidatePort !== preferredPort && monitorRetryCount > 0) {
             write(`Trying alternate port: ${candidatePort}\r\n`);
           }
+          if (config.monitor.resetOnConnect !== false) {
+            write(`Resetting board on ${candidatePort}...\r\n`);
+            await resetBoard(candidatePort);
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
           const monitorArgs = buildMonitorArgs({
             port: candidatePort,
             fqbn: config.board.fqbn,
@@ -216,6 +221,7 @@ export class Uploader {
             dataBits: config.monitor.dataBits,
             stopBits: config.monitor.stopBits,
             parity: config.monitor.parity,
+            resetOnConnect: config.monitor.resetOnConnect,
           });
           try {
             await this.spawnWithOutput("arduino-cli", monitorArgs, workspaceRoot, write, false);

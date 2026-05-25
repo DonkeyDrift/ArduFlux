@@ -90,7 +90,8 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
       dataBits: Number(form.monitorDataBits || 0),
       stopBits: Number(form.monitorStopBits || 0),
       parity: form.monitorParity.trim(),
-      newline: form.monitorNewline.trim()
+      newline: form.monitorNewline.trim(),
+      resetOnConnect: baseConfig.current.monitor.resetOnConnect ?? true
     }
   };
 }

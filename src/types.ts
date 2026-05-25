@@ -40,6 +40,7 @@ export interface ArduFluxMonitorState {
   stopBits: number;
   parity: string;
   newline: string;
+  resetOnConnect?: boolean;
 }
 
 export interface ArduFluxCurrentConfig {
@@ -145,7 +146,8 @@ export function createDefaultConfig(): ArduFluxConfig {
         dataBits: 8,
         stopBits: 1,
         parity: "none",
-        newline: "CRLF"
+        newline: "CRLF",
+        resetOnConnect: true
       }
     },
     profiles: {

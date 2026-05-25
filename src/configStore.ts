@@ -178,6 +178,7 @@ export function buildMonitorArgs(opts: {
   dataBits?: number;
   stopBits?: number;
   parity?: string;
+  resetOnConnect?: boolean;
 }): string[] {
   const args = ["monitor", "-p", opts.port];
   if (opts.fqbn) {
@@ -195,6 +196,9 @@ export function buildMonitorArgs(opts: {
   }
   if (opts.parity && opts.parity.toLowerCase() !== "none") {
     configs.push(`parity=${opts.parity.toLowerCase()}`);
+  }
+  if (opts.resetOnConnect === false) {
+    configs.push("dtr=off", "rts=off");
   }
   for (const cfg of configs) {
     args.push("--config", cfg);
