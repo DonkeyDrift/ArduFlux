@@ -92,7 +92,8 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
       parity: form.monitorParity.trim(),
       newline: form.monitorNewline.trim(),
       resetOnConnect: baseConfig.current.monitor.resetOnConnect ?? true
-    }
+    },
+    wsl: baseConfig.current.wsl
   };
 }
 

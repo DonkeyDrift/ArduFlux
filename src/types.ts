@@ -43,11 +43,31 @@ export interface ArduFluxMonitorState {
   resetOnConnect?: boolean;
 }
 
+export interface ArduFluxWslState {
+  enabled: boolean;
+  compileBackend: "local" | "wsl";
+  distro: string;
+  workspaceRoot: string;
+  arduinoCliPath: string;
+  syncProject: {
+    excludes: string[];
+  };
+  syncLibraries: {
+    enabled: boolean;
+    windowsPath: string;
+    wslPath: string;
+    mode: "copy-missing" | "overwrite" | "mirror";
+    backup: boolean;
+    exclude: string[];
+  };
+}
+
 export interface ArduFluxCurrentConfig {
   board: ArduFluxBoardState;
   port: ArduFluxPortState;
   build: ArduFluxBuildState;
   monitor: ArduFluxMonitorState;
+  wsl: ArduFluxWslState;
 }
 
 export interface ArduFluxConfig {
@@ -82,6 +102,27 @@ export interface ValidationErrorLike {
 }
 
 export const CONFIG_FILE_NAME = "ArduFlux.json";
+
+export function createDefaultWslState(): ArduFluxWslState {
+  return {
+    enabled: false,
+    compileBackend: "local",
+    distro: "",
+    workspaceRoot: "",
+    arduinoCliPath: "arduino-cli",
+    syncProject: {
+      excludes: [".git", "node_modules", ".vscode", ".trae"]
+    },
+    syncLibraries: {
+      enabled: false,
+      windowsPath: "",
+      wslPath: "~/Arduino/libraries",
+      mode: "copy-missing",
+      backup: false,
+      exclude: ["^\\.", "^tmp$"]
+    }
+  };
+}
 
 export const DEFAULT_BOARD_CATALOG: BoardCatalogItem[] = [
   {
@@ -148,7 +189,8 @@ export function createDefaultConfig(): ArduFluxConfig {
         parity: "none",
         newline: "CRLF",
         resetOnConnect: true
-      }
+      },
+      wsl: createDefaultWslState()
     },
     profiles: {
       default: {}

@@ -7,7 +7,8 @@ import {
   ArduFluxCurrentConfig,
   SerialPortInfo,
   ValidationErrorLike,
-  createDefaultConfig
+  createDefaultConfig,
+  createDefaultWslState
 } from "./types";
 
 let saveLock: Promise<void> | null = null;
@@ -322,6 +323,23 @@ export async function listSerialPorts(arduinoCliPath = "arduino-cli"): Promise<S
 
 function migrateConfig(data: unknown): ArduFluxConfig {
   const defaults = createDefaultConfig();
+  const mergeWsl = (candidate: Partial<ArduFluxCurrentConfig>): ArduFluxCurrentConfig["wsl"] => {
+    const currentWsl = (candidate.wsl ?? {}) as Partial<ArduFluxCurrentConfig["wsl"]>;
+    const syncProject = currentWsl.syncProject ?? {};
+    const syncLibraries = currentWsl.syncLibraries ?? {};
+    return {
+      ...createDefaultWslState(),
+      ...currentWsl,
+      syncProject: {
+        ...createDefaultWslState().syncProject,
+        ...syncProject
+      },
+      syncLibraries: {
+        ...createDefaultWslState().syncLibraries,
+        ...syncLibraries
+      }
+    };
+  };
   if (!data || typeof data !== "object") {
     return defaults;
   }
@@ -330,11 +348,15 @@ function migrateConfig(data: unknown): ArduFluxConfig {
   const version = Number(source.schemaVersion ?? 0);
 
   if (version <= 0) {
+    const current = {
+      ...defaults.current,
+      ...(source as Partial<ArduFluxCurrentConfig>)
+    };
     return {
       ...defaults,
       current: {
-        ...defaults.current,
-        ...(source as Partial<ArduFluxCurrentConfig>)
+        ...current,
+        wsl: mergeWsl(current)
       }
     };
   }
@@ -368,7 +390,8 @@ function migrateConfig(data: unknown): ArduFluxConfig {
       monitor: {
         ...defaults.current.monitor,
         ...(current.monitor ?? {})
-      }
+      },
+      wsl: mergeWsl(current)
     },
     profiles: {
       default: {},

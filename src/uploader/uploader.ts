@@ -37,6 +37,8 @@ export interface UploaderDeps {
   installLibraries(libs: string[], arduinoCliPath: string, cwd: string, onOutput?: (line: string) => void, spawnImpl?: typeof import("child_process").spawn): Promise<void>;
 }
 
+export type CompileBackend = "local" | "wsl";
+
 export function getUploadCandidates(
   ports: SerialPortInfo[],
   primaryPort: string,
@@ -125,10 +127,16 @@ export class Uploader {
     }
 
     if (doCompile && sketchPath) {
+      const compileBackend = this.resolveCompileBackend(config);
+      write(`\n=== Compiling sketch ===\r\n`);
+      write(`Compile backend: ${compileBackend}\r\n`);
+      if (compileBackend === "wsl") {
+        throw new ValidationError("WSL 编译后端尚未实现", "请先关闭 WSL 编译，或等待后续阶段实现 WSL 编译执行器");
+      }
+
       write(`\n=== Installing required libraries ===\r\n`);
       await this.installRequiredLibraries(sketchPath, config, write);
 
-      write(`\n=== Compiling sketch ===\r\n`);
       write("Compiling, this may take a minute...\r\n");
       const compileArgs = buildCompileArgs(
         {
@@ -257,6 +265,13 @@ export class Uploader {
     }
 
     return { success: true, lastSuccessfulPort };
+  }
+
+  private resolveCompileBackend(config: ArduFluxCurrentConfig): CompileBackend {
+    if (config.wsl.enabled || config.wsl.compileBackend === "wsl") {
+      return "wsl";
+    }
+    return "local";
   }
 
   private async installRequiredLibraries(
