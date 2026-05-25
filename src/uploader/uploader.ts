@@ -18,6 +18,15 @@ import {
   installLibraries,
   resolveMissingLibraries,
 } from "./libraryResolver";
+import {
+  buildArtifactSyncArgs,
+  buildRsyncLibrariesArgs,
+  buildRsyncProjectArgs,
+  buildWslCompileArgs,
+  createDefaultWslWorkspace,
+  joinWslPath,
+  toWslMountPath,
+} from "./wslBackend";
 import { ArduFluxCurrentConfig, SerialPortInfo } from "../types";
 
 export interface UploaderFlags {
@@ -131,24 +140,25 @@ export class Uploader {
       write(`\n=== Compiling sketch ===\r\n`);
       write(`Compile backend: ${compileBackend}\r\n`);
       if (compileBackend === "wsl") {
-        throw new ValidationError("WSL 编译后端尚未实现", "请先关闭 WSL 编译，或等待后续阶段实现 WSL 编译执行器");
+        await this.compileWithWsl(workspaceRoot, sketchPath, config, write);
+        write(`WSL compilation completed.\r\n`);
+      } else {
+        write(`\n=== Installing required libraries ===\r\n`);
+        await this.installRequiredLibraries(sketchPath, config, write);
+
+        write("Compiling, this may take a minute...\r\n");
+        const compileArgs = buildCompileArgs(
+          {
+            fqbn: config.board.fqbn,
+            sketchPath,
+            outputDir: config.build.outputDir,
+            extraArgs: config.board.compileArgs,
+          },
+          workspaceRoot
+        );
+        await this.spawnWithOutput("arduino-cli", compileArgs, workspaceRoot, write);
+        write(`Compilation completed.\r\n`);
       }
-
-      write(`\n=== Installing required libraries ===\r\n`);
-      await this.installRequiredLibraries(sketchPath, config, write);
-
-      write("Compiling, this may take a minute...\r\n");
-      const compileArgs = buildCompileArgs(
-        {
-          fqbn: config.board.fqbn,
-          sketchPath,
-          outputDir: config.build.outputDir,
-          extraArgs: config.board.compileArgs,
-        },
-        workspaceRoot
-      );
-      await this.spawnWithOutput("arduino-cli", compileArgs, workspaceRoot, write);
-      write(`Compilation completed.\r\n`);
     }
 
     let lastSuccessfulPort: string | undefined;
@@ -272,6 +282,65 @@ export class Uploader {
       return "wsl";
     }
     return "local";
+  }
+
+  private async compileWithWsl(
+    workspaceRoot: string,
+    sketchPath: string,
+    config: ArduFluxCurrentConfig,
+    write: (text: string) => void
+  ): Promise<void> {
+    const distro = config.wsl.distro;
+    const workspaceWslRoot = config.wsl.workspaceRoot.trim() || createDefaultWslWorkspace(workspaceRoot);
+    const relativeSketchPath = path.relative(workspaceRoot, sketchPath).replace(/\\/g, "/");
+    const sketchWslPath = joinWslPath(workspaceWslRoot, relativeSketchPath);
+    const buildDir = config.build.outputDir.trim() || "build";
+    const buildWslPath = joinWslPath(workspaceWslRoot, buildDir);
+    const outputWslPath = joinWslPath(toWslMountPath(workspaceRoot), buildDir);
+
+    if (config.wsl.syncLibraries.enabled) {
+      write("Syncing Arduino libraries to WSL...\r\n");
+      await this.runWslArgs(buildRsyncLibrariesArgs({
+        distro,
+        sourceWindowsPath: config.wsl.syncLibraries.windowsPath,
+        targetWslPath: config.wsl.syncLibraries.wslPath,
+        mode: config.wsl.syncLibraries.mode,
+        backup: config.wsl.syncLibraries.backup,
+        excludes: config.wsl.syncLibraries.exclude
+      }));
+    }
+
+    write("Syncing project to WSL...\r\n");
+    await this.runWslArgs(buildRsyncProjectArgs({
+      distro,
+      sourceWindowsPath: workspaceRoot,
+      targetWslPath: workspaceWslRoot,
+      excludes: config.wsl.syncProject.excludes
+    }));
+
+    write("Compiling in WSL...\r\n");
+    await this.runWslArgs(buildWslCompileArgs({
+      distro,
+      arduinoCliPath: config.wsl.arduinoCliPath,
+      fqbn: config.board.fqbn,
+      sketchWslPath,
+      buildWslPath,
+      extraArgs: config.board.compileArgs
+    }));
+
+    write("Syncing artifacts back to Windows...\r\n");
+    await this.runWslArgs(buildArtifactSyncArgs({
+      distro,
+      buildWslPath,
+      outputWslPath
+    }));
+  }
+
+  private async runWslArgs(args: string[]): Promise<void> {
+    const result = await this.deps.execFileText("wsl.exe", args);
+    if (result.exitCode !== 0) {
+      throw new ValidationError("WSL 命令执行失败", result.stderr || result.stdout || `exitCode=${result.exitCode}`);
+    }
   }
 
   private async installRequiredLibraries(

@@ -198,6 +198,10 @@ describe("webview view registration", () => {
 
       expect(fakeWebview.options.enableScripts).to.equal(true);
       expect(fakeWebview.html).to.contain("ArduFlux");
+      expect(fakeWebview.html).to.contain("WSL 编译");
+      expect(fakeWebview.html).to.contain("id=\"wslEnabled\"");
+      expect(fakeWebview.html).to.contain("id=\"wslDistro\"");
+      expect(fakeWebview.html).to.contain("id=\"wslWorkspaceRoot\"");
       expect(postedMessages.some((message) => message.type === "state")).to.equal(true);
 
       const firstStateMessage = postedMessages.find((message) => message.type === "state");
@@ -219,5 +223,131 @@ describe("webview view registration", () => {
       ConfigStore.prototype.load = originalLoadConfig;
       ConfigStore.prototype.getSerialPorts = originalGetSerialPorts;
     }
+  });
+
+  it("保存配置时应持久化高级 WSL 编译字段", async () => {
+    const fakeVscode = {
+      EventEmitter: class<T> {
+        readonly event = (_listener: (value: T) => void) => ({ dispose: () => {} });
+        fire(_value: T): void {}
+        dispose(): void {}
+      },
+      Uri: {
+        file: (fsPath: string) => ({ fsPath }),
+        joinPath: (base: { fsPath: string }, segment: string) => ({ fsPath: path.join(base.fsPath, segment) })
+      },
+      window: {
+        showErrorMessage: async () => undefined,
+        showSaveDialog: async () => undefined,
+        showOpenDialog: async () => undefined,
+        showQuickPick: async () => undefined
+      },
+      commands: {
+        executeCommand: async () => undefined
+      }
+    };
+
+    moduleLoader._load = function patchedLoad(request: string, parent: NodeModule | undefined, isMain: boolean): unknown {
+      if (request === "vscode") {
+        return fakeVscode;
+      }
+      return originalLoad.call(this, request, parent, isMain);
+    };
+
+    const { ConfigEditorController } = require("../webviewController") as typeof import("../webviewController");
+    const { ConfigStore } = require("../configStore") as typeof import("../configStore");
+    const { createDefaultConfig } = require("../types") as typeof import("../types");
+
+    const store = new ConfigStore(tempDir);
+    store.getSerialPorts = async () => [
+      {
+        address: "COM36",
+        label: "USB Serial Device",
+        protocol: "serial",
+        type: "USB"
+      }
+    ];
+    const config = createDefaultConfig();
+    config.current.port.address = "COM36";
+    config.current.build.sketchPath = "sketch.ino";
+    store.setData(config);
+
+    let onDidReceiveMessageHandler: ((message: { type?: string; payload?: unknown }) => Promise<void> | void) | undefined;
+    const fakeWebview = {
+      html: "",
+      options: {} as { enableScripts?: boolean },
+      cspSource: "vscode-webview://test",
+      postMessage: async () => true,
+      onDidReceiveMessage: (handler: (message: { type?: string; payload?: unknown }) => Promise<void> | void) => {
+        onDidReceiveMessageHandler = handler;
+        return { dispose: () => {} };
+      }
+    };
+
+    const controller = new ConfigEditorController({} as never, store);
+    controller.attach(fakeWebview as never);
+
+    await onDidReceiveMessageHandler?.({
+      type: "save-config",
+      payload: {
+        boardName: "ESP32-S3",
+        boardFqbn: "esp32:esp32:esp32s3",
+        boardCompileArgs: "",
+        boardPinDefines: "{}",
+        portAddress: "COM36",
+        portAuto: true,
+        buildOutputDir: "build",
+        sketchPath: "sketch.ino",
+        compileBeforeUpload: false,
+        uploadThenMonitor: false,
+        monitorBaudRate: "115200",
+        monitorDataBits: "8",
+        monitorStopBits: "1",
+        monitorParity: "none",
+        monitorNewline: "CRLF",
+        wslEnabled: true,
+        wslDistro: "DKC",
+        wslWorkspaceRoot: "$HOME/arduino-build/ArduFlux",
+        wslArduinoCliPath: "~/bin/arduino-cli",
+        wslSyncProjectExcludes: ".git\nnode_modules\nbuild",
+        wslSyncLibrariesEnabled: true,
+        wslWindowsLibrariesPath: "C:\\Users\\cross\\Documents\\Arduino\\libraries",
+        wslLibrariesPath: "~/Arduino/libraries",
+        wslLibrarySyncMode: "copy-missing",
+        wslBackupLibraries: true,
+        wslLibraryExclude: "^\\.\n^tmp$"
+      }
+    });
+
+    const saved = JSON.parse(await fs.readFile(path.join(tempDir, "ArduFlux.json"), "utf8")) as {
+      current: {
+        wsl: {
+          enabled: boolean;
+          compileBackend: string;
+          distro: string;
+          workspaceRoot: string;
+          arduinoCliPath: string;
+          syncProject: { excludes: string[] };
+          syncLibraries: {
+            enabled: boolean;
+            windowsPath: string;
+            wslPath: string;
+            mode: string;
+            backup: boolean;
+            exclude: string[];
+          };
+        };
+      };
+    };
+
+    expect(saved.current.wsl.enabled).to.equal(true);
+    expect(saved.current.wsl.compileBackend).to.equal("wsl");
+    expect(saved.current.wsl.distro).to.equal("DKC");
+    expect(saved.current.wsl.workspaceRoot).to.equal("$HOME/arduino-build/ArduFlux");
+    expect(saved.current.wsl.arduinoCliPath).to.equal("~/bin/arduino-cli");
+    expect(saved.current.wsl.syncProject.excludes).to.deep.equal([".git", "node_modules", "build"]);
+    expect(saved.current.wsl.syncLibraries.enabled).to.equal(true);
+    expect(saved.current.wsl.syncLibraries.backup).to.equal(true);
+    expect(saved.current.wsl.syncLibraries.exclude).to.deep.equal(["^\\.", "^tmp$"]);
   });
 });

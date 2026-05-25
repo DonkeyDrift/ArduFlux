@@ -27,6 +27,17 @@ export interface FormPayload {
   monitorStopBits: string;
   monitorParity: string;
   monitorNewline: string;
+  wslEnabled?: boolean;
+  wslDistro?: string;
+  wslWorkspaceRoot?: string;
+  wslArduinoCliPath?: string;
+  wslSyncProjectExcludes?: string;
+  wslSyncLibrariesEnabled?: boolean;
+  wslWindowsLibrariesPath?: string;
+  wslLibrariesPath?: string;
+  wslLibrarySyncMode?: "copy-missing" | "overwrite" | "mirror";
+  wslBackupLibraries?: boolean;
+  wslLibraryExclude?: string;
 }
 
 function createNonce(): string {
@@ -36,6 +47,10 @@ function createNonce(): string {
 function tokenizeArgs(text: string): string[] {
   const matches = text.match(/"[^"]*"|'[^']*'|\S+/g) ?? [];
   return matches.map((item) => item.replace(/^["']|["']$/g, ""));
+}
+
+function parseLines(text: string | undefined): string[] {
+  return (text ?? "").split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
 }
 
 function formatError(error: unknown): string {
@@ -60,6 +75,8 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
     }
     throw new ValidationError("引脚定义不是合法 JSON", "请检查 JSON 语法后重试");
   }
+
+  const wslEnabled = form.wslEnabled !== undefined ? Boolean(form.wslEnabled) : baseConfig.current.wsl.enabled;
 
   return {
     board: {
@@ -93,7 +110,39 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
       newline: form.monitorNewline.trim(),
       resetOnConnect: baseConfig.current.monitor.resetOnConnect ?? true
     },
-    wsl: baseConfig.current.wsl
+    wsl: {
+      ...baseConfig.current.wsl,
+      enabled: wslEnabled,
+      compileBackend: wslEnabled ? "wsl" : "local",
+      distro: form.wslDistro !== undefined ? form.wslDistro.trim() : baseConfig.current.wsl.distro,
+      workspaceRoot: form.wslWorkspaceRoot !== undefined ? form.wslWorkspaceRoot.trim() : baseConfig.current.wsl.workspaceRoot,
+      arduinoCliPath: form.wslArduinoCliPath !== undefined ? form.wslArduinoCliPath.trim() : baseConfig.current.wsl.arduinoCliPath,
+      syncProject: {
+        ...baseConfig.current.wsl.syncProject,
+        excludes: form.wslSyncProjectExcludes !== undefined
+          ? parseLines(form.wslSyncProjectExcludes)
+          : baseConfig.current.wsl.syncProject.excludes
+      },
+      syncLibraries: {
+        ...baseConfig.current.wsl.syncLibraries,
+        enabled: form.wslSyncLibrariesEnabled !== undefined
+          ? Boolean(form.wslSyncLibrariesEnabled)
+          : baseConfig.current.wsl.syncLibraries.enabled,
+        windowsPath: form.wslWindowsLibrariesPath !== undefined
+          ? form.wslWindowsLibrariesPath.trim()
+          : baseConfig.current.wsl.syncLibraries.windowsPath,
+        wslPath: form.wslLibrariesPath !== undefined
+          ? form.wslLibrariesPath.trim()
+          : baseConfig.current.wsl.syncLibraries.wslPath,
+        mode: form.wslLibrarySyncMode ?? baseConfig.current.wsl.syncLibraries.mode,
+        backup: form.wslBackupLibraries !== undefined
+          ? Boolean(form.wslBackupLibraries)
+          : baseConfig.current.wsl.syncLibraries.backup,
+        exclude: form.wslLibraryExclude !== undefined
+          ? parseLines(form.wslLibraryExclude)
+          : baseConfig.current.wsl.syncLibraries.exclude
+      }
+    }
   };
 }
 
@@ -724,6 +773,47 @@ export class ConfigEditorController {
   </div>
 
   <div class="advanced-item">
+    <h2>WSL 编译</h2>
+    <div class="grid">
+      <label for="wslEnabled">启用</label>
+      <label class="hint" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+        <input id="wslEnabled" type="checkbox" style="width:auto" />
+        使用 WSL 编译后端
+      </label>
+      <label for="wslDistro">发行版</label>
+      <input id="wslDistro" placeholder="留空使用默认 WSL 发行版" />
+      <label for="wslWorkspaceRoot">工作目录</label>
+      <input id="wslWorkspaceRoot" placeholder="$HOME/arduino-build/<project>" />
+      <label for="wslArduinoCliPath">CLI 路径</label>
+      <input id="wslArduinoCliPath" placeholder="arduino-cli" />
+      <label for="wslSyncProjectExcludes">同步排除</label>
+      <textarea id="wslSyncProjectExcludes" placeholder="每行一个排除项"></textarea>
+      <label for="wslSyncLibrariesEnabled">库同步</label>
+      <label class="hint" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+        <input id="wslSyncLibrariesEnabled" type="checkbox" style="width:auto" />
+        同步 Arduino libraries
+      </label>
+      <label for="wslWindowsLibrariesPath">Windows 库</label>
+      <input id="wslWindowsLibrariesPath" />
+      <label for="wslLibrariesPath">WSL 库</label>
+      <input id="wslLibrariesPath" />
+      <label for="wslLibrarySyncMode">同步模式</label>
+      <select id="wslLibrarySyncMode">
+        <option value="copy-missing">copy-missing</option>
+        <option value="overwrite">overwrite</option>
+        <option value="mirror">mirror</option>
+      </select>
+      <label for="wslBackupLibraries">备份库</label>
+      <label class="hint" style="cursor:pointer;display:flex;align-items:center;gap:4px">
+        <input id="wslBackupLibraries" type="checkbox" style="width:auto" />
+        覆盖前备份
+      </label>
+      <label for="wslLibraryExclude">库排除</label>
+      <textarea id="wslLibraryExclude" placeholder="每行一个正则或名称"></textarea>
+    </div>
+  </div>
+
+  <div class="advanced-item">
     <h2>Profiles</h2>
     <div class="row">
       <select id="profileSelect"></select>
@@ -755,7 +845,10 @@ export class ConfigEditorController {
       "boardPreset", "boardName", "boardFqbn", "boardCompileArgs", "boardPinDefines",
       "portAddress", "portAuto", "buildOutputDir", "recentOutputDirs",
       "monitorBaudRate", "monitorDataBits", "monitorStopBits", "monitorParity",
-      "monitorNewline", "profileSelect", "profileName", "status", "recommendedPort",
+      "monitorNewline", "wslEnabled", "wslDistro", "wslWorkspaceRoot", "wslArduinoCliPath",
+      "wslSyncProjectExcludes", "wslSyncLibrariesEnabled", "wslWindowsLibrariesPath",
+      "wslLibrariesPath", "wslLibrarySyncMode", "wslBackupLibraries", "wslLibraryExclude",
+      "profileSelect", "profileName", "status", "recommendedPort",
       "sketchPath", "selectSketchButton"
     ];
     const el = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
@@ -884,6 +977,18 @@ export class ConfigEditorController {
       el.monitorParity.value = current.monitor.parity || "none";
       el.monitorNewline.value = current.monitor.newline || "CRLF";
 
+      el.wslEnabled.checked = !!current.wsl.enabled;
+      el.wslDistro.value = current.wsl.distro || "";
+      el.wslWorkspaceRoot.value = current.wsl.workspaceRoot || "";
+      el.wslArduinoCliPath.value = current.wsl.arduinoCliPath || "arduino-cli";
+      el.wslSyncProjectExcludes.value = (current.wsl.syncProject.excludes || []).join("\n");
+      el.wslSyncLibrariesEnabled.checked = !!current.wsl.syncLibraries.enabled;
+      el.wslWindowsLibrariesPath.value = current.wsl.syncLibraries.windowsPath || "";
+      el.wslLibrariesPath.value = current.wsl.syncLibraries.wslPath || "";
+      el.wslLibrarySyncMode.value = current.wsl.syncLibraries.mode || "copy-missing";
+      el.wslBackupLibraries.checked = !!current.wsl.syncLibraries.backup;
+      el.wslLibraryExclude.value = (current.wsl.syncLibraries.exclude || []).join("\n");
+
       fillSelect(
         el.profileSelect,
         Object.keys(config.profiles || {}).sort(),
@@ -936,7 +1041,18 @@ export class ConfigEditorController {
         monitorDataBits: el.monitorDataBits.value,
         monitorStopBits: el.monitorStopBits.value,
         monitorParity: el.monitorParity.value,
-        monitorNewline: el.monitorNewline.value
+        monitorNewline: el.monitorNewline.value,
+        wslEnabled: el.wslEnabled.checked,
+        wslDistro: el.wslDistro.value,
+        wslWorkspaceRoot: el.wslWorkspaceRoot.value,
+        wslArduinoCliPath: el.wslArduinoCliPath.value,
+        wslSyncProjectExcludes: el.wslSyncProjectExcludes.value,
+        wslSyncLibrariesEnabled: el.wslSyncLibrariesEnabled.checked,
+        wslWindowsLibrariesPath: el.wslWindowsLibrariesPath.value,
+        wslLibrariesPath: el.wslLibrariesPath.value,
+        wslLibrarySyncMode: el.wslLibrarySyncMode.value,
+        wslBackupLibraries: el.wslBackupLibraries.checked,
+        wslLibraryExclude: el.wslLibraryExclude.value
       };
     }
 
