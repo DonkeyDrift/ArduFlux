@@ -202,6 +202,7 @@ describe("webview view registration", () => {
       expect(fakeWebview.html).to.contain("id=\"wslEnabled\"");
       expect(fakeWebview.html).to.contain("id=\"wslDistro\"");
       expect(fakeWebview.html).to.contain("id=\"wslWorkspaceRoot\"");
+      expect(fakeWebview.html).to.contain("event.target === showAdvancedEl");
       expect(postedMessages.some((message) => message.type === "state")).to.equal(true);
 
       const firstStateMessage = postedMessages.find((message) => message.type === "state");
