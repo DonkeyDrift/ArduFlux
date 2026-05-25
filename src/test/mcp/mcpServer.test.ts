@@ -642,6 +642,90 @@ describe("MCP Server", () => {
       expect(parsed.task_id).to.be.a("string");
     });
 
+    it("arduflux_monitor 在 reset_on_connect=true 时应直接启动 monitor 且不禁用 DTR/RTS", async () => {
+      const config = createDefaultConfig();
+      config.current.port.address = "COM3";
+      readFileStub.resolves(JSON.stringify(config));
+
+      const mockProc = {
+        stdout: { on: sinon.stub() },
+        stderr: { on: sinon.stub() },
+        on: sinon.stub(),
+        kill: sinon.stub(),
+        killed: false,
+      };
+      const mockSpawn = sinon.stub().returns(mockProc as unknown as cp.ChildProcess);
+
+      const server = createMcpServer(workspaceRoot, { spawn: mockSpawn });
+      const client = await initClient(server);
+
+      const result = await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: "arduflux_monitor",
+            arguments: { reset_on_connect: true },
+          },
+        },
+        CallToolResultSchema
+      );
+
+      expect(mockSpawn.calledOnce).to.be.true;
+      const spawnArgs = mockSpawn.firstCall.args[1] as string[];
+      expect(mockSpawn.firstCall.args[0]).to.equal("arduino-cli");
+      expect(spawnArgs).to.include("monitor");
+      expect(spawnArgs).to.include("COM3");
+      expect(spawnArgs).not.to.include("dtr=off");
+      expect(spawnArgs).not.to.include("rts=off");
+
+      const textContent = result.content[0];
+      expect(textContent.type).to.equal("text");
+      const parsed = JSON.parse((textContent as { text: string }).text);
+      expect(parsed.started).to.equal(true);
+      expect(parsed.reset_on_connect).to.equal(true);
+      expect(parsed.note).to.include("不会在监听前预复位");
+    });
+
+    it("arduflux_monitor 在 reset_on_connect=false 时应禁用 DTR/RTS", async () => {
+      const config = createDefaultConfig();
+      config.current.port.address = "COM3";
+      readFileStub.resolves(JSON.stringify(config));
+
+      const mockProc = {
+        stdout: { on: sinon.stub() },
+        stderr: { on: sinon.stub() },
+        on: sinon.stub(),
+        kill: sinon.stub(),
+        killed: false,
+      };
+      const mockSpawn = sinon.stub().returns(mockProc as unknown as cp.ChildProcess);
+
+      const server = createMcpServer(workspaceRoot, { spawn: mockSpawn });
+      const client = await initClient(server);
+
+      const result = await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: "arduflux_monitor",
+            arguments: { reset_on_connect: false },
+          },
+        },
+        CallToolResultSchema
+      );
+
+      expect(mockSpawn.calledOnce).to.be.true;
+      const spawnArgs = mockSpawn.firstCall.args[1] as string[];
+      expect(spawnArgs).to.include("monitor");
+      expect(spawnArgs).to.include.members(["--config", "dtr=off", "rts=off"]);
+
+      const textContent = result.content[0];
+      expect(textContent.type).to.equal("text");
+      const parsed = JSON.parse((textContent as { text: string }).text);
+      expect(parsed.started).to.equal(true);
+      expect(parsed.reset_on_connect).to.equal(false);
+    });
+
     it("arduflux_get_task_status 应返回任务状态与日志", async () => {
       readFileStub.rejects(
         Object.assign(new Error("ENOENT"), { code: "ENOENT" })

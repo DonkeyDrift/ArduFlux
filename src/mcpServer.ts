@@ -15,7 +15,6 @@ import {
 } from "./configStore";
 import { ArduFluxConfig, DEFAULT_BOARD_CATALOG } from "./types";
 import { startSseServer, startStdioServer } from "./mcp/transports";
-import { resetBoard } from "./uploader/portManager";
 
 export interface McpServerDeps {
   spawn?: typeof cpSpawn;
@@ -649,10 +648,6 @@ export function createMcpServer(
       }
 
       const resetOnConnect = args.reset_on_connect ?? config.current.monitor.resetOnConnect;
-      if (resetOnConnect !== false) {
-        await resetBoard(port);
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
 
       const monitorArgs = buildMonitorArgs({
         port,
@@ -673,7 +668,10 @@ export function createMcpServer(
             text: JSON.stringify({
               started: true,
               terminal_name: "ArduFlux Monitor",
-              note: "监视器已在系统终端中打开",
+              reset_on_connect: resetOnConnect !== false,
+              note: resetOnConnect === false
+                ? "监视器已启动，并已禁用 DTR/RTS 复位；只会显示打开后产生的串口输出"
+                : "监视器已启动；不会在监听前预复位，复位由 monitor 连接过程处理",
             }),
           },
         ],
