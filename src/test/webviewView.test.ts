@@ -203,6 +203,9 @@ describe("webview view registration", () => {
       expect(fakeWebview.html).to.contain("id=\"wslDistro\"");
       expect(fakeWebview.html).to.contain("id=\"wslWorkspaceRoot\"");
       expect(fakeWebview.html).to.contain("event.target === showAdvancedEl");
+      expect(fakeWebview.html).to.contain("function requireElement");
+      expect(fakeWebview.html).to.contain("window.addEventListener(\"error\"");
+      expect(fakeWebview.html).to.contain("webview-client-error");
       expect(fakeWebview.html).to.not.contain("Object.fromEntries");
       expect(fakeWebview.html).to.not.contain("event.data?.type");
       expect(postedMessages.some((message) => message.type === "state")).to.equal(true);

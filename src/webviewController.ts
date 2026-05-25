@@ -286,6 +286,9 @@ export class ConfigEditorController {
         case "toggle-monitor-link":
           await this.toggleMonitorLink();
           return;
+        case "webview-client-error":
+          this.log(`[webview] Client error: ${String((message.payload as { message?: unknown } | undefined)?.message ?? "unknown")}`);
+          return;
         default:
           return;
       }
@@ -841,6 +844,30 @@ export class ConfigEditorController {
     const vscode = acquireVsCodeApi();
     let state = ${initialState};
 
+    function reportClientError(error) {
+      const message = error && error.message ? error.message : String(error);
+      const status = document.getElementById("status");
+      if (status) {
+        status.textContent = "界面脚本错误: " + message;
+      }
+      vscode.postMessage({ type: "webview-client-error", payload: { message } });
+    }
+
+    window.addEventListener("error", (event) => {
+      reportClientError(event.error || event.message);
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+      reportClientError(event.reason || "未处理的 Promise 异常");
+    });
+
+    function requireElement(id) {
+      const element = document.getElementById(id);
+      if (!element) {
+        throw new Error("缺少界面元素 #" + id);
+      }
+      return element;
+    }
+
     const ids = [
       "boardPreset", "boardName", "boardFqbn", "boardCompileArgs", "boardPinDefines",
       "portAddress", "portAuto", "buildOutputDir", "recentOutputDirs",
@@ -849,11 +876,14 @@ export class ConfigEditorController {
       "wslSyncProjectExcludes", "wslSyncLibrariesEnabled", "wslWindowsLibrariesPath",
       "wslLibrariesPath", "wslLibrarySyncMode", "wslBackupLibraries", "wslLibraryExclude",
       "profileSelect", "profileName", "status", "recommendedPort",
-      "sketchPath", "selectSketchButton"
+      "sketchPath", "selectSketchButton", "saveButton", "compileButton", "linkButton",
+      "linkButton2", "uploadButton", "refreshPortsButton", "openConfigButton",
+      "openMonitorButton", "saveProfileButton", "applyProfileButton", "deleteProfileButton",
+      "exportProfilesButton", "importProfilesButton", "showAdvanced"
     ];
     const el = {};
     ids.forEach((id) => {
-      el[id] = document.getElementById(id);
+      el[id] = requireElement(id);
     });
 
     const LINK_SVG_CONNECTED = '<svg width="20" height="10" viewBox="0 0 20 10" style="vertical-align:middle;display:block"><circle cx="4" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="7" y1="5" x2="13" y2="5" stroke="currentColor" stroke-width="1.2"/><circle cx="16" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
@@ -938,6 +968,9 @@ export class ConfigEditorController {
     function render() {
       const config = state.config;
       const current = config.current;
+      current.wsl = current.wsl || {};
+      current.wsl.syncProject = current.wsl.syncProject || { excludes: [] };
+      current.wsl.syncLibraries = current.wsl.syncLibraries || { enabled: false, windowsPath: "", wslPath: "", mode: "copy-missing", backup: false, exclude: [] };
 
       fillSelect(
         el.boardPreset,
@@ -1001,7 +1034,7 @@ export class ConfigEditorController {
         false
       );
 
-      const linkBtn = document.getElementById("linkButton");
+      const linkBtn = el.linkButton;
       if (current.build.compileBeforeUpload) {
         linkBtn.innerHTML = LINK_SVG_CONNECTED;
         linkBtn.classList.remove("unlinked");
@@ -1014,7 +1047,7 @@ export class ConfigEditorController {
         linkBtn.title = "已断开：直接上传，不自动编译（点击联通）";
       }
 
-      const linkBtn2 = document.getElementById("linkButton2");
+      const linkBtn2 = el.linkButton2;
       if (current.build.uploadThenMonitor) {
         linkBtn2.innerHTML = LINK_SVG_CONNECTED;
         linkBtn2.classList.remove("unlinked");
@@ -1038,8 +1071,8 @@ export class ConfigEditorController {
         portAuto: el.portAuto.checked,
         buildOutputDir: el.buildOutputDir.value,
         sketchPath: el.sketchPath.value,
-        compileBeforeUpload: document.getElementById("linkButton").classList.contains("linked"),
-        uploadThenMonitor: document.getElementById("linkButton2").classList.contains("linked"),
+        compileBeforeUpload: el.linkButton.classList.contains("linked"),
+        uploadThenMonitor: el.linkButton2.classList.contains("linked"),
         monitorBaudRate: el.monitorBaudRate.value,
         monitorDataBits: el.monitorDataBits.value,
         monitorStopBits: el.monitorStopBits.value,
@@ -1078,7 +1111,7 @@ export class ConfigEditorController {
       }
     });
 
-    document.getElementById("saveButton").addEventListener("click", () => {
+    el.saveButton.addEventListener("click", () => {
       try {
         setStatus("正在校验...");
         vscode.postMessage({ type: "validate-config", payload: collectForm() });
@@ -1086,11 +1119,11 @@ export class ConfigEditorController {
         setStatus("校验失败: " + (err.message || String(err)));
       }
     });
-    document.getElementById("compileButton").addEventListener("click", () => {
+    el.compileButton.addEventListener("click", () => {
       vscode.postMessage({ type: "compile-sketch" });
     });
-    document.getElementById("linkButton").addEventListener("click", () => {
-      const btn = document.getElementById("linkButton");
+    el.linkButton.addEventListener("click", () => {
+      const btn = el.linkButton;
       if (btn.classList.contains("linked")) {
         btn.innerHTML = LINK_SVG_DISCONNECTED;
         btn.classList.remove("linked");
@@ -1104,8 +1137,8 @@ export class ConfigEditorController {
       }
       vscode.postMessage({ type: "toggle-compile-link" });
     });
-    document.getElementById("linkButton2").addEventListener("click", () => {
-      const btn = document.getElementById("linkButton2");
+    el.linkButton2.addEventListener("click", () => {
+      const btn = el.linkButton2;
       if (btn.classList.contains("linked")) {
         btn.innerHTML = LINK_SVG_DISCONNECTED;
         btn.classList.remove("linked");
@@ -1119,22 +1152,22 @@ export class ConfigEditorController {
       }
       vscode.postMessage({ type: "toggle-monitor-link" });
     });
-    document.getElementById("uploadButton").addEventListener("click", () => {
+    el.uploadButton.addEventListener("click", () => {
       vscode.postMessage({ type: "upload-sketch" });
     });
-    document.getElementById("refreshPortsButton").addEventListener("click", () => {
+    el.refreshPortsButton.addEventListener("click", () => {
       vscode.postMessage({ type: "refresh-ports" });
     });
-    document.getElementById("openConfigButton").addEventListener("click", () => {
+    el.openConfigButton.addEventListener("click", () => {
       vscode.postMessage({ type: "open-config-file" });
     });
-    document.getElementById("openMonitorButton").addEventListener("click", () => {
+    el.openMonitorButton.addEventListener("click", () => {
       vscode.postMessage({ type: "open-monitor" });
     });
-    document.getElementById("selectSketchButton").addEventListener("click", () => {
+    el.selectSketchButton.addEventListener("click", () => {
       vscode.postMessage({ type: "select-sketch" });
     });
-    document.getElementById("saveProfileButton").addEventListener("click", () => {
+    el.saveProfileButton.addEventListener("click", () => {
       vscode.postMessage({
         type: "save-profile",
         payload: {
@@ -1143,20 +1176,20 @@ export class ConfigEditorController {
         }
       });
     });
-    document.getElementById("applyProfileButton").addEventListener("click", () => {
+    el.applyProfileButton.addEventListener("click", () => {
       vscode.postMessage({ type: "apply-profile", payload: { name: el.profileSelect.value } });
     });
-    document.getElementById("deleteProfileButton").addEventListener("click", () => {
+    el.deleteProfileButton.addEventListener("click", () => {
       vscode.postMessage({ type: "delete-profile", payload: { name: el.profileSelect.value } });
     });
-    document.getElementById("exportProfilesButton").addEventListener("click", () => {
+    el.exportProfilesButton.addEventListener("click", () => {
       vscode.postMessage({ type: "export-profiles" });
     });
-    document.getElementById("importProfilesButton").addEventListener("click", () => {
+    el.importProfilesButton.addEventListener("click", () => {
       vscode.postMessage({ type: "import-profiles" });
     });
 
-    const showAdvancedEl = document.getElementById("showAdvanced");
+    const showAdvancedEl = el.showAdvanced;
     showAdvancedEl.addEventListener("change", () => {
       document.body.classList.toggle("show-advanced", showAdvancedEl.checked);
       vscode.setState({ showAdvanced: showAdvancedEl.checked });
@@ -1204,7 +1237,7 @@ export class ConfigEditorController {
         }
       }
       if (event.data && event.data.type === "link-toggled") {
-        const linkBtn = document.getElementById("linkButton");
+        const linkBtn = el.linkButton;
         if (event.data.linked) {
           linkBtn.innerHTML = LINK_SVG_CONNECTED;
           linkBtn.classList.remove("unlinked");
@@ -1218,10 +1251,10 @@ export class ConfigEditorController {
         }
       }
       if (event.data && event.data.type === "sketch-selected") {
-        document.getElementById("sketchPath").value = event.data.path || "";
+        el.sketchPath.value = event.data.path || "";
       }
       if (event.data && event.data.type === "monitor-link-toggled") {
-        const linkBtn2 = document.getElementById("linkButton2");
+        const linkBtn2 = el.linkButton2;
         if (event.data.linked) {
           linkBtn2.innerHTML = LINK_SVG_CONNECTED;
           linkBtn2.classList.remove("unlinked");
@@ -1244,15 +1277,19 @@ export class ConfigEditorController {
       debouncedAutoSave();
     });
 
-    render();
+    try {
+      render();
 
-    const savedUiState = vscode.getState();
-    if (savedUiState && savedUiState.showAdvanced) {
-      showAdvancedEl.checked = true;
-      document.body.classList.add("show-advanced");
+      const savedUiState = vscode.getState();
+      if (savedUiState && savedUiState.showAdvanced) {
+        showAdvancedEl.checked = true;
+        document.body.classList.add("show-advanced");
+      }
+
+      vscode.postMessage({ type: "webview-ready" });
+    } catch (err) {
+      reportClientError(err);
     }
-
-    vscode.postMessage({ type: "webview-ready" });
   </script>
 </body>
 </html>`;
