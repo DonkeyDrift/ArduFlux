@@ -39,6 +39,8 @@ ArduFlux 是一个 VS Code / TRAE IDE 扩展，用于嵌入式开发（Arduino/E
 | 本地启动 MCP 服务（stdio） | `npm run mcp:stdio` |
 | 本地启动 MCP 服务（SSE） | `npm run mcp:sse` |
 
+当前 `package.json` 未定义单独的 lint/format 脚本；提交前至少运行 `npm run compile` 和相关测试。
+
 运行单个测试文件：
 ```bash
 npm run compile && npx mocha dist/test/<具体文件名>.test.js
@@ -57,6 +59,7 @@ src/
 ├── terminal.ts            # Pseudoterminal 封装（编译/上传/监视器输出）
 ├── editorView.ts          # Webview 视图提供者（VS Code 侧边栏）
 ├── webviewController.ts   # Webview 消息路由与 UI 逻辑
+├── configSidebar.ts       # 侧边栏 HTML/CSS/JS 内容生成
 ├── panel.ts               # 侧边栏面板聚合
 ├── events.ts              # 全局事件总线（配置变更等）
 ├── viewIds.ts             # 视图 ID 常量
