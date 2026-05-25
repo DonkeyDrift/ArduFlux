@@ -162,6 +162,9 @@ export class Uploader {
       let retryCount = 0;
 
       for (const candidatePort of candidates) {
+        if (this.aborted) {
+          break;
+        }
         await this.deps.releaseSerialPort(candidatePort);
         if (candidatePort !== config.port.address && retryCount > 0) {
           write(`Trying alternate port: ${candidatePort}\r\n`);
@@ -179,6 +182,9 @@ export class Uploader {
           write(`Upload completed on ${candidatePort}.\r\n`);
           break;
         } catch {
+          if (this.aborted) {
+            break;
+          }
           retryCount++;
           if (retryCount < candidates.length) {
             write(`Upload failed on ${candidatePort}, retrying (${retryCount}/${candidates.length})...\r\n`);
@@ -206,6 +212,9 @@ export class Uploader {
         write("Press Ctrl+C to exit monitor\r\n");
 
         for (const candidatePort of monitorCandidates) {
+          if (this.aborted) {
+            break;
+          }
           if (candidatePort !== preferredPort && monitorRetryCount > 0) {
             write(`Trying alternate port: ${candidatePort}\r\n`);
           }
@@ -229,6 +238,9 @@ export class Uploader {
             lastSuccessfulPort = candidatePort;
             break;
           } catch {
+            if (this.aborted) {
+              break;
+            }
             monitorRetryCount++;
             if (monitorRetryCount < monitorCandidates.length) {
               write(`Monitor failed on ${candidatePort}, retrying (${monitorRetryCount}/${monitorCandidates.length})...\r\n`);
