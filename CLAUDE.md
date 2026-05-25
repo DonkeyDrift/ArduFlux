@@ -2,26 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 项目概述
+## 项目概览
 
-ArduFlux 是一个 VS Code / TRAE IDE 扩展，用于嵌入式开发（Arduino/ESP32）的全流程配置管理。它同时支持：
-- **扩展 UI**：侧边栏 Webview 可视化配置面板
-- **MCP 服务**：通过 Model Context Protocol 为 AI 客户端（Claude Code、Kimi Code、Cursor）提供 14+ 个工具
-- **上传核心**：跨平台的 Node.js 实现，替代原有 PowerShell 脚本
+ArduFlux 是一个 VS Code / TRAE IDE 扩展，用于 Arduino、ESP32、ESP8266 等嵌入式开发板的配置、编译、上传和串口监视管理。运行时配置的单一来源是工作区根目录的 `ArduFlux.json`，并保持与遗留 `upload.ps1` 配置格式兼容。
 
-全局配置文件为工作区根目录的 `ArduFlux.json`，与遗留的 `upload.ps1` 数据格式完全兼容。
+项目同时提供三条入口：
+- VS Code / TRAE 扩展：侧边栏 Webview、命令、状态栏和终端输出。
+- MCP 服务：面向 Claude Code、Kimi Code、Cursor 等客户端的 stdio / SSE 工具接口。
+- 跨平台上传核心：基于 Node.js 的编译、上传、串口监视流程，可脱离 VS Code API 运行。
 
-- **官方仓库**：[DonkeyDrift/ArduFlux](https://github.com/DonkeyDrift/ArduFlux)
-- **镜像仓库**：[donkeydrift/ArduFlux](https://gitee.com/donkeydrift/ArduFlux)（只读）
-
-### 常用快捷键
-
-| 命令 | 快捷键 |
-|------|--------|
-| 打开侧边栏配置面板 | `Ctrl+Alt+E` |
-| 校验当前配置 | `Ctrl+Alt+V` |
-| 编译 Sketch | `Ctrl+Shift+B` |
-| 上传 Sketch | `Ctrl+Shift+U` |
+运行环境要求：Node.js `>=18.0.0`，VS Code 引擎 `^1.90.0`；实际编译和上传依赖本机已安装 `arduino-cli`。
 
 ## 常用命令
 
@@ -30,73 +20,76 @@ ArduFlux 是一个 VS Code / TRAE IDE 扩展，用于嵌入式开发（Arduino/E
 | 安装依赖 | `npm install` |
 | 编译 TypeScript | `npm run compile` |
 | 监视编译 | `npm run watch` |
-| 运行全部单元测试 | `npm test` |
+| 运行全部测试 | `npm test` |
 | 测试监视模式 | `npm run test:watch` |
+| 运行单个测试文件 | `npm run compile && npx mocha "dist/test/<路径>/<文件名>.test.js"` |
 | 打包 VSIX | `npm run package` |
-| 安装扩展到本地 IDE（TRAE 优先） | `npm run install:vsix` |
+| 发布前校验 | `npm run prepublishOnly` |
+| 安装 VSIX 到本地 IDE（TRAE 优先） | `npm run install:vsix` |
 | 强制安装到 TRAE | `npm run install:vsix:trae` |
 | 强制安装到 VS Code | `npm run install:vsix:code` |
-| 本地启动 MCP 服务（stdio） | `npm run mcp:stdio` |
-| 本地启动 MCP 服务（SSE） | `npm run mcp:sse` |
+| 启动本地 MCP（stdio） | `npm run mcp:stdio` |
+| 启动本地 MCP（SSE） | `npm run mcp:sse` |
 
-当前 `package.json` 未定义单独的 lint/format 脚本；提交前至少运行 `npm run compile` 和相关测试。
+当前 `package.json` 未定义单独的 lint / format 脚本；提交或交付前至少运行 `npm run compile` 和相关测试。
 
-运行单个测试文件：
+测试源码位于 `src/test/`，编译后输出到 `dist/test/`。运行单个测试时要使用编译后的文件路径，例如：
+
 ```bash
-npm run compile && npx mocha dist/test/<具体文件名>.test.js
+npm run compile && npx mocha "dist/test/uploader/uploader.test.js"
 ```
 
-## 架构概览
+## 调试与本地运行
 
-### 核心模块分层
+- VS Code 扩展调试：在 VS Code 中打开项目后按 `F5`，启动扩展开发宿主窗口并在新窗口中验证命令、侧边栏和状态栏行为。
+- 扩展命令入口在 `package.json` 的 `contributes.commands` 和 `activationEvents` 中声明。
+- `main` 指向 `dist/extension.js`，因此调试或运行测试前需要确保 TypeScript 已编译。
+- MCP CLI 本地调试前先执行 `npm run compile`，再使用 `npm run mcp:stdio` 或 `npm run mcp:sse`。
 
-```
-src/
-├── extension.ts           # 扩展入口：注册命令、状态栏、视图、MCP 提供器
-├── configStore.ts         # 核心状态层：ArduFlux.json 读写、校验、迁移、串口枚举
-├── types.ts               # 全局类型定义 + Zod schema + 预置板型常量
-├── statusBar.ts           # 状态栏文本渲染逻辑
-├── terminal.ts            # Pseudoterminal 封装（编译/上传/监视器输出）
-├── editorView.ts          # Webview 视图提供者（VS Code 侧边栏）
-├── webviewController.ts   # Webview 消息路由与 UI 逻辑
-├── configSidebar.ts       # 侧边栏 HTML/CSS/JS 内容生成
-├── panel.ts               # 侧边栏面板聚合
-├── events.ts              # 全局事件总线（配置变更等）
-├── viewIds.ts             # 视图 ID 常量
-│
-├── uploader/              # 跨平台上传核心（Node.js 实现）
-│   ├── uploader.ts        # 主流程编排：编译 → 上传 → 串口监视器
-│   ├── portManager.ts     # 串口枚举、占用检测、自动选择
-│   ├── projectResolver.ts # Sketch 路径、输出目录解析
-│   └── libraryResolver.ts # arduino-cli 库依赖检测与自动安装
-│
-├── mcp/                   # MCP 协议层
-│   ├── transports.ts      # stdio / SSE 传输实现
-│   └── extensionIntegration.ts  # MCP 与 VS Code 扩展的集成桥
-├── mcpServer.ts           # 独立 MCP 服务入口（全局 CLI 用）
-│
-└── test/                  # Mocha + Chai 单元测试（按模块分组）
-```
+## 架构要点
 
-### 数据流向
+### 扩展主机层
 
-1. **所有状态单一来源**：`configStore.ts` 管理 `ArduFlux.json`，其他模块（状态栏、Webview、MCP、上传核心）均通过事件总线订阅变更。
-2. **Webview 与扩展主机**：通过 `webviewController.ts` 做消息中转，Webview 本身不直接读写文件。
-3. **MCP 层**：复用 `configStore.ts` + `uploader/` 的全部能力，不重复实现业务逻辑。
-4. **上传核心**：不依赖 VS Code API，可独立在 Node.js 环境运行（便于 CLI 和 MCP 调用）。
+`src/extension.ts` 是 VS Code 扩展入口，负责注册命令、状态栏、侧边栏视图和 MCP provider。扩展 UI 的用户操作不直接读写配置文件，而是经由控制器和状态层处理。
 
-### 配置结构变更的联动
+### 配置与状态层
 
-修改 `ArduFlux.json` 字段结构时，需要同步更新以下四处：
-1. `src/types.ts` — TypeScript 类型 + Zod 校验 schema
-2. `src/configStore.ts` — 读写逻辑、迁移逻辑、默认值
-3. `src/uploader/` — 上传核心对配置字段的读取
-4. `src/scripts/upload.ps1` — 遗留 PowerShell 脚本（兼容保留，非必须但尽量同步）
+`src/configStore.ts` 管理 `ArduFlux.json` 的读取、写入、校验、迁移和串口枚举，是项目状态的单一来源。配置类型、Zod schema 和预置板型定义集中在 `src/types.ts`。状态变化通过事件总线广播给状态栏、Webview、MCP 和上传核心。
 
-## 开发注意事项
+### Webview UI 层
 
-1. **VS Code 扩展调试**：按 `F5` 启动扩展开发宿主窗口即可，无需手动构建（监视模式已开启）。
-2. **测试运行要求**：测试文件编译输出到 `dist/test/`，运行测试前必须先执行 `npm run compile`。
-3. **MCP 工具新增**：需同时更新 `src/mcpServer.ts` 和 `src/mcp/extensionIntegration.ts` 两处，保证独立 CLI 模式和扩展内 MCP 行为一致。
-4. **严格模式**：`tsconfig.json` 已启用 `strict: true`，新增代码禁止使用 `any`。
-5. **Node 版本要求**：`>= 18.0.0`；VS Code 引擎版本要求 `^1.90.0`。
+侧边栏由 Webview view provider、Webview controller 和 HTML/CSS/JS 生成逻辑组成。Webview 负责展示与发送消息；扩展主机侧负责消息路由、配置更新、校验和命令执行，避免浏览器上下文直接触碰文件系统。
+
+### 上传核心
+
+`src/uploader/` 是跨平台上传核心，负责编排 Sketch 路径解析、输出目录解析、arduino-cli 编译 / 上传、库依赖检测安装、串口枚举、端口占用检测和串口监视器启动。该层不依赖 VS Code API，因此可被扩展命令和 MCP 工具复用。
+
+### MCP 层
+
+`src/mcpServer.ts` 提供独立 MCP 服务入口，`src/mcp/extensionIntegration.ts` 提供扩展内 MCP 集成，`src/mcp/transports.ts` 封装 stdio / SSE 传输。新增或修改 MCP 工具时，需要同步检查独立 CLI 模式和扩展内 MCP 模式，避免两边能力不一致。
+
+## 跨模块变更注意事项
+
+修改 `ArduFlux.json` 字段结构时通常需要同步更新：
+1. `src/types.ts`：类型定义、Zod schema、默认结构。
+2. `src/configStore.ts`：读写、校验、迁移、默认值处理。
+3. `src/uploader/`：上传核心对配置字段的读取和行为。
+4. `src/scripts/upload.ps1`：遗留 PowerShell 脚本兼容逻辑，仍保留时尽量同步。
+5. `src/test/`：配置解析、迁移、Webview、MCP 或上传流程的相关测试。
+
+新增扩展命令时通常需要检查：
+- `package.json` 的 `contributes.commands`、`activationEvents`、快捷键或菜单声明。
+- `src/extension.ts` 的命令注册。
+- Webview 或状态栏是否需要展示新状态。
+- 是否需要 MCP 暴露同等能力。
+
+新增 MCP 工具时通常需要检查：
+- `src/mcpServer.ts` 的独立服务实现。
+- `src/mcp/extensionIntegration.ts` 的扩展内实现。
+- 对应的 `src/test/mcp/` 测试。
+
+## 项目约束
+
+- TypeScript 使用 `strict: true`，新增代码不要使用 `any`。
+- `tsconfig.json` 的 `rootDir` 是 `src`，输出目录是 `dist`，测试也从 `src/test` 编译到 `dist/test`。
+- 该仓库当前没有 `.cursor/rules/`、`.cursorrules` 或 `.github/copilot-instructions.md`。
