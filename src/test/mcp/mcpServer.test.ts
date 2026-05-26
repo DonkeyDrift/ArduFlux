@@ -14,6 +14,31 @@ import {
   CallToolResultSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
+function createAutoCloseSpawn(exitCodes: number[] = [0]) {
+  const calls: Array<{ command: string; args: string[] }> = [];
+  let index = 0;
+  const spawn = sinon.stub().callsFake((command: string, args: string[]) => {
+    calls.push({ command, args });
+    const handlers: Record<string, Array<(...args: unknown[]) => void>> = {};
+    const proc = {
+      stdout: { on: () => {} },
+      stderr: { on: () => {} },
+      on: (event: string, handler: (...args: unknown[]) => void) => {
+        handlers[event] = [...(handlers[event] ?? []), handler];
+      },
+      kill: sinon.stub(),
+      killed: false,
+    };
+    setTimeout(() => {
+      for (const handler of handlers.close ?? []) {
+        handler(exitCodes[index++] ?? 0);
+      }
+    }, 0);
+    return proc as unknown as cp.ChildProcess;
+  });
+  return { spawn, calls };
+}
+
 async function initClient(server: ReturnType<typeof createMcpServer>) {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
@@ -584,6 +609,55 @@ describe("MCP Server", () => {
       expect(saved.current.board.fqbn).to.equal("arduino:avr:uno");
     });
 
+    it("arduflux_set_config 应支持 WSL 字段", async () => {
+      const config = createDefaultConfig();
+      config.current.port.address = "COM3";
+      readFileStub.resolves(JSON.stringify(config));
+      const written: string[] = [];
+      writeFileStub.callsFake(async (_path: string, data: string) => {
+        written.push(data);
+        return Promise.resolve();
+      });
+
+      const originalGetSerialPorts = ConfigStore.prototype.getSerialPorts;
+      ConfigStore.prototype.getSerialPorts = async function stubGetSerialPorts() {
+        return [{ address: "COM3", label: "COM3", protocol: "serial", type: "USB" }];
+      };
+
+      try {
+        const server = createMcpServer(workspaceRoot);
+        const client = await initClient(server);
+
+        const result = await client.request(
+          {
+            method: "tools/call",
+            params: {
+              name: "arduflux_set_config",
+              arguments: {
+                wsl_enabled: true,
+                wsl_distro: "Ubuntu",
+                wsl_workspace_root: "/home/me/arduino-build/project",
+                wsl_arduino_cli_path: "/home/me/bin/arduino-cli",
+                wsl_sync_excludes: [".git", "node_modules"]
+              },
+            },
+          },
+          CallToolResultSchema
+        );
+
+        const textContent = result.content[0];
+        expect(textContent.type).to.equal("text");
+        const parsed = JSON.parse((textContent as { text: string }).text);
+        expect(parsed.saved).to.equal(true);
+        const saved = JSON.parse(written[0]);
+        expect(saved.current.wsl.enabled).to.equal(true);
+        expect(saved.current.wsl.distro).to.equal("Ubuntu");
+        expect(saved.current.wsl.syncProject.excludes).to.deep.equal([".git", "node_modules"]);
+      } finally {
+        ConfigStore.prototype.getSerialPorts = originalGetSerialPorts;
+      }
+    });
+
     it("arduflux_compile 应启动后台任务并返回 task_id", async () => {
       readFileStub.rejects(
         Object.assign(new Error("ENOENT"), { code: "ENOENT" })
@@ -640,6 +714,89 @@ describe("MCP Server", () => {
       const parsed = JSON.parse((textContent as { text: string }).text);
       expect(parsed.status).to.equal("running");
       expect(parsed.task_id).to.be.a("string");
+    });
+
+    it("arduflux_compile 在 WSL 启用时应走 WSL backend", async () => {
+      const config = createDefaultConfig();
+      config.current.wsl.enabled = true;
+      config.current.wsl.distro = "Ubuntu";
+      config.current.wsl.workspaceRoot = "/home/me/arduino-build/project";
+      config.current.build.outputDir = "build";
+      readFileStub.resolves(JSON.stringify(config));
+      const fake = createAutoCloseSpawn();
+
+      const server = createMcpServer("C:\\project", { spawn: fake.spawn });
+      const client = await initClient(server);
+
+      const result = await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: "arduflux_compile",
+            arguments: { sketch_path: "C:\\project\\ArduFlux.ino" },
+          },
+        },
+        CallToolResultSchema
+      );
+
+      const textContent = result.content[0];
+      expect(textContent.type).to.equal("text");
+      const parsed = JSON.parse((textContent as { text: string }).text);
+      expect(parsed.backend).to.equal("wsl");
+      expect(parsed.wsl_distro).to.equal("Ubuntu");
+      expect(fake.calls[0].command).to.equal("wsl.exe");
+      expect(fake.calls[0].args).to.deep.equal(["-d", "Ubuntu", "--", "printenv", "HOME"]);
+    });
+
+    it("arduflux_upload 在 compileBeforeUpload=true 时应先 WSL 编译再本地上传", async () => {
+      const config = createDefaultConfig();
+      config.current.wsl.enabled = true;
+      config.current.wsl.workspaceRoot = "/home/me/arduino-build/project";
+      config.current.build.outputDir = "build";
+      config.current.build.compileBeforeUpload = true;
+      config.current.port.address = "COM3";
+      readFileStub.resolves(JSON.stringify(config));
+      const fake = createAutoCloseSpawn();
+
+      const server = createMcpServer("C:\\project", { spawn: fake.spawn });
+      const client = await initClient(server);
+
+      const result = await client.request(
+        {
+          method: "tools/call",
+          params: {
+            name: "arduflux_upload",
+            arguments: { sketch_path: "C:\\project\\ArduFlux.ino" },
+          },
+        },
+        CallToolResultSchema
+      );
+
+      const textContent = result.content[0];
+      expect(textContent.type).to.equal("text");
+      const parsed = JSON.parse((textContent as { text: string }).text);
+      expect(parsed.status).to.equal("running");
+      let status: { status: string } = { status: "running" };
+      for (let attempt = 0; attempt < 20 && status.status === "running"; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        const statusResult = await client.request(
+          {
+            method: "tools/call",
+            params: {
+              name: "arduflux_get_task_status",
+              arguments: { task_id: parsed.task_id },
+            },
+          },
+          CallToolResultSchema
+        );
+        status = JSON.parse((statusResult.content[0] as { text: string }).text) as { status: string };
+      }
+      expect(status.status).to.equal("completed");
+      expect(fake.calls.map((call) => call.command)).to.deep.equal(["wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "arduino-cli"]);
+      const uploadArgs = fake.calls[7].args;
+      expect(uploadArgs).to.include("upload");
+      expect(uploadArgs).to.include("--input-dir");
+      expect(uploadArgs).to.include(path.resolve("C:\\project", "build"));
     });
 
     it("arduflux_monitor 在 reset_on_connect=true 时应直接启动 monitor 且不禁用 DTR/RTS", async () => {

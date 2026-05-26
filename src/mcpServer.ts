@@ -14,6 +14,7 @@ import {
   discoverSketches,
 } from "./configStore";
 import { ArduFluxConfig, DEFAULT_BOARD_CATALOG } from "./types";
+import { compileSketchWithBackend, CompileResult } from "./uploader/compileBackend";
 import { startSseServer, startStdioServer } from "./mcp/transports";
 
 export interface McpServerDeps {
@@ -27,6 +28,7 @@ interface TaskRecord {
   exitCode: number | null;
   logs: string[];
   startTime: number;
+  metadata?: Record<string, unknown>;
 }
 
 export function createMcpServer(
@@ -94,6 +96,70 @@ export function createMcpServer(
       task.exitCode = -1;
       pushLog(`[error] ${err instanceof Error ? err.message : String(err)}`);
     }
+
+    return id;
+  }
+
+  function runCommand(
+    command: string,
+    args: string[],
+    cwd: string,
+    pushLog: (text: string) => void
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(command, args, { cwd, shell: false });
+      proc.stdout?.on("data", (data: Buffer) => pushLog(data.toString()));
+      proc.stderr?.on("data", (data: Buffer) => pushLog(data.toString()));
+      proc.on("close", (code, signal) => {
+        if (code === 0) {
+          resolve();
+          return;
+        }
+        reject(new Error(signal ? `process terminated by signal ${signal}` : `${command} exited with code ${code ?? "unknown"}`));
+      });
+      proc.on("error", reject);
+    });
+  }
+
+  function startAsyncTask(
+    type: "compile" | "upload" | "monitor",
+    runner: (pushLog: (text: string) => void) => Promise<Record<string, unknown> | void>,
+    sessionId?: string
+  ): string {
+    const id = randomUUID();
+    const task: TaskRecord = {
+      id,
+      type,
+      status: "running",
+      exitCode: null,
+      logs: [],
+      startTime: Date.now(),
+    };
+    tasks.set(id, task);
+
+    function pushLog(text: string): void {
+      const line = text.trimEnd();
+      task.logs.push(line);
+      if (sessionId) {
+        server.sendLoggingMessage({ level: "info", data: line }, sessionId).catch(() => {
+          // ignore: client may not support logging
+        });
+      }
+    }
+
+    runner(pushLog)
+      .then((metadata) => {
+        task.status = "completed";
+        task.exitCode = 0;
+        if (metadata) {
+          task.metadata = metadata;
+        }
+      })
+      .catch((error) => {
+        task.status = "failed";
+        task.exitCode = -1;
+        pushLog(`[error] ${error instanceof Error ? error.message : String(error)}`);
+      });
 
     return id;
   }
@@ -218,6 +284,11 @@ export function createMcpServer(
     monitor_parity: z.string().optional(),
     monitor_newline: z.string().optional(),
     monitor_reset_on_connect: z.boolean().optional(),
+    wsl_enabled: z.boolean().optional(),
+    wsl_distro: z.string().optional(),
+    wsl_workspace_root: z.string().optional(),
+    wsl_arduino_cli_path: z.string().optional(),
+    wsl_sync_excludes: z.array(z.string()).optional(),
   });
 
   server.registerTool(
@@ -290,6 +361,21 @@ export function createMcpServer(
       }
       if (args.monitor_reset_on_connect !== undefined) {
         next.current.monitor.resetOnConnect = args.monitor_reset_on_connect;
+      }
+      if (args.wsl_enabled !== undefined) {
+        next.current.wsl.enabled = args.wsl_enabled;
+      }
+      if (args.wsl_distro !== undefined) {
+        next.current.wsl.distro = args.wsl_distro;
+      }
+      if (args.wsl_workspace_root !== undefined) {
+        next.current.wsl.workspaceRoot = args.wsl_workspace_root;
+      }
+      if (args.wsl_arduino_cli_path !== undefined) {
+        next.current.wsl.arduinoCliPath = args.wsl_arduino_cli_path;
+      }
+      if (args.wsl_sync_excludes !== undefined) {
+        next.current.wsl.syncProject.excludes = args.wsl_sync_excludes;
       }
 
       store.setData(next);
@@ -450,6 +536,16 @@ export function createMcpServer(
     }
   );
 
+  function compileMetadata(result: CompileResult, elapsedMs: number): Record<string, unknown> {
+    return {
+      backend: result.backend,
+      wsl_distro: result.wslDistro,
+      wsl_workspace: result.wslWorkspace,
+      artifact_output_dir: result.artifactOutputDir,
+      elapsed_ms: elapsedMs,
+    };
+  }
+
   async function resolveSketchPath(
     explicitPath: string | undefined,
     configPath: string
@@ -487,19 +583,43 @@ export function createMcpServer(
           args.sketch_path,
           config.current.build.sketchPath
         );
-        const cliArgs = buildCompileArgs({
-          fqbn: config.current.board.fqbn,
-          sketchPath,
-          outputDir: config.current.build.outputDir,
-          extraArgs: config.current.board.compileArgs,
-        }, workspaceRoot);
-
-        const taskId = startTask("compile", "arduino-cli", cliArgs, workspaceRoot, extra.sessionId);
+        if (!config.current.wsl.enabled) {
+          buildCompileArgs({
+            fqbn: config.current.board.fqbn,
+            sketchPath,
+            outputDir: config.current.build.outputDir,
+            extraArgs: config.current.board.compileArgs,
+          }, workspaceRoot);
+        } else {
+          buildCompileArgs({
+            fqbn: config.current.board.fqbn,
+            sketchPath,
+            outputDir: config.current.build.outputDir,
+            extraArgs: config.current.board.compileArgs,
+          });
+        }
+        const taskId = startAsyncTask("compile", async (pushLog) => {
+          const startedAt = Date.now();
+          const result = await compileSketchWithBackend({
+            workspaceRoot,
+            sketchPath,
+            config: config.current,
+            deps: { spawn },
+            write: pushLog
+          });
+          return compileMetadata(result, Date.now() - startedAt);
+        }, extra.sessionId);
         return {
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify({ task_id: taskId, status: "running", sketch_path: sketchPath }),
+              text: JSON.stringify({
+                task_id: taskId,
+                status: "running",
+                sketch_path: sketchPath,
+                backend: config.current.wsl.enabled ? "wsl" : "local",
+                wsl_distro: config.current.wsl.enabled ? config.current.wsl.distro : undefined,
+              }),
             },
           ],
         };
@@ -539,22 +659,32 @@ export function createMcpServer(
           config.current.build.sketchPath
         );
 
-        if (config.current.build.compileBeforeUpload) {
-          const compileArgs = buildCompileArgs({
+        const taskId = startAsyncTask("upload", async (pushLog) => {
+          const startedAt = Date.now();
+          let compileResult: CompileResult | undefined;
+          if (config.current.build.compileBeforeUpload) {
+            compileResult = await compileSketchWithBackend({
+              workspaceRoot,
+              sketchPath,
+              config: config.current,
+              deps: { spawn },
+              write: pushLog
+            });
+          }
+
+          const uploadArgs = buildUploadArgs({
+            port,
             fqbn: config.current.board.fqbn,
             sketchPath,
-            outputDir: config.current.build.outputDir,
-            extraArgs: config.current.board.compileArgs,
+            inputDir: compileResult?.artifactOutputDir,
           }, workspaceRoot);
-          startTask("compile", "arduino-cli", compileArgs, workspaceRoot, extra.sessionId);
-        }
+          await runCommand("arduino-cli", uploadArgs, workspaceRoot, pushLog);
 
-        const uploadArgs = buildUploadArgs({
-          port,
-          fqbn: config.current.board.fqbn,
-          sketchPath,
-        }, workspaceRoot);
-        const taskId = startTask("upload", "arduino-cli", uploadArgs, workspaceRoot, extra.sessionId);
+          return {
+            ...(compileResult ? compileMetadata(compileResult, Date.now() - startedAt) : {}),
+            elapsed_ms: Date.now() - startedAt,
+          };
+        }, extra.sessionId);
 
         return {
           content: [
@@ -614,6 +744,7 @@ export function createMcpServer(
               status: task.status,
               exit_code: task.exitCode,
               logs: task.logs,
+              metadata: task.metadata,
             }),
           },
         ],

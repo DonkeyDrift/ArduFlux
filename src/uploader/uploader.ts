@@ -4,7 +4,6 @@ import * as path from "path";
 import {
   execFileText,
   listSerialPorts,
-  buildCompileArgs,
   buildUploadArgs,
   buildMonitorArgs,
   isUsbPort,
@@ -12,6 +11,7 @@ import {
   ValidationError,
 } from "../configStore";
 import { releaseSerialPort } from "./portManager";
+import { compileSketchWithBackend } from "./compileBackend";
 import {
   parseRequiredLibraries,
   getInstalledLibraries,
@@ -124,22 +124,24 @@ export class Uploader {
       sketchPath = path.resolve(workspaceRoot, sketchPath);
     }
 
+    let artifactOutputDir: string | undefined;
+
     if (doCompile && sketchPath) {
-      write(`\n=== Installing required libraries ===\r\n`);
-      await this.installRequiredLibraries(sketchPath, config, write);
+      if (!config.wsl.enabled) {
+        write(`\n=== Installing required libraries ===\r\n`);
+        await this.installRequiredLibraries(sketchPath, config, write);
+      }
 
       write(`\n=== Compiling sketch ===\r\n`);
       write("Compiling, this may take a minute...\r\n");
-      const compileArgs = buildCompileArgs(
-        {
-          fqbn: config.board.fqbn,
-          sketchPath,
-          outputDir: config.build.outputDir,
-          extraArgs: config.board.compileArgs,
-        },
-        workspaceRoot
-      );
-      await this.spawnWithOutput("arduino-cli", compileArgs, workspaceRoot, write);
+      const compileResult = await compileSketchWithBackend({
+        workspaceRoot,
+        sketchPath,
+        config,
+        deps: { spawn: this.deps.spawn },
+        write
+      });
+      artifactOutputDir = compileResult.artifactOutputDir;
       write(`Compilation completed.\r\n`);
     }
 
@@ -171,7 +173,7 @@ export class Uploader {
         }
 
         const uploadArgs = buildUploadArgs(
-          { port: candidatePort, fqbn: config.board.fqbn, sketchPath: sketchPath! },
+          { port: candidatePort, fqbn: config.board.fqbn, sketchPath: sketchPath!, inputDir: artifactOutputDir },
           workspaceRoot
         );
 

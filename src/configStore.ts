@@ -154,6 +154,7 @@ export function buildUploadArgs(opts: {
   port: string;
   fqbn: string;
   sketchPath: string;
+  inputDir?: string;
 }, baseDir?: string): string[] {
   const port = normalizeSerialAddress(opts.port);
   if (!port) {
@@ -166,7 +167,11 @@ export function buildUploadArgs(opts: {
   if (baseDir) {
     validateSketchPath(opts.sketchPath, baseDir);
   }
-  const args = ["upload", "-p", port, "--fqbn", opts.fqbn.trim(), opts.sketchPath.trim()];
+  const args = ["upload", "-p", port, "--fqbn", opts.fqbn.trim()];
+  if (opts.inputDir?.trim()) {
+    args.push("--input-dir", opts.inputDir.trim());
+  }
+  args.push(opts.sketchPath.trim());
   validateCliArgs(args);
   return args;
 }
