@@ -58,6 +58,7 @@ describe("ConfigStore", () => {
     it("应加载并补齐 WSL 配置", async () => {
       const config = createDefaultConfig();
       config.current.wsl = {
+        ...config.current.wsl,
         enabled: true,
         distro: "Ubuntu",
         workspaceRoot: "/home/me/arduino-build/demo",

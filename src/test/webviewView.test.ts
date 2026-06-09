@@ -136,6 +136,18 @@ describe("webview view registration", () => {
       if (request === "vscode") {
         return fakeVscode;
       }
+      if (request === "./core/bspManager") {
+        return {
+          installUnihikerBsp: async (options: { onProgress?: (progress: { phase: string; percent: number; bar: string; message: string }) => void }) => {
+            options.onProgress?.({
+              phase: "completed",
+              percent: 100,
+              bar: "[==========]100%",
+              message: "UNIHIKER BSP 安装完成"
+            });
+          }
+        };
+      }
       return originalLoad.call(this, request, parent, isMain);
     };
 
@@ -170,14 +182,14 @@ describe("webview view registration", () => {
       expect(capturedProvider?.viewId).to.equal(ARDUFLUX_EDITOR_VIEW_ID);
       expect(registeredCommands).to.include("arduflux.refreshSidebar");
 
-      const postedMessages: Array<{ type?: string; payload?: unknown; statusMessage?: string }> = [];
+      const postedMessages: Array<{ type?: string; payload?: unknown; statusMessage?: string; active?: boolean; progress?: { bar?: string }; error?: string }> = [];
       let onDidReceiveMessageHandler: ((message: { type?: string; payload?: unknown }) => Promise<void> | void) | undefined;
 
       const fakeWebview = {
         html: "",
         options: {} as { enableScripts?: boolean },
         cspSource: "vscode-webview://test",
-        postMessage: async (message: { type?: string; payload?: unknown; statusMessage?: string }) => {
+        postMessage: async (message: { type?: string; payload?: unknown; statusMessage?: string; active?: boolean; progress?: { bar?: string }; error?: string }) => {
           postedMessages.push(message);
           return true;
         },
@@ -199,6 +211,9 @@ describe("webview view registration", () => {
       expect(fakeWebview.options.enableScripts).to.equal(true);
       expect(fakeWebview.html).to.contain("ArduFlux");
       expect(fakeWebview.html).to.contain("WSL 编译");
+      expect(fakeWebview.html).to.contain("安装 unihiker-K10 BSP");
+      expect(fakeWebview.html).to.contain("unihiker-K10");
+      expect(fakeWebview.html).to.not.contain("STM32 (Custom FQBN)");
       expect(postedMessages.some((message) => message.type === "state")).to.equal(true);
 
       const firstStateMessage = postedMessages.find((message) => message.type === "state");
@@ -245,6 +260,11 @@ describe("webview view registration", () => {
       expect(savedConfig.current.wsl.enabled).to.equal(true);
       expect(savedConfig.current.wsl.distro).to.equal("Ubuntu");
       expect(savedConfig.current.wsl.syncProject.excludes).to.deep.equal([".git", "node_modules"]);
+
+      await onDidReceiveMessageHandler?.({ type: "install-unihiker-bsp" });
+      const bspMessages = postedMessages.filter((message) => message.type === "bsp-install-progress");
+      expect(bspMessages.some((message) => message.active === true && message.progress?.bar === "[          ]0%")).to.equal(true);
+      expect(bspMessages.some((message) => message.active === false && message.progress?.bar === "[==========]100%")).to.equal(true);
 
       disposeAll(context.subscriptions);
     } finally {

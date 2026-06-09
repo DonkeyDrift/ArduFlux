@@ -75,6 +75,21 @@ export function resolveWslWorkspaceRoot(configuredRoot: string, wslHome: string,
 }
 
 export function buildWslCommandArgs(distro: string, commandArgs: string[]): string[] {
+  if (commandArgs.length === 0) {
+    throw new Error("命令参数不能为空");
+  }
   const trimmedDistro = distro.trim();
   return trimmedDistro ? ["-d", trimmedDistro, "--", ...commandArgs] : ["--", ...commandArgs];
+}
+
+export function toWindowsUncPath(wslPath: string, distro: string): string {
+  const trimmedDistro = distro.trim();
+  const normalizedPath = wslPath.trim().replace(/\\/g, "/");
+  if (!trimmedDistro) {
+    throw new Error("distro 不能为空");
+  }
+  if (!normalizedPath.startsWith("/")) {
+    throw new Error("WSL 路径必须是绝对路径");
+  }
+  return `\\\\wsl.localhost\\${trimmedDistro}${normalizedPath.replace(/\//g, "\\")}`;
 }

@@ -71,6 +71,14 @@ describe("types.ts", () => {
         arduinoCliPath: "arduino-cli",
         syncProject: {
           excludes: [".git", "node_modules", ".vscode", ".trae"]
+        },
+        syncLibraries: {
+          enabled: false,
+          windowsPath: "",
+          wslPath: "~/Arduino/libraries",
+          mode: "copy-missing",
+          backup: false,
+          excludes: ["^\\.", "^tmp$"]
         }
       });
     });
@@ -84,16 +92,28 @@ describe("types.ts", () => {
   });
 
   describe("DEFAULT_BOARD_CATALOG", () => {
-    it("应至少包含 ESP32-S3、ESP32 Dev、Arduino Uno", () => {
+    it("应至少包含 ESP32-S3、ESP32 Dev、Arduino Uno、unihiker-K10", () => {
       const names = DEFAULT_BOARD_CATALOG.map((b) => b.name);
       expect(names).to.include("ESP32-S3 (Generic)");
       expect(names).to.include("ESP32 Dev Module");
       expect(names).to.include("Arduino Uno");
+      expect(names).to.include("unihiker-K10");
+    });
+
+    it("应移除 STM32 占位选项", () => {
+      const names = DEFAULT_BOARD_CATALOG.map((b) => b.name);
+      expect(names.some((name) => name.includes("STM32"))).to.equal(false);
+    });
+
+    it("unihiker-K10 应使用 UNIHIKER BSP FQBN", () => {
+      const item = DEFAULT_BOARD_CATALOG.find((board) => board.name === "unihiker-K10");
+      expect(item?.fqbn).to.equal("UNIHIKER:esp32:unihiker_k10");
     });
 
     it("每个预置板型都应具备 name、fqbn、compileArgs、pinDefines", () => {
       for (const item of DEFAULT_BOARD_CATALOG) {
         expect(item.name).to.be.a("string").and.not.empty;
+        expect(item.fqbn).to.be.a("string").and.not.empty;
         expect(item.compileArgs).to.be.an("array");
         expect(item.pinDefines).to.be.an("object");
       }

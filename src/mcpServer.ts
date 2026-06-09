@@ -36,6 +36,21 @@ export function createMcpServer(
   deps: McpServerDeps = {}
 ): McpServer {
   const spawn = deps.spawn ?? cpSpawn;
+  const executor = async (command: string, args: string[], _timeoutMs?: number): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
+    return new Promise((resolve) => {
+      let stdout = "";
+      let stderr = "";
+      const proc = spawn(command, args, { shell: false });
+      proc.stdout?.on("data", (data: Buffer) => {
+        stdout += data.toString();
+      });
+      proc.stderr?.on("data", (data: Buffer) => {
+        stderr += data.toString();
+      });
+      proc.on("close", (code) => resolve({ stdout, stderr, exitCode: code ?? -1 }));
+      proc.on("error", (error) => resolve({ stdout, stderr: error.message, exitCode: -1 }));
+    });
+  };
   const tasks = new Map<string, TaskRecord>();
   const startTime = Date.now();
 
@@ -604,7 +619,7 @@ export function createMcpServer(
             workspaceRoot,
             sketchPath,
             config: config.current,
-            deps: { spawn },
+            deps: { spawn, executor },
             write: pushLog
           });
           return compileMetadata(result, Date.now() - startedAt);
@@ -654,6 +669,9 @@ export function createMcpServer(
         const store = new ConfigStore(workspaceRoot);
         const config = await store.load();
         const port = args.port ?? config.current.port.address;
+        if (!port) {
+          throw new ValidationError("上传端口不能为空", "请先选择串口或通过 port 参数指定端口");
+        }
         const sketchPath = await resolveSketchPath(
           args.sketch_path,
           config.current.build.sketchPath
@@ -667,7 +685,7 @@ export function createMcpServer(
               workspaceRoot,
               sketchPath,
               config: config.current,
-              deps: { spawn },
+              deps: { spawn, executor },
               write: pushLog
             });
           }

@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { ConfigStore, ValidationError, buildCompileArgs, buildMonitorArgs, buildUploadArgs, recommendSerialPort } from "./configStore";
+import { installUnihikerBsp, type BspInstallProgress } from "./core/bspManager";
 import { onDidChangeArduFluxConfig } from "./events";
 import { runInTerminal, runUploaderFlow } from "./terminal";
 import { BoardCatalogItem, DEFAULT_BOARD_CATALOG, ArduFluxConfig, ArduFluxCurrentConfig, SerialPortInfo } from "./types";
@@ -107,6 +108,9 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
         excludes: form.wslSyncExcludes !== undefined
           ? form.wslSyncExcludes.split(/[\n,]/).map((item) => item.trim()).filter(Boolean)
           : [...baseConfig.current.wsl.syncProject.excludes]
+      },
+      syncLibraries: {
+        ...baseConfig.current.wsl.syncLibraries
       }
     }
   };
@@ -217,6 +221,9 @@ export class ConfigEditorController {
           return;
         case "upload-sketch":
           await this.uploadSketch();
+          return;
+        case "install-unihiker-bsp":
+          await this.installUnihikerBsp();
           return;
         case "refresh-ports":
           this.store.clearSerialPortsCache();
@@ -497,6 +504,49 @@ export class ConfigEditorController {
     }
   }
 
+  private async installUnihikerBsp(): Promise<void> {
+    await ConfigStore.waitForSave();
+    const config = this.store.getData().current;
+    const backend = config.wsl.enabled ? "wsl" : "local";
+    await this.postBspProgress({
+      phase: "starting",
+      percent: 0,
+      bar: "[          ]0%",
+      message: backend === "wsl" ? "准备在 WSL 中安装 UNIHIKER BSP" : "准备在本地安装 UNIHIKER BSP"
+    }, true);
+
+    try {
+      await installUnihikerBsp({
+        backend,
+        distro: config.wsl.distro,
+        arduinoCliPath: backend === "wsl" ? config.wsl.arduinoCliPath : "arduino-cli",
+        cwd: this.store.baseDir,
+        onProgress: async (progress) => {
+          await this.postBspProgress(progress, progress.phase !== "completed");
+        }
+      });
+      await this.syncView("UNIHIKER BSP 安装完成");
+    } catch (error) {
+      const failedProgress: BspInstallProgress = {
+        phase: "failed",
+        percent: 0,
+        bar: "[          ]0%",
+        message: "UNIHIKER BSP 安装失败"
+      };
+      await this.postBspProgress(failedProgress, false, formatError(error));
+      throw error;
+    }
+  }
+
+  private async postBspProgress(progress: BspInstallProgress, active: boolean, error?: string): Promise<void> {
+    await this.postMessage({
+      type: "bsp-install-progress",
+      active,
+      progress,
+      error
+    });
+  }
+
   private getHtml(webview: vscode.Webview, state: PanelStatePayload): string {
     const nonce = createNonce();
     const initialState = JSON.stringify(state)
@@ -667,6 +717,9 @@ export class ConfigEditorController {
   <div class="row">
     <select id="boardPreset"></select>
   </div>
+  <div class="row">
+    <button id="installBspButton" class="secondary">安装 unihiker-K10 BSP</button>
+  </div>
   <div class="grid advanced-item">
     <label for="boardName">显示名称</label>
     <input id="boardName" />
@@ -788,7 +841,7 @@ export class ConfigEditorController {
       "monitorBaudRate", "monitorDataBits", "monitorStopBits", "monitorParity",
       "monitorNewline", "wslEnabled", "wslDistro", "wslWorkspaceRoot",
       "wslArduinoCliPath", "wslSyncExcludes", "profileSelect", "profileName", "status", "recommendedPort",
-      "sketchPath", "selectSketchButton"
+      "sketchPath", "selectSketchButton", "installBspButton"
     ];
     const el = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
 
@@ -1046,6 +1099,9 @@ export class ConfigEditorController {
     document.getElementById("uploadButton").addEventListener("click", () => {
       vscode.postMessage({ type: "upload-sketch" });
     });
+    document.getElementById("installBspButton").addEventListener("click", () => {
+      vscode.postMessage({ type: "install-unihiker-bsp" });
+    });
     document.getElementById("refreshPortsButton").addEventListener("click", () => {
       vscode.postMessage({ type: "refresh-ports" });
     });
@@ -1125,6 +1181,18 @@ export class ConfigEditorController {
         } else {
           stopSpinner();
           setStatus(event.data.error || "校验通过");
+        }
+      }
+      if (event.data?.type === "bsp-install-progress") {
+        stopSpinner();
+        if (event.data.active) {
+          el.installBspButton.disabled = true;
+          const progress = event.data.progress || {};
+          setStatus("安装 BSP " + (progress.bar || "") + " " + (progress.message || "正在安装 UNIHIKER BSP"));
+        } else {
+          el.installBspButton.disabled = false;
+          const progress = event.data.progress || {};
+          setStatus(event.data.error || progress.message || "UNIHIKER BSP 安装完成");
         }
       }
       if (event.data?.type === "link-toggled") {

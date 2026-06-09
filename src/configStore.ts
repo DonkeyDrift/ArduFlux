@@ -381,6 +381,10 @@ function migrateConfig(data: unknown): ArduFluxConfig {
         syncProject: {
           ...defaults.current.wsl.syncProject,
           ...(wsl.syncProject ?? {})
+        },
+        syncLibraries: {
+          ...defaults.current.wsl.syncLibraries,
+          ...(wsl.syncLibraries ?? {})
         }
       }
     },

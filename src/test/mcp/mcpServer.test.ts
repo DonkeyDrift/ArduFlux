@@ -792,8 +792,8 @@ describe("MCP Server", () => {
         status = JSON.parse((statusResult.content[0] as { text: string }).text) as { status: string };
       }
       expect(status.status).to.equal("completed");
-      expect(fake.calls.map((call) => call.command)).to.deep.equal(["wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "arduino-cli"]);
-      const uploadArgs = fake.calls[7].args;
+      expect(fake.calls.map((call) => call.command)).to.deep.equal(["wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "wsl.exe", "arduino-cli"]);
+      const uploadArgs = fake.calls[6].args;
       expect(uploadArgs).to.include("upload");
       expect(uploadArgs).to.include("--input-dir");
       expect(uploadArgs).to.include(path.resolve("C:\\project", "build"));

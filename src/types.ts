@@ -43,12 +43,22 @@ export interface ArduFluxMonitorState {
   resetOnConnect?: boolean;
 }
 
+export type ArduFluxWslLibrarySyncMode = "copy-missing" | "overwrite" | "mirror";
+
 export interface ArduFluxWslState {
   enabled: boolean;
   distro: string;
   workspaceRoot: string;
   arduinoCliPath: string;
   syncProject: {
+    excludes: string[];
+  };
+  syncLibraries: {
+    enabled: boolean;
+    windowsPath: string;
+    wslPath: string;
+    mode: ArduFluxWslLibrarySyncMode;
+    backup: boolean;
     excludes: string[];
   };
 }
@@ -122,8 +132,8 @@ export const DEFAULT_BOARD_CATALOG: BoardCatalogItem[] = [
     pinDefines: {}
   },
   {
-    name: "STM32 (Custom FQBN)",
-    fqbn: "",
+    name: "unihiker-K10",
+    fqbn: "UNIHIKER:esp32:unihiker_k10",
     compileArgs: [],
     pinDefines: {}
   }
@@ -167,6 +177,14 @@ export function createDefaultConfig(): ArduFluxConfig {
         arduinoCliPath: "arduino-cli",
         syncProject: {
           excludes: [".git", "node_modules", ".vscode", ".trae"]
+        },
+        syncLibraries: {
+          enabled: false,
+          windowsPath: "",
+          wslPath: "~/Arduino/libraries",
+          mode: "copy-missing",
+          backup: false,
+          excludes: ["^\\.", "^tmp$"]
         }
       }
     },

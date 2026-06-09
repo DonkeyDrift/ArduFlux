@@ -133,15 +133,24 @@ export class Uploader {
       }
 
       write(`\n=== Compiling sketch ===\r\n`);
+      const plannedBackend = config.wsl.enabled ? "wsl" : "local";
+      write(`Compile backend: ${plannedBackend}\r\n`);
+      if (config.wsl.enabled) {
+        write(`WSL distro: ${config.wsl.distro || "(default)"}\r\n`);
+        write(`WSL workspace: ${config.wsl.workspaceRoot || "(auto)"}\r\n`);
+      }
       write("Compiling, this may take a minute...\r\n");
       const compileResult = await compileSketchWithBackend({
         workspaceRoot,
         sketchPath,
         config,
-        deps: { spawn: this.deps.spawn },
+        deps: { spawn: this.deps.spawn, executor: this.deps.execFileText },
         write
       });
       artifactOutputDir = compileResult.artifactOutputDir;
+      if (artifactOutputDir) {
+        write(`Artifact output: ${artifactOutputDir}\r\n`);
+      }
       write(`Compilation completed.\r\n`);
     }
 
