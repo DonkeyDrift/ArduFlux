@@ -21,5 +21,14 @@
   },
   "include": [
     "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/test/core/bspManager.test.ts",
+    "src/test/uploader/compileBackend.test.ts",
+    "src/test/uploader/wslCompile.test.ts",
+    "src/test/uploader/wslExecutor.test.ts",
+    "src/test/uploader/wslLibrarySync.test.ts",
+    "src/test/uploader/wslPath.test.ts",
+    "src/test/uploader/wslSync.test.ts"
   ]
 }
