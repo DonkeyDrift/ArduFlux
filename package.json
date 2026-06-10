@@ -139,11 +139,12 @@
     ]
   },
   "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "compile": "tsc -p ./",
     "watch": "tsc -w -p ./",
-    "vscode:prepublish": "npm run compile",
-    "prepublishOnly": "npm run compile && npm test",
-    "package": "vsce package --allow-missing-repository",
+    "vscode:prepublish": "npm run clean && npm run compile",
+    "prepublishOnly": "npm test",
+    "package": "npm run clean && npm test && vsce package --allow-missing-repository",
     "test": "npm run compile && mocha \"dist/test/**/*.test.js\"",
     "test:watch": "tsc -w -p ./ & mocha --watch \"dist/test/**/*.test.js\"",
     "install:vsix": "powershell -ExecutionPolicy Bypass -File .\\install-vsix.ps1",
@@ -160,13 +161,14 @@
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.6.2",
     "chai": "^6.2.2",
-    "mocha": "^11.7.5",
+    "mocha": "^11.3.0",
     "sinon": "^21.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "headroom-ai": "^0.22.4",
     "zod": "^4.4.3"
   }
 }

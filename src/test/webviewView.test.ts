@@ -56,6 +56,22 @@ describe("webview view registration", () => {
     expect(editorView?.type).to.equal("webview");
   });
 
+  it("npm package 配置应清理旧产物、运行测试并保留生产依赖", async () => {
+    const manifestPath = path.resolve(__dirname, "../../package.json");
+    const vscodeIgnorePath = path.resolve(__dirname, "../../.vscodeignore");
+    const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8")) as {
+      scripts: Record<string, string | undefined>;
+    };
+    const vscodeIgnore = await fs.readFile(vscodeIgnorePath, "utf8");
+
+    expect(manifest.scripts.package).to.contain("npm run clean");
+    expect(manifest.scripts.package).to.contain("npm test");
+    expect(manifest.scripts.package).to.contain("vsce package");
+    expect(manifest.scripts["vscode:prepublish"]).to.contain("npm run clean");
+    expect(manifest.scripts["vscode:prepublish"]).to.contain("npm run compile");
+    expect(vscodeIgnore.split(/\r?\n/).some((line) => line.trim() === "node_modules/**")).to.equal(false);
+  });
+
   it("激活扩展后应注册并解析指定 WebviewView，且发送初始状态消息", async () => {
     const outputLines: string[] = [];
     const registeredCommands: string[] = [];
@@ -214,6 +230,38 @@ describe("webview view registration", () => {
       expect(fakeWebview.html).to.contain("安装 unihiker-K10 BSP");
       expect(fakeWebview.html).to.contain("unihiker-K10");
       expect(fakeWebview.html).to.not.contain("STM32 (Custom FQBN)");
+      for (const controlId of [
+        "compileButton",
+        "uploadButton",
+        "saveButton",
+        "refreshPortsButton",
+        "installBspButton",
+        "selectSketchButton",
+        "openMonitorButton"
+      ]) {
+        expect(fakeWebview.html).to.contain(`id="${controlId}"`);
+      }
+      const cspNonce = fakeWebview.html.match(/script-src 'nonce-([^']+)'/)?.[1];
+      const scriptNonce = fakeWebview.html.match(/<script nonce="([^"]+)">/)?.[1];
+      expect(fakeWebview.html).to.contain("Content-Security-Policy");
+      expect(cspNonce).to.not.equal(undefined);
+      expect(scriptNonce).to.equal(cspNonce);
+      expect(fakeWebview.html).to.not.contain("script-src 'unsafe-inline'");
+      expect(fakeWebview.html).to.contain("const vscode = acquireVsCodeApi();");
+      expect(fakeWebview.html).to.contain('window.addEventListener("message"');
+      expect(fakeWebview.html).to.contain('vscode.postMessage({ type: "webview-ready" })');
+      for (const messageType of [
+        "compile-sketch",
+        "upload-sketch",
+        "validate-config",
+        "refresh-ports",
+        "select-sketch",
+        "install-unihiker-bsp",
+        "open-monitor",
+        "auto-save-config"
+      ]) {
+        expect(fakeWebview.html).to.contain(`type: "${messageType}"`);
+      }
       expect(postedMessages.some((message) => message.type === "state")).to.equal(true);
 
       const firstStateMessage = postedMessages.find((message) => message.type === "state");

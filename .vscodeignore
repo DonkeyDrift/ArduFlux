@@ -16,7 +16,6 @@ TEST_REPORT.txt
 upload_config.json
 ArduFlux.json
 ArduFlux.template.json
-node_modules/**
 package-lock.json
 tsconfig.json
 .gitignore
