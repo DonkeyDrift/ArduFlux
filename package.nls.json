@@ -1,0 +1,12 @@
+{
+  "arduflux.command.openPanel": "ArduFlux: Open Panel",
+  "arduflux.command.validateConfig": "ArduFlux: Validate Current Config",
+  "arduflux.command.openConfigFile": "ArduFlux: Open Config File",
+  "arduflux.command.compileSketch": "ArduFlux: Compile Sketch",
+  "arduflux.command.uploadSketch": "ArduFlux: Upload Sketch",
+  "arduflux.command.refreshSidebar": "ArduFlux: Refresh Sidebar",
+  "arduflux.command.runUploadScript": "ArduFlux: Full Compile + Upload + Monitor (Script)",
+  "arduflux.command.compileOnly": "ArduFlux: Compile Only (Script)",
+  "arduflux.command.uploadOnly": "ArduFlux: Upload + Monitor Only (Script)",
+  "arduflux.view.editor": "Config Editor"
+}

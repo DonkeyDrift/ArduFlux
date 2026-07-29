@@ -100,7 +100,7 @@ describe("ConfigStore", () => {
         expect.fail("应抛出异常");
       } catch (error) {
         expect(error).to.be.instanceOf(ValidationError);
-        expect((error as ValidationError).message).to.match(/不支持的配置版本/);
+        expect((error as ValidationError).message).to.match(/Unsupported configuration version/);
       }
     });
   });
@@ -167,31 +167,31 @@ describe("ConfigStore", () => {
     it("波特率 <=0 应抛异常", () => {
       expect(() =>
         store.validateMonitor({ enabled: true, baudRate: 0, dataBits: 8, stopBits: 1, parity: "none", newline: "CRLF" })
-      ).to.throw(ValidationError, "波特率不正确");
+      ).to.throw(ValidationError, "Invalid baud rate");
     });
 
     it("数据位非法应抛异常", () => {
       expect(() =>
         store.validateMonitor({ enabled: true, baudRate: 115200, dataBits: 4, stopBits: 1, parity: "none", newline: "CRLF" })
-      ).to.throw(ValidationError, "数据位不正确");
+      ).to.throw(ValidationError, "Invalid data bits");
     });
 
     it("停止位非法应抛异常", () => {
       expect(() =>
         store.validateMonitor({ enabled: true, baudRate: 115200, dataBits: 8, stopBits: 3, parity: "none", newline: "CRLF" })
-      ).to.throw(ValidationError, "停止位不正确");
+      ).to.throw(ValidationError, "Invalid stop bits");
     });
 
     it("校验位非法应抛异常", () => {
       expect(() =>
         store.validateMonitor({ enabled: true, baudRate: 115200, dataBits: 8, stopBits: 1, parity: "invalid", newline: "CRLF" })
-      ).to.throw(ValidationError, "校验位不正确");
+      ).to.throw(ValidationError, "Invalid parity");
     });
 
     it("换行符非法应抛异常", () => {
       expect(() =>
         store.validateMonitor({ enabled: true, baudRate: 115200, dataBits: 8, stopBits: 1, parity: "none", newline: "UNKNOWN" })
-      ).to.throw(ValidationError, "换行符不正确");
+      ).to.throw(ValidationError, "Invalid newline");
     });
   });
 
@@ -232,7 +232,7 @@ describe("ConfigStore", () => {
     });
 
     it("saveProfile 空名称应抛异常", () => {
-      expect(() => store.saveProfile("")).to.throw(ValidationError, "Profile 名称不能为空");
+      expect(() => store.saveProfile("")).to.throw(ValidationError, "Profile name cannot be empty");
     });
 
     it("applyProfile 应应用已保存的配置", () => {
@@ -244,7 +244,7 @@ describe("ConfigStore", () => {
     });
 
     it("applyProfile 不存在的 Profile 应抛异常", () => {
-      expect(() => store.applyProfile("nonexistent")).to.throw(ValidationError, "Profile 不存在");
+      expect(() => store.applyProfile("nonexistent")).to.throw(ValidationError, "Profile does not exist");
     });
 
     it("deleteProfile 应删除指定 Profile", () => {
@@ -307,7 +307,7 @@ describe("ConfigStore", () => {
         expect.fail("应抛出异常");
       } catch (error) {
         expect(error).to.be.instanceOf(ValidationError);
-        expect((error as ValidationError).message).to.include("导入文件格式不正确");
+        expect((error as ValidationError).message).to.include("Invalid import file format");
       }
     });
   });

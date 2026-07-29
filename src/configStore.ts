@@ -1,6 +1,7 @@
 import * as path from "path";
 import { execFile } from "child_process";
 import { promises as fs } from "fs";
+import * as l10n from "@vscode/l10n";
 import {
   CONFIG_FILE_NAME,
   ArduFluxConfig,
@@ -46,7 +47,7 @@ export function dedupeKeepLatest(items: string[], limit: number): string[] {
 export function normalizePath(pathText: string, baseDir: string): string {
   const raw = pathText.trim();
   if (!raw) {
-    throw new ValidationError("路径为空", "请选择或输入一个有效目录");
+    throw new ValidationError(l10n.t("Path is empty"), l10n.t("Please select or enter a valid directory"));
   }
 
   const expanded = raw.replace(/%([^%]+)%/g, (_match, envName: string) => process.env[envName] ?? "");
@@ -58,15 +59,15 @@ const FQBN_PART_REGEX = /^[a-zA-Z0-9_=-]+$/;
 export function validateFqbn(fqbn: string): void {
   const value = fqbn.trim();
   if (!value) {
-    throw new ValidationError("FQBN 不能为空", "例如：esp32:esp32:esp32s3 或 arduino:avr:uno");
+    throw new ValidationError(l10n.t("FQBN cannot be empty"), l10n.t("For example: esp32:esp32:esp32s3 or arduino:avr:uno"));
   }
   const parts = value.split(":");
   if (parts.length < 3 || parts.length > 4) {
-    throw new ValidationError("FQBN 格式不正确", "格式应为 vendor:arch:board[:option]，例如 esp32:esp32:esp32s3");
+    throw new ValidationError(l10n.t("Invalid FQBN format"), l10n.t("Format should be vendor:arch:board[:option], e.g. esp32:esp32:esp32s3"));
   }
   for (const part of parts) {
     if (!FQBN_PART_REGEX.test(part)) {
-      throw new ValidationError(`FQBN 包含非法字符: "${part}"`, "FQBN 各部分只能包含字母、数字、下划线和连字符");
+      throw new ValidationError(l10n.t('FQBN contains invalid characters: "{0}"', part), l10n.t("Each FQBN segment may only contain letters, digits, underscores, and hyphens"));
     }
   }
 }
@@ -76,7 +77,7 @@ const DANGEROUS_ARG_CHARS = /[;|&$`*?<>{}[\]!#~]/;
 export function validateCliArgs(args: string[]): void {
   for (const arg of args) {
     if (DANGEROUS_ARG_CHARS.test(arg)) {
-      throw new ValidationError(`参数包含非法字符: "${arg}"`, "参数中禁止包含 shell 元字符（; | & $ ` \\ * ? < > { } [ ] ! # ~）");
+      throw new ValidationError(l10n.t('Argument contains invalid characters: "{0}"', arg), l10n.t("Arguments must not contain shell metacharacters (; | & $ ` \\ * ? < > { } [ ] ! # ~)"));
     }
   }
 }
@@ -84,13 +85,13 @@ export function validateCliArgs(args: string[]): void {
 export function validateSketchPath(sketchPath: string, baseDir: string): void {
   const trimmed = sketchPath.trim();
   if (!trimmed.endsWith(".ino")) {
-    throw new ValidationError("草图路径必须以 .ino 结尾", "请指定一个有效的 Arduino 草图文件");
+    throw new ValidationError(l10n.t("Sketch path must end with .ino"), l10n.t("Please specify a valid Arduino sketch file"));
   }
   const resolved = path.resolve(baseDir, trimmed);
   const base = path.resolve(baseDir);
   const rel = path.relative(base, resolved);
   if (rel.startsWith("..") || path.isAbsolute(rel)) {
-    throw new ValidationError("草图路径必须位于工作区内", "禁止访问工作区外的文件");
+    throw new ValidationError(l10n.t("Sketch path must be inside the workspace"), l10n.t("Accessing files outside the workspace is not allowed"));
   }
 }
 
@@ -133,7 +134,7 @@ export function buildCompileArgs(opts: {
 }, baseDir?: string): string[] {
   validateFqbn(opts.fqbn);
   if (!opts.sketchPath.trim()) {
-    throw new ValidationError("草图路径为空", "请确保工作区根目录包含 Arduino 草图");
+    throw new ValidationError(l10n.t("Sketch path is empty"), l10n.t("Please make sure the workspace root contains an Arduino sketch"));
   }
   if (baseDir) {
     validateSketchPath(opts.sketchPath, baseDir);
@@ -157,11 +158,11 @@ export function buildUploadArgs(opts: {
 }, baseDir?: string): string[] {
   const port = normalizeSerialAddress(opts.port);
   if (!port) {
-    throw new ValidationError("串口未选择", "请先选择串口端口");
+    throw new ValidationError(l10n.t("No serial port selected"), l10n.t("Please select a serial port first"));
   }
   validateFqbn(opts.fqbn);
   if (!opts.sketchPath.trim()) {
-    throw new ValidationError("草图路径为空", "请确保工作区根目录包含 Arduino 草图");
+    throw new ValidationError(l10n.t("Sketch path is empty"), l10n.t("Please make sure the workspace root contains an Arduino sketch"));
   }
   if (baseDir) {
     validateSketchPath(opts.sketchPath, baseDir);
@@ -336,7 +337,7 @@ function migrateConfig(data: unknown): ArduFluxConfig {
   }
 
   if (version !== 1) {
-    throw new ValidationError("不支持的配置版本", `schemaVersion=${version}，请升级扩展或重新生成配置文件`);
+    throw new ValidationError(l10n.t("Unsupported configuration version"), l10n.t("schemaVersion={0}, please upgrade the extension or regenerate the configuration file", String(version)));
   }
 
   const current = source.current && typeof source.current === "object" ? source.current as Partial<ArduFluxCurrentConfig> : {};
@@ -452,13 +453,13 @@ export class ConfigStore {
   async validatePort(portState = this.data.current.port): Promise<void> {
     const address = normalizeSerialAddress(String(portState.address ?? ""));
     if (!address) {
-      throw new ValidationError("串口为空", "请刷新串口列表并选择一个端口，例如 COM36 或 /dev/ttyACM0");
+      throw new ValidationError(l10n.t("Serial port is empty"), l10n.t("Please refresh the serial port list and select a port, e.g. COM36 or /dev/ttyACM0"));
     }
 
     const ports = await this.getSerialPorts();
     const known = new Set(ports.map((item) => item.address));
     if (known.size > 0 && !known.has(address)) {
-      throw new ValidationError("串口不存在或不可用", "点击“刷新串口列表”重新枚举串口，或检查 USB 连接/驱动");
+      throw new ValidationError(l10n.t("Serial port does not exist or is unavailable"), l10n.t('Click "Refresh port list" to re-enumerate ports, or check the USB connection/driver'));
     }
   }
 
@@ -477,7 +478,7 @@ export class ConfigStore {
     try {
       await fs.mkdir(resolved, { recursive: true });
     } catch {
-      throw new ValidationError("输出目录不可写", "请选择一个有写权限的目录，或更换到项目内的 build 目录");
+      throw new ValidationError(l10n.t("Output directory is not writable"), l10n.t("Please choose a directory with write permission, or switch to a build directory inside the project"));
     }
   }
 
@@ -487,23 +488,23 @@ export class ConfigStore {
     }
 
     if (Number(monitor.baudRate) <= 0) {
-      throw new ValidationError("波特率不正确", "设置为常见值，例如 115200");
+      throw new ValidationError(l10n.t("Invalid baud rate"), l10n.t("Set to a common value, e.g. 115200"));
     }
     if (![5, 6, 7, 8].includes(Number(monitor.dataBits))) {
-      throw new ValidationError("数据位不正确", "可选：5/6/7/8");
+      throw new ValidationError(l10n.t("Invalid data bits"), l10n.t("Options: 5/6/7/8"));
     }
     if (![1, 1.5, 2].includes(Number(monitor.stopBits))) {
-      throw new ValidationError("停止位不正确", "可选：1/1.5/2");
+      throw new ValidationError(l10n.t("Invalid stop bits"), l10n.t("Options: 1/1.5/2"));
     }
 
     const parity = String(monitor.parity ?? "none").toLowerCase();
     if (!["none", "odd", "even", "mark", "space"].includes(parity)) {
-      throw new ValidationError("校验位不正确", "可选：none/odd/even/mark/space");
+      throw new ValidationError(l10n.t("Invalid parity"), l10n.t("Options: none/odd/even/mark/space"));
     }
 
     const newline = String(monitor.newline ?? "CRLF").toUpperCase();
     if (!["CRLF", "LF", "CR"].includes(newline)) {
-      throw new ValidationError("换行符不正确", "可选：CRLF/LF/CR");
+      throw new ValidationError(l10n.t("Invalid newline"), l10n.t("Options: CRLF/LF/CR"));
     }
   }
 
@@ -517,7 +518,7 @@ export class ConfigStore {
   saveProfile(name: string): void {
     const profileName = name.trim();
     if (!profileName) {
-      throw new ValidationError("Profile 名称不能为空", "请输入一个 Profile 名称，例如 default/dev/prod");
+      throw new ValidationError(l10n.t("Profile name cannot be empty"), l10n.t("Please enter a profile name, e.g. default/dev/prod"));
     }
     this.data.profiles[profileName] = deepClone(this.data.current);
   }
@@ -525,7 +526,7 @@ export class ConfigStore {
   applyProfile(name: string): void {
     const profile = this.data.profiles[name];
     if (!profile || typeof profile !== "object") {
-      throw new ValidationError("Profile 不存在", "请先保存 Profile，或从文件导入 Profile");
+      throw new ValidationError(l10n.t("Profile does not exist"), l10n.t("Please save a profile first, or import one from a file"));
     }
 
     this.data.current = migrateConfig({
@@ -558,7 +559,7 @@ export class ConfigStore {
     const parsed = JSON.parse(text) as { profiles?: ArduFluxConfig["profiles"] };
 
     if (!parsed.profiles || typeof parsed.profiles !== "object") {
-      throw new ValidationError("导入文件格式不正确", "应包含 profiles 字段");
+      throw new ValidationError(l10n.t("Invalid import file format"), l10n.t("The file should contain a profiles field"));
     }
 
     this.data.profiles = merge

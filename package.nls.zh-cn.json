@@ -1,0 +1,12 @@
+{
+  "arduflux.command.openPanel": "ArduFlux: 打开面板",
+  "arduflux.command.validateConfig": "ArduFlux: 校验当前配置",
+  "arduflux.command.openConfigFile": "ArduFlux: 打开配置文件",
+  "arduflux.command.compileSketch": "ArduFlux: 编译 Sketch",
+  "arduflux.command.uploadSketch": "ArduFlux: 上传 Sketch",
+  "arduflux.command.refreshSidebar": "ArduFlux: 刷新侧边栏",
+  "arduflux.command.runUploadScript": "ArduFlux: 完整编译+上传+监视（脚本）",
+  "arduflux.command.compileOnly": "ArduFlux: 仅编译（脚本）",
+  "arduflux.command.uploadOnly": "ArduFlux: 仅上传+监视（脚本）",
+  "arduflux.view.editor": "配置编辑器"
+}

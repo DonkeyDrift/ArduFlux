@@ -40,7 +40,7 @@ function tokenizeArgs(text: string): string[] {
 
 function formatError(error: unknown): string {
   if (error instanceof ValidationError) {
-    return error.suggestion ? `${error.message}\n建议：${error.suggestion}` : error.message;
+    return error.suggestion ? vscode.l10n.t("{0}\nSuggestion: {1}", error.message, error.suggestion) : error.message;
   }
   return error instanceof Error ? error.message : String(error);
 }
@@ -52,13 +52,13 @@ function buildCurrentConfig(form: FormPayload, baseConfig: ArduFluxConfig): Ardu
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       pinDefines = parsed as Record<string, unknown>;
     } else {
-      throw new ValidationError("引脚定义必须是对象", "请使用 JSON 对象，例如 {\"ws2812_pin\":48}");
+      throw new ValidationError(vscode.l10n.t("Pin defines must be an object"), vscode.l10n.t('Please use a JSON object, e.g. {"ws2812_pin":48}'));
     }
   } catch (error) {
     if (error instanceof ValidationError) {
       throw error;
     }
-    throw new ValidationError("引脚定义不是合法 JSON", "请检查 JSON 语法后重试");
+    throw new ValidationError(vscode.l10n.t("Pin defines is not valid JSON"), vscode.l10n.t("Please check the JSON syntax and try again"));
   }
 
   return {
@@ -180,7 +180,7 @@ export class ConfigEditorController {
     try {
       switch (message.type) {
         case "webview-ready":
-          await this.syncView("配置编辑器已就绪");
+          await this.syncView(vscode.l10n.t("Configuration editor ready"));
           return;
         case "save-config":
           await this.saveConfig(message.payload as FormPayload);
@@ -203,7 +203,7 @@ export class ConfigEditorController {
           return;
         case "refresh-ports":
           this.store.clearSerialPortsCache();
-          await this.syncView("串口列表已刷新");
+          await this.syncView(vscode.l10n.t("Serial port list refreshed"));
           return;
         case "save-profile":
           await this.saveProfile(message.payload as { name?: string; form?: FormPayload });
@@ -262,7 +262,7 @@ export class ConfigEditorController {
       }
       await this.store.validateAll();
       await this.store.save();
-      await this.syncView("配置已保存");
+      await this.syncView(vscode.l10n.t("Configuration saved"));
       onDidChangeArduFluxConfig.fire();
     } catch (error) {
       await this.postMessage({ type: "saving", active: false, error: formatError(error) });
@@ -285,7 +285,7 @@ export class ConfigEditorController {
       }
       await this.store.validateAll();
       await this.store.save();
-      await this.syncView("校验通过");
+      await this.syncView(vscode.l10n.t("Validation passed"));
       onDidChangeArduFluxConfig.fire();
     } catch (error) {
       await this.postMessage({ type: "validating", active: false, error: formatError(error) });
@@ -296,7 +296,7 @@ export class ConfigEditorController {
   private async saveProfile(payload: { name?: string; form?: FormPayload }): Promise<void> {
     const name = payload.name?.trim() ?? "";
     if (!payload.form) {
-      throw new ValidationError("缺少待保存的表单数据");
+      throw new ValidationError(vscode.l10n.t("Missing form data to save"));
     }
 
     const current = this.store.getData();
@@ -311,7 +311,7 @@ export class ConfigEditorController {
     await this.store.validateAll();
     this.store.saveProfile(name);
     await this.store.save();
-    await this.syncView(`Profile 已保存：${name}`);
+    await this.syncView(vscode.l10n.t("Profile saved: {0}", name));
     onDidChangeArduFluxConfig.fire();
   }
 
@@ -319,18 +319,18 @@ export class ConfigEditorController {
     const name = payload.name?.trim() ?? "";
     this.store.applyProfile(name);
     await this.store.save();
-    await this.syncView(`Profile 已应用：${name}`);
+    await this.syncView(vscode.l10n.t("Profile applied: {0}", name));
     onDidChangeArduFluxConfig.fire();
   }
 
   private async deleteProfile(payload: { name?: string }): Promise<void> {
     const name = payload.name?.trim() ?? "";
     if (!name) {
-      throw new ValidationError("请选择要删除的 Profile");
+      throw new ValidationError(vscode.l10n.t("Please select a profile to delete"));
     }
     this.store.deleteProfile(name);
     await this.store.save();
-    await this.syncView(`Profile 已删除：${name}`);
+    await this.syncView(vscode.l10n.t("Profile deleted: {0}", name));
     onDidChangeArduFluxConfig.fire();
   }
 
@@ -343,7 +343,7 @@ export class ConfigEditorController {
       return;
     }
     await this.store.exportProfiles(target.fsPath);
-    await this.syncView(`Profiles 已导出：${target.fsPath}`);
+    await this.syncView(vscode.l10n.t("Profiles exported: {0}", target.fsPath));
   }
 
   private async importProfiles(): Promise<void> {
@@ -360,10 +360,10 @@ export class ConfigEditorController {
 
     const mergeChoice = await vscode.window.showQuickPick(
       [
-        { label: "合并", description: "保留现有 Profiles 并合并导入内容", merge: true },
-        { label: "覆盖", description: "用导入内容替换现有 Profiles", merge: false }
+        { label: vscode.l10n.t("Merge"), description: vscode.l10n.t("Keep existing profiles and merge in the imported ones"), merge: true },
+        { label: vscode.l10n.t("Overwrite"), description: vscode.l10n.t("Replace existing profiles with the imported ones"), merge: false }
       ],
-      { placeHolder: "选择导入方式" }
+      { placeHolder: vscode.l10n.t("Choose an import mode") }
     );
     if (!mergeChoice) {
       return;
@@ -371,12 +371,12 @@ export class ConfigEditorController {
 
     await this.store.importProfiles(selected[0].fsPath, mergeChoice.merge);
     await this.store.save();
-    await this.syncView("Profiles 已导入");
+    await this.syncView(vscode.l10n.t("Profiles imported"));
     onDidChangeArduFluxConfig.fire();
   }
 
   private async openMonitor(): Promise<void> {
-    await this.syncView("已打开串口监视器");
+    await this.syncView(vscode.l10n.t("Serial monitor opened"));
     const sketchPath = this.store.getData().current.build.sketchPath ?? "";
     await runUploaderFlow(this.store.baseDir, { monitor: true, sketchPath });
   }
@@ -454,7 +454,7 @@ export class ConfigEditorController {
     try {
       const sketchPath = this.store.getData().current.build.sketchPath ?? "";
       await runUploaderFlow(this.store.baseDir, { compile: true, sketchPath });
-      await this.syncView("编译完成");
+      await this.syncView(vscode.l10n.t("Compilation completed"));
       await this.postMessage({ type: "compiling", active: false });
     } catch (error) {
       await this.postMessage({ type: "compiling", active: false, error: formatError(error) });
@@ -469,7 +469,7 @@ export class ConfigEditorController {
       const sketchPath = this.store.getData().current.build.sketchPath ?? "";
       await runUploaderFlow(this.store.baseDir, { upload: true, sketchPath });
       await this.postMessage({ type: "uploading", active: false });
-      await this.syncView("上传完成");
+      await this.syncView(vscode.l10n.t("Upload completed"));
       const uploadThenMonitor = this.store.getData().current.build.uploadThenMonitor ?? false;
       if (uploadThenMonitor) {
         await this.openMonitor();
@@ -487,8 +487,37 @@ export class ConfigEditorController {
       .replace(/>/g, "\\u003e")
       .replace(/&/g, "\\u0026");
 
+    const i18n = {
+      ready: vscode.l10n.t("Ready"),
+      autoSaveFailed: vscode.l10n.t("Auto-save failed: "),
+      custom: vscode.l10n.t("Custom"),
+      recommendedPrefix: vscode.l10n.t("Recommended: "),
+      none: vscode.l10n.t("None"),
+      compileLinkedTitle: vscode.l10n.t("Linked: auto-compile before upload (click to unlink)"),
+      compileUnlinkedTitle: vscode.l10n.t("Unlinked: upload directly without compiling (click to link)"),
+      monitorLinkedTitle: vscode.l10n.t("Linked: auto-open serial monitor after upload (click to unlink)"),
+      monitorUnlinkedTitle: vscode.l10n.t("Unlinked: serial monitor will not open automatically after upload (click to link)"),
+      switchedToCustomBoard: vscode.l10n.t("Switched to custom board"),
+      loadedPresetBoard: vscode.l10n.t("Preset board loaded"),
+      validatingEllipsis: vscode.l10n.t("Validating..."),
+      validationFailed: vscode.l10n.t("Validation failed: "),
+      errorOccurred: vscode.l10n.t("An error occurred"),
+      compiling: vscode.l10n.t("Compiling"),
+      compileCompleted: vscode.l10n.t("Compilation completed"),
+      uploading: vscode.l10n.t("Uploading"),
+      uploadCompleted: vscode.l10n.t("Upload completed"),
+      saving: vscode.l10n.t("Saving"),
+      configSaved: vscode.l10n.t("Configuration saved"),
+      validating: vscode.l10n.t("Validating"),
+      validationPassed: vscode.l10n.t("Validation passed")
+    };
+    const i18nJson = JSON.stringify(i18n)
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026");
+
     return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';" />
@@ -626,69 +655,69 @@ export class ConfigEditorController {
 </head>
 <body>
   <div class="toolbar">
-    <button id="compileButton" class="secondary">编译</button>
-    <button id="linkButton" class="secondary unlinked" title="点击切换：上传前是否先编译">✂</button>
-    <button id="uploadButton">上传</button>
-    <button id="linkButton2" class="secondary unlinked" title="点击切换：上传后是否打开串口监视器">✂</button>
-    <button id="openMonitorButton" class="secondary">串口监视</button>
+    <button id="compileButton" class="secondary">${vscode.l10n.t("Compile")}</button>
+    <button id="linkButton" class="secondary unlinked" title="${vscode.l10n.t("Click to toggle: compile automatically before upload")}">✂</button>
+    <button id="uploadButton">${vscode.l10n.t("Upload")}</button>
+    <button id="linkButton2" class="secondary unlinked" title="${vscode.l10n.t("Click to toggle: open serial monitor automatically after upload")}">✂</button>
+    <button id="openMonitorButton" class="secondary">${vscode.l10n.t("Serial Monitor")}</button>
   </div>
   <div class="toolbar" style="margin-top:0">
-    <span id="status">就绪</span>
+    <span id="status">${vscode.l10n.t("Ready")}</span>
     <label class="hint" style="cursor:pointer;display:flex;align-items:center;gap:4px;margin-left:auto">
       <input id="showAdvanced" type="checkbox" style="width:auto" />
-      显示高级选项
+      ${vscode.l10n.t("Show advanced options")}
     </label>
   </div>
 
-  <h2>源码</h2>
+  <h2>${vscode.l10n.t("Source")}</h2>
   <div class="row" style="margin-bottom:0">
-    <input id="sketchPath" readonly style="flex:1;background:var(--vscode-input-background);" placeholder="未选择 .ino 文件" />
-    <button id="selectSketchButton" class="secondary">加载</button>
+    <input id="sketchPath" readonly style="flex:1;background:var(--vscode-input-background);" placeholder="${vscode.l10n.t("No .ino file selected")}" />
+    <button id="selectSketchButton" class="secondary">${vscode.l10n.t("Load")}</button>
   </div>
 
-  <h2>型号</h2>
+  <h2>${vscode.l10n.t("Board")}</h2>
   <div class="row">
     <select id="boardPreset"></select>
   </div>
   <div class="grid advanced-item">
-    <label for="boardName">显示名称</label>
+    <label for="boardName">${vscode.l10n.t("Display Name")}</label>
     <input id="boardName" />
     <label for="boardFqbn">FQBN</label>
     <input id="boardFqbn" />
   </div>
   <div class="grid advanced-item">
-    <label for="boardCompileArgs">编译参数</label>
+    <label for="boardCompileArgs">${vscode.l10n.t("Compile Args")}</label>
     <input id="boardCompileArgs" />
-    <label for="boardPinDefines">引脚定义 JSON</label>
+    <label for="boardPinDefines">${vscode.l10n.t("Pin Defines JSON")}</label>
     <textarea id="boardPinDefines"></textarea>
   </div>
 
-  <h2>串口</h2>
+  <h2>${vscode.l10n.t("Serial Port")}</h2>
   <div class="grid">
-    <label for="portAddress">端口</label>
+    <label for="portAddress">${vscode.l10n.t("Port")}</label>
     <select id="portAddress"></select>
-    <div class="hint" id="recommendedPort">推荐：无</div>
+    <div class="hint" id="recommendedPort">${vscode.l10n.t("Recommended: {0}", vscode.l10n.t("None"))}</div>
     <div class="row" style="margin-bottom:0;gap:12px">
-      <button id="refreshPortsButton" class="secondary">刷新串口</button>
+      <button id="refreshPortsButton" class="secondary">${vscode.l10n.t("Refresh Ports")}</button>
       <label class="hint" style="cursor:pointer;display:flex;align-items:center;gap:4px">
         <input id="portAuto" type="checkbox" style="width:auto" />
-        优先 USB 端口
+        ${vscode.l10n.t("Prefer USB ports")}
       </label>
     </div>
   </div>
 
   <div class="advanced-item">
-    <h2>编译输出</h2>
+    <h2>${vscode.l10n.t("Build Output")}</h2>
     <div class="grid">
-      <label for="buildOutputDir">输出目录</label>
+      <label for="buildOutputDir">${vscode.l10n.t("Output Directory")}</label>
       <input id="buildOutputDir" />
-      <label for="recentOutputDirs">最近路径</label>
+      <label for="recentOutputDirs">${vscode.l10n.t("Recent Paths")}</label>
       <select id="recentOutputDirs"></select>
     </div>
   </div>
 
   <div class="grid">
-    <label for="monitorBaudRate">波特率</label>
+    <label for="monitorBaudRate">${vscode.l10n.t("Baud Rate")}</label>
     <select id="monitorBaudRate">
       <option value="9600">9600</option>
       <option value="19200">19200</option>
@@ -701,11 +730,11 @@ export class ConfigEditorController {
     </select>
   </div>
   <div class="grid advanced-item">
-    <label for="monitorDataBits">数据位</label>
+    <label for="monitorDataBits">${vscode.l10n.t("Data Bits")}</label>
     <input id="monitorDataBits" />
-    <label for="monitorStopBits">停止位</label>
+    <label for="monitorStopBits">${vscode.l10n.t("Stop Bits")}</label>
     <input id="monitorStopBits" />
-    <label for="monitorParity">校验位</label>
+    <label for="monitorParity">${vscode.l10n.t("Parity")}</label>
     <select id="monitorParity">
       <option value="none">none</option>
       <option value="odd">odd</option>
@@ -713,7 +742,7 @@ export class ConfigEditorController {
       <option value="mark">mark</option>
       <option value="space">space</option>
     </select>
-    <label for="monitorNewline">换行符</label>
+    <label for="monitorNewline">${vscode.l10n.t("Newline")}</label>
     <select id="monitorNewline">
       <option value="CRLF">CRLF</option>
       <option value="LF">LF</option>
@@ -725,28 +754,29 @@ export class ConfigEditorController {
     <h2>Profiles</h2>
     <div class="row">
       <select id="profileSelect"></select>
-      <button id="applyProfileButton" class="secondary">应用</button>
-      <button id="deleteProfileButton" class="danger">删除</button>
+      <button id="applyProfileButton" class="secondary">${vscode.l10n.t("Apply")}</button>
+      <button id="deleteProfileButton" class="danger">${vscode.l10n.t("Delete")}</button>
     </div>
     <div class="row">
-      <input id="profileName" placeholder="输入新的 Profile 名称" />
-      <button id="saveProfileButton" class="secondary">保存当前为 Profile</button>
+      <input id="profileName" placeholder="${vscode.l10n.t("Enter a new profile name")}" />
+      <button id="saveProfileButton" class="secondary">${vscode.l10n.t("Save Current as Profile")}</button>
     </div>
     <div class="row">
-      <button id="exportProfilesButton" class="secondary">导出 Profiles</button>
-      <button id="importProfilesButton" class="secondary">导入 Profiles</button>
+      <button id="exportProfilesButton" class="secondary">${vscode.l10n.t("Export Profiles")}</button>
+      <button id="importProfilesButton" class="secondary">${vscode.l10n.t("Import Profiles")}</button>
     </div>
   </div>
 
   <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--vscode-panel-border)">
     <div class="toolbar">
-      <button id="saveButton" class="secondary">检查配置</button>
-      <button id="openConfigButton" class="secondary">打开配置</button>
+      <button id="saveButton" class="secondary">${vscode.l10n.t("Check Configuration")}</button>
+      <button id="openConfigButton" class="secondary">${vscode.l10n.t("Open Configuration")}</button>
     </div>
   </div>
 
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
+    const i18n = ${i18nJson};
     let state = ${initialState};
 
     const ids = [
@@ -766,7 +796,7 @@ export class ConfigEditorController {
 
     function setStatus(text) {
       stopSpinner();
-      el.status.textContent = text || "就绪";
+      el.status.textContent = text || i18n.ready;
     }
 
     let autoSaveTimeout = null;
@@ -779,7 +809,7 @@ export class ConfigEditorController {
         try {
           vscode.postMessage({ type: "auto-save-config", payload: collectForm() });
         } catch (err) {
-          setStatus("自动保存失败: " + (err.message || String(err)));
+          setStatus(i18n.autoSaveFailed + (err.message || String(err)));
         }
       }, 500);
     }
@@ -845,7 +875,7 @@ export class ConfigEditorController {
         el.boardPreset,
         [...state.boardCatalog, { name: "__custom__", fqbn: "", compileArgs: [], pinDefines: {} }],
         (item) => item.name,
-        (item) => item.name === "__custom__" ? "自定义" : item.name,
+        (item) => item.name === "__custom__" ? i18n.custom : item.name,
         detectPresetName(current.board),
         false
       );
@@ -864,7 +894,7 @@ export class ConfigEditorController {
         true
       );
       el.portAuto.checked = !!current.port.auto;
-      el.recommendedPort.textContent = "推荐：" + (state.recommendedPort || "无");
+      el.recommendedPort.textContent = i18n.recommendedPrefix + (state.recommendedPort || i18n.none);
 
       el.buildOutputDir.value = current.build.outputDir || "";
       fillSelect(
@@ -896,12 +926,12 @@ export class ConfigEditorController {
         linkBtn.innerHTML = LINK_SVG_CONNECTED;
         linkBtn.classList.remove("unlinked");
         linkBtn.classList.add("linked");
-        linkBtn.title = "已联通：上传前自动编译（点击断开）";
+        linkBtn.title = i18n.compileLinkedTitle;
       } else {
         linkBtn.innerHTML = LINK_SVG_DISCONNECTED;
         linkBtn.classList.remove("linked");
         linkBtn.classList.add("unlinked");
-        linkBtn.title = "已断开：直接上传，不自动编译（点击联通）";
+        linkBtn.title = i18n.compileUnlinkedTitle;
       }
 
       const linkBtn2 = document.getElementById("linkButton2");
@@ -909,12 +939,12 @@ export class ConfigEditorController {
         linkBtn2.innerHTML = LINK_SVG_CONNECTED;
         linkBtn2.classList.remove("unlinked");
         linkBtn2.classList.add("linked");
-        linkBtn2.title = "已联通：上传后自动打开串口监视器（点击断开）";
+        linkBtn2.title = i18n.monitorLinkedTitle;
       } else {
         linkBtn2.innerHTML = LINK_SVG_DISCONNECTED;
         linkBtn2.classList.remove("linked");
         linkBtn2.classList.add("unlinked");
-        linkBtn2.title = "已断开：上传后不自动打开串口监视器（点击联通）";
+        linkBtn2.title = i18n.monitorUnlinkedTitle;
       }
     }
 
@@ -941,14 +971,14 @@ export class ConfigEditorController {
     el.boardPreset.addEventListener("change", () => {
       const item = state.boardCatalog.find((entry) => entry.name === el.boardPreset.value);
       if (!item) {
-        setStatus("已切换为自定义板型");
+        setStatus(i18n.switchedToCustomBoard);
         return;
       }
       el.boardName.value = item.name;
       el.boardFqbn.value = item.fqbn;
       el.boardCompileArgs.value = (item.compileArgs || []).join(" ");
       el.boardPinDefines.value = JSON.stringify(item.pinDefines || {}, null, 2);
-      setStatus("已载入预置板型");
+      setStatus(i18n.loadedPresetBoard);
     });
 
     el.recentOutputDirs.addEventListener("change", () => {
@@ -959,10 +989,10 @@ export class ConfigEditorController {
 
     document.getElementById("saveButton").addEventListener("click", () => {
       try {
-        setStatus("正在校验...");
+        setStatus(i18n.validatingEllipsis);
         vscode.postMessage({ type: "validate-config", payload: collectForm() });
       } catch (err) {
-        setStatus("校验失败: " + (err.message || String(err)));
+        setStatus(i18n.validationFailed + (err.message || String(err)));
       }
     });
     document.getElementById("compileButton").addEventListener("click", () => {
@@ -974,12 +1004,12 @@ export class ConfigEditorController {
         btn.innerHTML = LINK_SVG_DISCONNECTED;
         btn.classList.remove("linked");
         btn.classList.add("unlinked");
-        btn.title = "已断开：直接上传，不自动编译（点击联通）";
+        btn.title = i18n.compileUnlinkedTitle;
       } else {
         btn.innerHTML = LINK_SVG_CONNECTED;
         btn.classList.remove("unlinked");
         btn.classList.add("linked");
-        btn.title = "已联通：上传前自动编译（点击断开）";
+        btn.title = i18n.compileLinkedTitle;
       }
       vscode.postMessage({ type: "toggle-compile-link" });
     });
@@ -989,12 +1019,12 @@ export class ConfigEditorController {
         btn.innerHTML = LINK_SVG_DISCONNECTED;
         btn.classList.remove("linked");
         btn.classList.add("unlinked");
-        btn.title = "已断开：上传后不自动打开串口监视器（点击联通）";
+        btn.title = i18n.monitorUnlinkedTitle;
       } else {
         btn.innerHTML = LINK_SVG_CONNECTED;
         btn.classList.remove("unlinked");
         btn.classList.add("linked");
-        btn.title = "已联通：上传后自动打开串口监视器（点击断开）";
+        btn.title = i18n.monitorLinkedTitle;
       }
       vscode.postMessage({ type: "toggle-monitor-link" });
     });
@@ -1045,41 +1075,41 @@ export class ConfigEditorController {
       if (event.data?.type === "state" && event.data.payload) {
         state = event.data.payload;
         render();
-        setStatus(event.data.statusMessage || "就绪");
+        setStatus(event.data.statusMessage || i18n.ready);
       }
       if (event.data?.type === "error") {
-        setStatus(event.data.message || "发生错误");
+        setStatus(event.data.message || i18n.errorOccurred);
       }
       if (event.data?.type === "compiling") {
         if (event.data.active) {
-          startSpinner("编译中");
+          startSpinner(i18n.compiling);
         } else {
           stopSpinner();
-          setStatus(event.data.error || "编译完成");
+          setStatus(event.data.error || i18n.compileCompleted);
         }
       }
       if (event.data?.type === "uploading") {
         if (event.data.active) {
-          startSpinner("上传中");
+          startSpinner(i18n.uploading);
         } else {
           stopSpinner();
-          setStatus(event.data.error || "上传完成");
+          setStatus(event.data.error || i18n.uploadCompleted);
         }
       }
       if (event.data?.type === "saving") {
         if (event.data.active) {
-          startSpinner("保存中");
+          startSpinner(i18n.saving);
         } else {
           stopSpinner();
-          setStatus(event.data.error || "配置已保存");
+          setStatus(event.data.error || i18n.configSaved);
         }
       }
       if (event.data?.type === "validating") {
         if (event.data.active) {
-          startSpinner("校验中");
+          startSpinner(i18n.validating);
         } else {
           stopSpinner();
-          setStatus(event.data.error || "校验通过");
+          setStatus(event.data.error || i18n.validationPassed);
         }
       }
       if (event.data?.type === "link-toggled") {
@@ -1088,12 +1118,12 @@ export class ConfigEditorController {
           linkBtn.innerHTML = LINK_SVG_CONNECTED;
           linkBtn.classList.remove("unlinked");
           linkBtn.classList.add("linked");
-          linkBtn.title = "已联通：上传前自动编译（点击断开）";
+          linkBtn.title = i18n.compileLinkedTitle;
         } else {
           linkBtn.innerHTML = LINK_SVG_DISCONNECTED;
           linkBtn.classList.remove("linked");
           linkBtn.classList.add("unlinked");
-          linkBtn.title = "已断开：直接上传，不自动编译（点击联通）";
+          linkBtn.title = i18n.compileUnlinkedTitle;
         }
       }
       if (event.data?.type === "sketch-selected") {
@@ -1105,12 +1135,12 @@ export class ConfigEditorController {
           linkBtn2.innerHTML = LINK_SVG_CONNECTED;
           linkBtn2.classList.remove("unlinked");
           linkBtn2.classList.add("linked");
-          linkBtn2.title = "已联通：上传后自动打开串口监视器（点击断开）";
+          linkBtn2.title = i18n.monitorLinkedTitle;
         } else {
           linkBtn2.innerHTML = LINK_SVG_DISCONNECTED;
           linkBtn2.classList.remove("linked");
           linkBtn2.classList.add("unlinked");
-          linkBtn2.title = "已断开：上传后不自动打开串口监视器（点击联通）";
+          linkBtn2.title = i18n.monitorUnlinkedTitle;
         }
       }
     });

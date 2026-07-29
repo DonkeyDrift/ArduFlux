@@ -86,7 +86,7 @@ describe("configStore.ts - 纯逻辑", () => {
     });
 
     it("空路径应抛 ValidationError", () => {
-      expect(() => normalizePath("", base)).to.throw(ValidationError, "路径为空");
+      expect(() => normalizePath("", base)).to.throw(ValidationError, "Path is empty");
     });
   });
 
@@ -96,15 +96,15 @@ describe("configStore.ts - 纯逻辑", () => {
     });
 
     it("空 FQBN 应抛异常", () => {
-      expect(() => validateFqbn("")).to.throw(ValidationError, "FQBN 不能为空");
+      expect(() => validateFqbn("")).to.throw(ValidationError, "FQBN cannot be empty");
     });
 
     it("缺少冒号的 FQBN 应抛异常", () => {
-      expect(() => validateFqbn("esp32")).to.throw(ValidationError, "FQBN 格式不正确");
+      expect(() => validateFqbn("esp32")).to.throw(ValidationError, "Invalid FQBN format");
     });
 
     it("只有一个冒号的 FQBN 应抛异常", () => {
-      expect(() => validateFqbn("esp32:esp32")).to.throw(ValidationError, "FQBN 格式不正确");
+      expect(() => validateFqbn("esp32:esp32")).to.throw(ValidationError, "Invalid FQBN format");
     });
 
     it("包含非法字符的 FQBN 应抛异常", () => {

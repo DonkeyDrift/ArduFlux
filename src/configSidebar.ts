@@ -91,35 +91,35 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
 
     items.push(
       new ConfigTreeItem(
-        "板子",
+        vscode.l10n.t("Board"),
         vscode.TreeItemCollapsibleState.Collapsed,
         "group-board",
-        { description: current.board.name || "未配置", iconId: "circuit-board" }
+        { description: current.board.name || vscode.l10n.t("Not configured"), iconId: "circuit-board" }
       )
     );
 
     items.push(
       new ConfigTreeItem(
-        "串口",
+        vscode.l10n.t("Serial Port"),
         vscode.TreeItemCollapsibleState.Collapsed,
         "group-port",
-        { description: current.port.address || "未选择", iconId: "plug" }
+        { description: current.port.address || vscode.l10n.t("Not selected"), iconId: "plug" }
       )
     );
 
     items.push(
       new ConfigTreeItem(
-        "编译输出",
+        vscode.l10n.t("Build Output"),
         vscode.TreeItemCollapsibleState.Collapsed,
         "group-build",
-        { description: current.build.outputDir || "默认", iconId: "file-directory" }
+        { description: current.build.outputDir || vscode.l10n.t("Default"), iconId: "file-directory" }
       )
     );
 
-    const monitorDesc = current.monitor.enabled ? `${current.monitor.baudRate}bps` : "未启用";
+    const monitorDesc = current.monitor.enabled ? `${current.monitor.baudRate}bps` : vscode.l10n.t("Disabled");
     items.push(
       new ConfigTreeItem(
-        "监视器",
+        vscode.l10n.t("Monitor"),
         vscode.TreeItemCollapsibleState.Collapsed,
         "group-monitor",
         { description: monitorDesc, iconId: "radio-tower" }
@@ -132,7 +132,7 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
         "Profiles",
         vscode.TreeItemCollapsibleState.Collapsed,
         "group-profiles",
-        { description: `${profileNames.length} 个`, iconId: "list-unordered" }
+        { description: vscode.l10n.t("{0} item(s)", String(profileNames.length)), iconId: "list-unordered" }
       )
     );
 
@@ -143,7 +143,7 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
     const pinCount = Object.keys(current.board.pinDefines || {}).length;
     return [
       new ConfigTreeItem(
-        "名称",
+        vscode.l10n.t("Name"),
         vscode.TreeItemCollapsibleState.None,
         "board-name",
         { description: current.board.name || "—" }
@@ -155,19 +155,19 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
         { description: current.board.fqbn || "—" }
       ),
       new ConfigTreeItem(
-        "编译参数",
+        vscode.l10n.t("Compile Args"),
         vscode.TreeItemCollapsibleState.None,
         "board-args",
         {
           description: current.board.compileArgs.length > 0 ? current.board.compileArgs.join(" ") : "—",
-          tooltip: current.board.compileArgs.join(" ") || "无额外编译参数"
+          tooltip: current.board.compileArgs.join(" ") || vscode.l10n.t("No extra compile arguments")
         }
       ),
       new ConfigTreeItem(
-        "引脚定义",
+        vscode.l10n.t("Pin Defines"),
         vscode.TreeItemCollapsibleState.None,
         "board-pins",
-        { description: `${pinCount} 项` }
+        { description: vscode.l10n.t("{0} item(s)", String(pinCount)) }
       ),
     ];
   }
@@ -175,16 +175,16 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
   private buildPortChildren(current: ArduFluxCurrentConfig): ConfigTreeItem[] {
     return [
       new ConfigTreeItem(
-        "地址",
+        vscode.l10n.t("Address"),
         vscode.TreeItemCollapsibleState.None,
         "port-address",
         { description: current.port.address || "—" }
       ),
       new ConfigTreeItem(
-        "自动选择",
+        vscode.l10n.t("Auto-select"),
         vscode.TreeItemCollapsibleState.None,
         "port-auto",
-        { description: current.port.auto ? "是" : "否" }
+        { description: current.port.auto ? vscode.l10n.t("Yes") : vscode.l10n.t("No") }
       ),
     ];
   }
@@ -192,23 +192,23 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
   private buildBuildChildren(current: ArduFluxCurrentConfig): ConfigTreeItem[] {
     return [
       new ConfigTreeItem(
-        "输出目录",
+        vscode.l10n.t("Output Directory"),
         vscode.TreeItemCollapsibleState.None,
         "build-output",
         {
           description: current.build.outputDir || "—",
           tooltip: current.build.outputDir
             ? path.resolve(this.store.baseDir, current.build.outputDir)
-            : "使用默认输出目录"
+            : vscode.l10n.t("Using default output directory")
         }
       ),
       new ConfigTreeItem(
-        "最近路径",
+        vscode.l10n.t("Recent Paths"),
         vscode.TreeItemCollapsibleState.None,
         "build-recent",
         {
-          description: `${(current.build.recentOutputDirs || []).length} 个`,
-          tooltip: (current.build.recentOutputDirs || []).join("\n") || "无最近路径"
+          description: vscode.l10n.t("{0} item(s)", String((current.build.recentOutputDirs || []).length)),
+          tooltip: (current.build.recentOutputDirs || []).join("\n") || vscode.l10n.t("No recent paths")
         }
       ),
     ];
@@ -217,37 +217,37 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
   private buildMonitorChildren(current: ArduFluxCurrentConfig): ConfigTreeItem[] {
     return [
       new ConfigTreeItem(
-        "启用",
+        vscode.l10n.t("Enabled"),
         vscode.TreeItemCollapsibleState.None,
         "monitor-enabled",
-        { description: current.monitor.enabled ? "是" : "否" }
+        { description: current.monitor.enabled ? vscode.l10n.t("Yes") : vscode.l10n.t("No") }
       ),
       new ConfigTreeItem(
-        "波特率",
+        vscode.l10n.t("Baud Rate"),
         vscode.TreeItemCollapsibleState.None,
         "monitor-baud",
         { description: String(current.monitor.baudRate || "—") }
       ),
       new ConfigTreeItem(
-        "数据位",
+        vscode.l10n.t("Data Bits"),
         vscode.TreeItemCollapsibleState.None,
         "monitor-databits",
         { description: String(current.monitor.dataBits || "—") }
       ),
       new ConfigTreeItem(
-        "停止位",
+        vscode.l10n.t("Stop Bits"),
         vscode.TreeItemCollapsibleState.None,
         "monitor-stopbits",
         { description: String(current.monitor.stopBits || "—") }
       ),
       new ConfigTreeItem(
-        "校验位",
+        vscode.l10n.t("Parity"),
         vscode.TreeItemCollapsibleState.None,
         "monitor-parity",
         { description: current.monitor.parity || "—" }
       ),
       new ConfigTreeItem(
-        "换行符",
+        vscode.l10n.t("Newline"),
         vscode.TreeItemCollapsibleState.None,
         "monitor-newline",
         { description: current.monitor.newline || "—" }
@@ -260,7 +260,7 @@ export class ConfigSidebarProvider implements vscode.TreeDataProvider<ConfigTree
     if (names.length === 0) {
       return [
         new ConfigTreeItem(
-          "（无）",
+          vscode.l10n.t("(none)"),
           vscode.TreeItemCollapsibleState.None,
           "profile-empty"
         ),

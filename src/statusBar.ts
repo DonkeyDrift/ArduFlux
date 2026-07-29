@@ -1,15 +1,17 @@
+import * as vscode from "vscode";
+
 export function formatStatusBarText(boardName: string, portAddress: string): string {
   const board = boardName.trim();
   const port = portAddress.trim();
 
   if (!board && !port) {
-    return "未配置";
+    return vscode.l10n.t("Not configured");
   }
   if (!board) {
-    return `未配置板型 @ ${port}`;
+    return vscode.l10n.t("Board not configured @ {0}", port);
   }
   if (!port) {
-    return `${board} @ 未选择端口`;
+    return vscode.l10n.t("{0} @ No port selected", board);
   }
   return `${board} @ ${port}`;
 }

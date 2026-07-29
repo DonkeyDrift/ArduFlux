@@ -941,7 +941,7 @@ describe("MCP Server", () => {
 
       expect(result.isError).to.equal(true);
       const parsed = JSON.parse((result.content[0] as { text: string }).text);
-      expect(parsed.error).to.include("非法字符");
+      expect(parsed.error).to.include("invalid characters");
     });
 
     it("arduflux_set_config 应拒绝工作区外的 sketch_path", async () => {

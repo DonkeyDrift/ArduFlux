@@ -24,7 +24,7 @@ export class ArduFluxEditorProvider implements vscode.WebviewViewProvider {
 
     const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!root) {
-      webviewView.webview.html = this.simpleHtml("请先打开一个工作区文件夹");
+      webviewView.webview.html = this.simpleHtml(vscode.l10n.t("Please open a workspace folder first"));
       this.log(`[view] No workspace root found for viewId=${ARDUFLUX_EDITOR_VIEW_ID}`);
       return;
     }
@@ -36,8 +36,8 @@ export class ArduFluxEditorProvider implements vscode.WebviewViewProvider {
       `[view] Webview options applied (viewId=${ARDUFLUX_EDITOR_VIEW_ID}, enableScripts=${webviewView.webview.options.enableScripts === true})`
     );
 
-    // 先显示加载中，避免空白
-    webviewView.webview.html = this.simpleHtml("加载配置中...");
+    // Show a loading placeholder first to avoid a blank view
+    webviewView.webview.html = this.simpleHtml(vscode.l10n.t("Loading configuration..."));
     this.log(`[view] Placeholder HTML rendered for viewId=${ARDUFLUX_EDITOR_VIEW_ID}`);
 
     const store = new ConfigStore(root);
@@ -47,9 +47,9 @@ export class ArduFluxEditorProvider implements vscode.WebviewViewProvider {
     await this.controller.initialize().catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       this.log(`[view] Failed to initialize controller (viewId=${ARDUFLUX_EDITOR_VIEW_ID}): ${msg}`);
-      webviewView.webview.html = this.simpleHtml(`加载失败: ${msg}`);
+      webviewView.webview.html = this.simpleHtml(vscode.l10n.t("Loading failed: {0}", msg));
     });
-    await this.controller.syncView("配置编辑器已加载");
+    await this.controller.syncView(vscode.l10n.t("Configuration editor loaded"));
     this.log(`[view] Initial state posted for viewId=${ARDUFLUX_EDITOR_VIEW_ID}`);
 
     webviewView.onDidDispose(() => {
@@ -71,7 +71,7 @@ export class ArduFluxEditorProvider implements vscode.WebviewViewProvider {
 
   private simpleHtml(text: string): string {
     return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head><meta charset="UTF-8"/><style>
 body{font-family:var(--vscode-font-family);padding:16px;color:var(--vscode-foreground);background:var(--vscode-editor-background);}
 </style></head>

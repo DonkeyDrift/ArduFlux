@@ -27,6 +27,7 @@
     "Other"
   ],
   "main": "./dist/extension.js",
+  "l10n": "./l10n",
   "bin": {
     "arduflux-mcp": "bin/arduflux-mcp"
   },
@@ -42,40 +43,40 @@
     "commands": [
       {
         "command": "arduflux.openPanel",
-        "title": "ArduFlux: 打开面板"
+        "title": "%arduflux.command.openPanel%"
       },
       {
         "command": "arduflux.validateConfig",
-        "title": "ArduFlux: 校验当前配置"
+        "title": "%arduflux.command.validateConfig%"
       },
       {
         "command": "arduflux.openConfigFile",
-        "title": "ArduFlux: 打开配置文件"
+        "title": "%arduflux.command.openConfigFile%"
       },
       {
         "command": "arduflux.compileSketch",
-        "title": "ArduFlux: 编译 Sketch"
+        "title": "%arduflux.command.compileSketch%"
       },
       {
         "command": "arduflux.uploadSketch",
-        "title": "ArduFlux: 上传 Sketch"
+        "title": "%arduflux.command.uploadSketch%"
       },
       {
         "command": "arduflux.refreshSidebar",
-        "title": "ArduFlux: 刷新侧边栏",
+        "title": "%arduflux.command.refreshSidebar%",
         "icon": "$(refresh)"
       },
       {
         "command": "arduflux.runUploadScript",
-        "title": "ArduFlux: 完整编译+上传+监视（脚本）"
+        "title": "%arduflux.command.runUploadScript%"
       },
       {
         "command": "arduflux.compileOnly",
-        "title": "ArduFlux: 仅编译（脚本）"
+        "title": "%arduflux.command.compileOnly%"
       },
       {
         "command": "arduflux.uploadOnly",
-        "title": "ArduFlux: 仅上传+监视（脚本）"
+        "title": "%arduflux.command.uploadOnly%"
       }
     ],
     "viewsContainers": {
@@ -92,7 +93,7 @@
         {
           "id": "arduflux.editor",
           "type": "webview",
-          "name": "配置编辑器"
+          "name": "%arduflux.view.editor%"
         }
       ]
     },
@@ -158,6 +159,7 @@
     "@types/node": "^24.9.2",
     "@types/sinon": "^21.0.1",
     "@types/vscode": "^1.90.0",
+    "@vscode/l10n-dev": "^0.0.35",
     "@vscode/vsce": "^3.6.2",
     "chai": "^6.2.2",
     "mocha": "^11.7.5",
@@ -167,6 +169,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@vscode/l10n": "^0.0.18",
     "zod": "^4.4.3"
   }
 }

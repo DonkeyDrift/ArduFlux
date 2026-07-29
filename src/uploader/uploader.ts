@@ -1,6 +1,7 @@
 import { spawn as nodeSpawn, SpawnOptions } from "child_process";
 import { promises as fsPromises } from "fs";
 import * as path from "path";
+import * as l10n from "@vscode/l10n";
 import {
   execFileText,
   listSerialPorts,
@@ -95,7 +96,7 @@ export class Uploader {
     const doMonitor = flags.monitor || (!flags.compile && !flags.upload && !flags.monitor);
     let doCompile = flags.compile || (!flags.compile && !flags.upload && !flags.monitor);
 
-    // 链节联动：上传时自动编译
+    // Chained behavior: auto-compile when uploading
     if (doUpload && !flags.compile && config.build.compileBeforeUpload) {
       doCompile = true;
     }
@@ -111,12 +112,12 @@ export class Uploader {
           sketches = [];
         }
         if (sketches.length === 0) {
-          throw new ValidationError("未找到 .ino 文件", "请在工作区中创建 Arduino 草图文件");
+          throw new ValidationError(l10n.t("No .ino file found"), l10n.t("Please create an Arduino sketch file in the workspace"));
         }
         if (sketches.length > 1) {
           throw new ValidationError(
-            `发现多个 .ino 文件 (${sketches.length} 个)`,
-            `请指定其中一个：${sketches.join(", ")}`
+            l10n.t("Multiple .ino files found ({0})", String(sketches.length)),
+            l10n.t("Please specify one of: {0}", sketches.join(", "))
           );
         }
         sketchPath = sketches[0]!;
@@ -153,7 +154,7 @@ export class Uploader {
         config.port.auto
       );
       if (candidates.length === 0) {
-        throw new ValidationError("没有可用串口", "请检查设备连接");
+        throw new ValidationError(l10n.t("No serial port available"), l10n.t("Please check the device connection"));
       }
 
       write(`\n=== Uploading sketch ===\r\n`);
