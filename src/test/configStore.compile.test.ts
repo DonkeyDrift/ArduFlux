@@ -43,14 +43,14 @@ describe("configStore.ts - 编译上传参数", () => {
     it("空 fqbn 应抛 ValidationError", () => {
       expect(() => buildCompileArgs({ fqbn: "", sketchPath: "/project" })).to.throw(
         ValidationError,
-        "FQBN 不能为空"
+        "FQBN cannot be empty"
       );
     });
 
     it("空 sketchPath 应抛 ValidationError", () => {
       expect(() => buildCompileArgs({ fqbn: "esp32:esp32:esp32s3", sketchPath: "" })).to.throw(
         ValidationError,
-        "草图路径为空"
+        "Sketch path is empty"
       );
     });
 
@@ -77,21 +77,21 @@ describe("configStore.ts - 编译上传参数", () => {
     it("空 port 应抛 ValidationError", () => {
       expect(() => buildUploadArgs({ port: "", fqbn: "esp32:esp32:esp32s3", sketchPath: "/project" })).to.throw(
         ValidationError,
-        "串口未选择"
+        "No serial port selected"
       );
     });
 
     it("空 fqbn 应抛 ValidationError", () => {
       expect(() => buildUploadArgs({ port: "COM36", fqbn: "", sketchPath: "/project" })).to.throw(
         ValidationError,
-        "FQBN 不能为空"
+        "FQBN cannot be empty"
       );
     });
 
     it("空 sketchPath 应抛 ValidationError", () => {
       expect(() => buildUploadArgs({ port: "COM36", fqbn: "esp32:esp32:esp32s3", sketchPath: "" })).to.throw(
         ValidationError,
-        "草图路径为空"
+        "Sketch path is empty"
       );
     });
 

@@ -68,6 +68,10 @@ describe("webview view registration", () => {
       | undefined;
 
     const fakeVscode = {
+      l10n: {
+        t: (message: string, ...args: string[]) =>
+          message.replace(/\{(\d+)\}/g, (_match, index: string) => args[Number(index)] ?? "")
+      },
       EventEmitter: class<T> {
         private listeners: Array<(value: T) => void> = [];
 
@@ -201,7 +205,7 @@ describe("webview view registration", () => {
       expect(postedMessages.some((message) => message.type === "state")).to.equal(true);
 
       const firstStateMessage = postedMessages.find((message) => message.type === "state");
-      expect(firstStateMessage?.statusMessage).to.equal("配置编辑器已加载");
+      expect(firstStateMessage?.statusMessage).to.equal("Configuration editor loaded");
       expect(firstStateMessage?.payload).to.deep.include({
         recommendedPort: "COM36"
       });
@@ -210,7 +214,7 @@ describe("webview view registration", () => {
 
       const stateMessages = postedMessages.filter((message) => message.type === "state");
       expect(stateMessages.length).to.equal(2);
-      expect(stateMessages[1]?.statusMessage).to.equal("配置编辑器已就绪");
+      expect(stateMessages[1]?.statusMessage).to.equal("Configuration editor ready");
       expect(outputLines.some((line) => line.includes(`viewId=${ARDUFLUX_EDITOR_VIEW_ID}`))).to.equal(true);
       expect(outputLines.some((line) => line.includes("Posting state message"))).to.equal(true);
 

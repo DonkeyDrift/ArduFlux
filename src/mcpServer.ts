@@ -3,6 +3,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import { spawn as cpSpawn, ChildProcess } from "child_process";
 import * as path from "path";
+import * as l10n from "@vscode/l10n";
 import {
   ConfigStore,
   ValidationError,
@@ -15,6 +16,13 @@ import {
 } from "./configStore";
 import { ArduFluxConfig, DEFAULT_BOARD_CATALOG } from "./types";
 import { startSseServer, startStdioServer } from "./mcp/transports";
+
+const mcpLocale = process.env.VSCODE_NLS_CONFIG
+  ? (JSON.parse(process.env.VSCODE_NLS_CONFIG) as { locale?: string }).locale
+  : (process.env.ARDUFLUX_LANG ?? "en");
+if (mcpLocale?.toLowerCase().startsWith("zh")) {
+  l10n.config({ uri: path.join(__dirname, "..", "l10n", "bundle.l10n.zh-cn.json") });
+}
 
 export interface McpServerDeps {
   spawn?: typeof cpSpawn;
@@ -106,8 +114,9 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_get_state",
     {
-      description:
-        "获取当前工作区的完整状态，包括配置、可用串口列表、推荐端口、板型目录",
+      description: l10n.t(
+        "Get the full state of the current workspace, including configuration, available serial ports, recommended port, and the board catalog"
+      ),
     },
     async () => {
       const store = new ConfigStore(workspaceRoot);
@@ -138,7 +147,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_list_ports",
     {
-      description: "强制刷新并返回当前可用串口列表",
+      description: l10n.t("Force-refresh and return the list of currently available serial ports"),
     },
     async () => {
       const store = new ConfigStore(workspaceRoot);
@@ -170,7 +179,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_validate_config",
     {
-      description: "校验当前配置合法性（FQBN、端口、路径等）",
+      description: l10n.t("Validate the current configuration (FQBN, port, paths, etc.)"),
     },
     async () => {
       const store = new ConfigStore(workspaceRoot);
@@ -222,7 +231,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_set_config",
     {
-      description: "原子化更新 ArduFlux.json 的当前配置，未提供的字段保持原值",
+      description: l10n.t("Atomically update the current configuration in ArduFlux.json; fields not provided keep their existing value"),
       inputSchema: SetConfigSchema,
     },
     async (args) => {
@@ -257,7 +266,7 @@ export function createMcpServer(
                 type: "text" as const,
                 text: JSON.stringify({
                   saved: false,
-                  error: `sketch_path 必须位于工作区内`,
+                  error: l10n.t("sketch_path must be inside the workspace"),
                 }),
               },
             ],
@@ -313,7 +322,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_apply_profile",
     {
-      description: "应用指定 Profile 到当前配置",
+      description: l10n.t("Apply the specified profile to the current configuration"),
       inputSchema: ApplyProfileSchema,
     },
     async (args) => {
@@ -339,7 +348,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_list_profiles",
     {
-      description: "列出当前所有可用的 Profile 名称",
+      description: l10n.t("List the names of all currently available profiles"),
     },
     async () => {
       const store = new ConfigStore(workspaceRoot);
@@ -365,7 +374,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_save_profile",
     {
-      description: "将当前配置保存为指定名称的 Profile",
+      description: l10n.t("Save the current configuration as a profile with the given name"),
       inputSchema: SaveProfileSchema,
     },
     async (args) => {
@@ -378,7 +387,7 @@ export function createMcpServer(
               type: "text" as const,
               text: JSON.stringify({
                 saved: false,
-                error: `Profile "${args.name}" 已存在，设置 overwrite=true 可覆盖`,
+                error: l10n.t('Profile "{0}" already exists; set overwrite=true to overwrite it', args.name),
               }),
             },
           ],
@@ -405,7 +414,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_delete_profile",
     {
-      description: "删除指定 Profile",
+      description: l10n.t("Delete the specified profile"),
       inputSchema: DeleteProfileSchema,
     },
     async (args) => {
@@ -431,7 +440,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_discover_sketches",
     {
-      description: "扫描工作区及子目录，自动发现所有 .ino Sketch 文件",
+      description: l10n.t("Scan the workspace and subdirectories to automatically discover all .ino sketch files"),
     },
     async () => {
       const sketches = await discoverSketches(workspaceRoot);
@@ -458,12 +467,12 @@ export function createMcpServer(
     }
     const sketches = await discoverSketches(workspaceRoot);
     if (sketches.length === 0) {
-      throw new ValidationError("未找到 .ino 文件", "请指定 sketch_path 或在工作区中创建 .ino 文件");
+      throw new ValidationError(l10n.t("No .ino file found"), l10n.t("Please specify sketch_path or create a .ino file in the workspace"));
     }
     if (sketches.length > 1) {
       throw new ValidationError(
-        `发现多个 .ino 文件 (${sketches.length} 个)`,
-        `请通过 sketch_path 指定其中一个：${sketches.join(", ")}`
+        l10n.t("Multiple .ino files found ({0})", String(sketches.length)),
+        l10n.t("Please specify one via sketch_path: {0}", sketches.join(", "))
       );
     }
     return sketches[0]!;
@@ -472,7 +481,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_compile",
     {
-      description: "编译 Sketch。这是一个长耗时任务，返回 taskId 后需轮询 arduflux_get_task_status",
+      description: l10n.t("Compile the sketch. This is a long-running task; after it returns a taskId, poll arduflux_get_task_status"),
       inputSchema: CompileSchema,
     },
     async (args, extra) => {
@@ -522,7 +531,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_upload",
     {
-      description: "上传固件到开发板。自动遵循配置中的 compile_before_upload 链节开关",
+      description: l10n.t("Upload firmware to the board. Automatically honors the compile_before_upload toggle in the configuration"),
       inputSchema: UploadSchema,
     },
     async (args, extra) => {
@@ -582,7 +591,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_get_task_status",
     {
-      description: "查询长耗时任务（compile / upload）的当前状态和输出日志",
+      description: l10n.t("Query the current status and output logs of a long-running task (compile / upload)"),
       inputSchema: GetTaskStatusSchema,
     },
     async (args) => {
@@ -593,7 +602,7 @@ export function createMcpServer(
             {
               type: "text" as const,
               text: JSON.stringify({
-                error: `任务 ${args.task_id} 不存在或已过期`,
+                error: l10n.t("Task {0} does not exist or has expired", args.task_id),
               }),
             },
           ],
@@ -620,7 +629,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_monitor",
     {
-      description: "打开串口监视器。由于监视器是阻塞式终端操作，仅负责启动并返回终端信息",
+      description: l10n.t("Open the serial monitor. Since the monitor is a blocking terminal operation, this only starts it and returns terminal information"),
     },
     async (extra) => {
       const store = new ConfigStore(workspaceRoot);
@@ -631,7 +640,7 @@ export function createMcpServer(
           content: [
             {
               type: "text" as const,
-              text: JSON.stringify({ error: "串口未选择，无法打开监视器" }),
+              text: JSON.stringify({ error: l10n.t("No serial port selected; cannot open the monitor") }),
             },
           ],
           isError: true,
@@ -656,7 +665,7 @@ export function createMcpServer(
             text: JSON.stringify({
               started: true,
               terminal_name: "ArduFlux Monitor",
-              note: "监视器已在系统终端中打开",
+              note: l10n.t("The monitor has been opened in the system terminal"),
             }),
           },
         ],
@@ -667,7 +676,7 @@ export function createMcpServer(
   server.registerTool(
     "arduflux_health",
     {
-      description: "获取服务器健康状态，包括运行时长、内存占用、活跃任务数",
+      description: l10n.t("Get server health status, including uptime, memory usage, and active task count"),
     },
     async () => {
       const uptime = Math.floor((Date.now() - startTime) / 1000);

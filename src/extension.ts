@@ -11,14 +11,14 @@ import { startMcpSseServer } from "./mcp/extensionIntegration";
 function getWorkspaceRoot(): string {
   const folder = vscode.workspace.workspaceFolders?.[0];
   if (!folder) {
-    throw new ValidationError("请先打开一个工作区文件夹，再使用 ArduFlux");
+    throw new ValidationError(vscode.l10n.t("Please open a workspace folder before using ArduFlux"));
   }
   return folder.uri.fsPath;
 }
 
 function formatError(error: unknown): string {
   if (error instanceof ValidationError) {
-    return error.suggestion ? `${error.message}\n建议：${error.suggestion}` : error.message;
+    return error.suggestion ? vscode.l10n.t("{0}\nSuggestion: {1}", error.message, error.suggestion) : error.message;
   }
   return error instanceof Error ? error.message : String(error);
 }
@@ -35,7 +35,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(outputChannel);
   outputChannel.appendLine("[activate] Extension activating...");
 
-  // 注册侧边栏 WebviewViewProvider
+  // Register the sidebar WebviewViewProvider
   const editorProvider = new ArduFluxEditorProvider(context, (message) => {
     outputChannel.appendLine(message);
   });
@@ -53,10 +53,11 @@ export function activate(context: vscode.ExtensionContext): void {
     outputChannel.appendLine(
       `[activate] FAILED to register WebviewViewProvider (viewId=${ARDUFLUX_EDITOR_VIEW_ID}): ${msg}`
     );
-    // 热重载或窗口重新加载时，旧的 provider 可能尚未完全 dispose，
-    // 导致 "already registered" 错误。此情况属于良性竞争，仅记录日志即可。
+    // During hot reload or window reload, the old provider may not have fully
+    // disposed yet, causing an "already registered" error. This is a benign
+    // race condition, so we just log it.
     if (!msg.includes("already registered")) {
-      void vscode.window.showErrorMessage(`ArduFlux: WebviewView 注册失败: ${msg}`);
+      void vscode.window.showErrorMessage(vscode.l10n.t("ArduFlux: Failed to register WebviewView: {0}", msg));
     }
   }
 
@@ -98,7 +99,7 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         await withStore(async (store) => {
           await store.validateAll();
-          void vscode.window.showInformationMessage("当前 ArduFlux.json 校验通过");
+          void vscode.window.showInformationMessage(vscode.l10n.t("ArduFlux.json validated successfully"));
         });
       } catch (error) {
         void vscode.window.showErrorMessage(formatError(error));
@@ -142,7 +143,7 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // 静默编译/上传（不弹出面板，供状态栏按钮使用）
+  // Silent compile/upload (no panel popup, used by status bar buttons)
   context.subscriptions.push(
     vscode.commands.registerCommand("arduflux.compileSketchSilent", async () => {
       try {
@@ -151,10 +152,10 @@ export function activate(context: vscode.ExtensionContext): void {
         const store = new ConfigStore(root);
         await store.load();
         const sketchPath = store.getData().current.build.sketchPath ?? "";
-        startStatusSpinner("正在编译");
+        startStatusSpinner(vscode.l10n.t("Compiling"));
         try {
           await runUploaderFlow(root, { compile: true, sketchPath });
-          void vscode.window.showInformationMessage("编译完成");
+          void vscode.window.showInformationMessage(vscode.l10n.t("Compilation completed"));
         } finally {
           stopStatusSpinner();
         }
@@ -174,10 +175,10 @@ export function activate(context: vscode.ExtensionContext): void {
         const compileBeforeUpload = store.getData().current.build.compileBeforeUpload ?? false;
         const uploadThenMonitor = store.getData().current.build.uploadThenMonitor ?? false;
         const sketchPath = store.getData().current.build.sketchPath ?? "";
-        startStatusSpinner(compileBeforeUpload ? "正在编译并上传" : "正在上传");
+        startStatusSpinner(compileBeforeUpload ? vscode.l10n.t("Compiling and uploading") : vscode.l10n.t("Uploading"));
         try {
           await runUploaderFlow(root, { compile: compileBeforeUpload, upload: true, sketchPath });
-          void vscode.window.showInformationMessage(compileBeforeUpload ? "编译并上传完成" : "上传完成");
+          void vscode.window.showInformationMessage(compileBeforeUpload ? vscode.l10n.t("Compile and upload completed") : vscode.l10n.t("Upload completed"));
         } finally {
           stopStatusSpinner();
         }
@@ -197,10 +198,10 @@ export function activate(context: vscode.ExtensionContext): void {
         const store = new ConfigStore(root);
         await store.load();
         const sketchPath = store.getData().current.build.sketchPath ?? "";
-        startStatusSpinner("执行上传脚本");
+        startStatusSpinner(vscode.l10n.t("Running upload script"));
         try {
           await runUploaderFlow(root, { compile: true, upload: true, monitor: true, sketchPath });
-          void vscode.window.showInformationMessage("上传脚本执行完成");
+          void vscode.window.showInformationMessage(vscode.l10n.t("Upload script completed"));
         } finally {
           stopStatusSpinner();
         }
@@ -217,10 +218,10 @@ export function activate(context: vscode.ExtensionContext): void {
         const store = new ConfigStore(root);
         await store.load();
         const sketchPath = store.getData().current.build.sketchPath ?? "";
-        startStatusSpinner("编译中");
+        startStatusSpinner(vscode.l10n.t("Compiling"));
         try {
           await runUploaderFlow(root, { compile: true, sketchPath });
-          void vscode.window.showInformationMessage("编译完成");
+          void vscode.window.showInformationMessage(vscode.l10n.t("Compilation completed"));
         } finally {
           stopStatusSpinner();
         }
@@ -237,10 +238,10 @@ export function activate(context: vscode.ExtensionContext): void {
         const store = new ConfigStore(root);
         await store.load();
         const sketchPath = store.getData().current.build.sketchPath ?? "";
-        startStatusSpinner("上传中");
+        startStatusSpinner(vscode.l10n.t("Uploading"));
         try {
           await runUploaderFlow(root, { upload: true, monitor: true, sketchPath });
-          void vscode.window.showInformationMessage("上传完成");
+          void vscode.window.showInformationMessage(vscode.l10n.t("Upload completed"));
         } finally {
           stopStatusSpinner();
         }
@@ -250,7 +251,7 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // 状态栏
+  // Status bar item
   const statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     100
@@ -258,26 +259,26 @@ export function activate(context: vscode.ExtensionContext): void {
   statusBarItem.command = "arduflux.openPanel";
   context.subscriptions.push(statusBarItem);
 
-  // 快捷图标按钮（只显示图标，悬浮提示）
+  // Quick icon buttons (icon-only, with hover tooltips)
   const btnCompile = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
   btnCompile.text = "$(play)";
-  btnCompile.tooltip = "编译 Sketch";
+  btnCompile.tooltip = vscode.l10n.t("Compile Sketch");
   btnCompile.command = "arduflux.compileSketchSilent";
   context.subscriptions.push(btnCompile);
 
   const btnUpload = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 98);
   btnUpload.text = "$(cloud-upload)";
-  btnUpload.tooltip = "上传 Sketch";
+  btnUpload.tooltip = vscode.l10n.t("Upload Sketch");
   btnUpload.command = "arduflux.uploadSketchSilent";
   context.subscriptions.push(btnUpload);
 
   const btnMonitor = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 97);
   btnMonitor.text = "$(terminal)";
-  btnMonitor.tooltip = "打开串口监视器";
+  btnMonitor.tooltip = vscode.l10n.t("Open Serial Monitor");
   btnMonitor.command = "arduflux.openMonitor";
   context.subscriptions.push(btnMonitor);
 
-  // 动态状态栏（正在编译/上传等）
+  // Dynamic status bar item (compiling/uploading, etc.)
   const statusAction = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 96);
   context.subscriptions.push(statusAction);
 
@@ -311,14 +312,19 @@ export function activate(context: vscode.ExtensionContext): void {
       await store.load();
       const config = store.getData().current;
       statusBarItem.text = `$(circuit-board) ${formatStatusBarText(config.board.name, config.port.address)}`;
-      statusBarItem.tooltip = `板型: ${config.board.name}\n端口: ${config.port.address || "未选择"}\nFQBN: ${config.board.fqbn}`;
+      statusBarItem.tooltip = vscode.l10n.t(
+        "Board: {0}\nPort: {1}\nFQBN: {2}",
+        config.board.name,
+        config.port.address || vscode.l10n.t("Not selected"),
+        config.board.fqbn
+      );
       statusBarItem.show();
       btnCompile.show();
       btnUpload.show();
       btnMonitor.show();
     } catch {
-      statusBarItem.text = "$(circuit-board) 嵌入式配置";
-      statusBarItem.tooltip = "点击打开 ArduFlux 面板";
+      statusBarItem.text = `$(circuit-board) ${vscode.l10n.t("Embedded Configuration")}`;
+      statusBarItem.tooltip = vscode.l10n.t("Click to open the ArduFlux panel");
       statusBarItem.show();
       btnCompile.hide();
       btnUpload.hide();
@@ -330,7 +336,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const interval = setInterval(() => void updateStatusBar(), 5000);
   context.subscriptions.push({ dispose: () => clearInterval(interval) });
 
-  // 启动 MCP SSE 服务器（供 IDE AI 调用）
+  // Start the MCP SSE server (used by IDE AI clients)
   void (async () => {
     try {
       const root = getWorkspaceRoot();
@@ -349,7 +355,7 @@ export function activate(context: vscode.ExtensionContext): void {
         },
       });
 
-      // VS Code 原生 MCP 注册表适配（1.99+）
+      // VS Code native MCP registry adapter (1.99+)
       if (
         vscode.lm &&
         typeof vscode.lm.registerMcpServerDefinitionProvider === "function" &&

@@ -51,7 +51,7 @@ export function runInTerminal(
             if (code === 0 || killedByUser) {
               resolve();
             } else {
-              reject(new ValidationError(`${name} 失败，退出码: ${code}`));
+              reject(new ValidationError(vscode.l10n.t("{0} failed, exit code: {1}", name, String(code))));
             }
           }
         });
@@ -59,7 +59,7 @@ export function runInTerminal(
           writeEmitter.fire(`\r\n[Error: ${err.message}]\r\n`);
           if (!resolved) {
             resolved = true;
-            reject(new ValidationError(`${name} 启动失败: ${err.message}`));
+            reject(new ValidationError(vscode.l10n.t("{0} failed to start: {1}", name, err.message)));
           }
         });
       },
@@ -136,7 +136,7 @@ export function runUploaderFlow(
               if (result.success || killedByUser) {
                 resolve();
               } else {
-                reject(new ValidationError("上传流程执行失败"));
+                reject(new ValidationError(vscode.l10n.t("Upload process failed")));
               }
             }
 
@@ -145,7 +145,7 @@ export function runUploaderFlow(
               let countdown = 3;
               const timer = setInterval(() => {
                 if (countdown > 0) {
-                  writeEmitter.fire(`[窗口将在 ${countdown} 秒后自动关闭]\r\n`);
+                  writeEmitter.fire(`[${vscode.l10n.t("Window will close automatically in {0} seconds", String(countdown))}]\r\n`);
                   countdown--;
                 } else {
                   clearInterval(timer);
@@ -225,7 +225,7 @@ export function runUploadScript(
             if (code === 0 || killedByUser) {
               resolve();
             } else {
-              reject(new ValidationError(`上传脚本执行失败，退出码: ${code}`));
+              reject(new ValidationError(vscode.l10n.t("Upload script failed, exit code: {0}", String(code))));
             }
           }
           const isMonitorOnly = !flags.compile && !flags.upload && flags.monitor;
@@ -233,7 +233,7 @@ export function runUploadScript(
             let countdown = 3;
             const timer = setInterval(() => {
               if (countdown > 0) {
-                writeEmitter.fire(`[窗口将在 ${countdown} 秒后自动关闭]\r\n`);
+                writeEmitter.fire(`[${vscode.l10n.t("Window will close automatically in {0} seconds", String(countdown))}]\r\n`);
                 countdown--;
               } else {
                 clearInterval(timer);
@@ -246,7 +246,7 @@ export function runUploadScript(
           writeEmitter.fire(`\r\n[Error: ${err.message}]\r\n`);
           if (!resolved) {
             resolved = true;
-            reject(new ValidationError(`上传脚本启动失败: ${err.message}`));
+            reject(new ValidationError(vscode.l10n.t("Upload script failed to start: {0}", err.message)));
           }
         });
       },
